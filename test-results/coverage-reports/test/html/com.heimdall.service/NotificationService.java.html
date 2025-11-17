@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.service</a> &gt; <span class="el_source">NotificationService.java</span></div><h1>NotificationService.java</h1><pre class="source lang-java linenums">package com.heimdall.service;
+
+import com.heimdall.entity.AnalysisResult;
+import com.heimdall.entity.Notification;
+import com.heimdall.repository.NotificationRepository;
+import com.heimdall.util.DateTimeUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+<span class="nc" id="L14">@RequiredArgsConstructor</span>
+<span class="nc" id="L15">@Slf4j</span>
+public class NotificationService {
+    
+    private final NotificationRepository notificationRepository;
+    
+    @Value(&quot;${heimdall.notification.enabled:true}&quot;)
+    private boolean notificationEnabled;
+    
+    @Transactional
+    public void sendAnalysisNotification(AnalysisResult analysisResult) {
+<span class="nc bnc" id="L25" title="All 2 branches missed.">        if (!notificationEnabled) {</span>
+<span class="nc" id="L26">            log.debug(&quot;Notification is disabled&quot;);</span>
+<span class="nc" id="L27">            return;</span>
+        }
+        
+        try {
+<span class="nc" id="L31">            String message = buildNotificationMessage(analysisResult);</span>
+            
+<span class="nc" id="L33">            Notification notification = new Notification();</span>
+<span class="nc" id="L34">            notification.setLogEntry(analysisResult.getLogEntry());</span>
+<span class="nc" id="L35">            notification.setAnalysisResult(analysisResult);</span>
+<span class="nc" id="L36">            notification.setType(&quot;ANALYSIS_ALERT&quot;);</span>
+<span class="nc" id="L37">            notification.setChannel(&quot;EMAIL&quot;); // 湲곕낯媛�</span>
+<span class="nc" id="L38">            notification.setRecipient(&quot;admin@example.com&quot;); // �꽕�젙�뿉�꽌 媛��졇���빞 �븿</span>
+<span class="nc" id="L39">            notification.setMessage(message);</span>
+<span class="nc" id="L40">            notification.setSentAt(DateTimeUtil.now());</span>
+<span class="nc" id="L41">            notification.setStatus(Notification.NotificationStatus.PENDING);</span>
+            
+<span class="nc" id="L43">            notificationRepository.save(notification);</span>
+            
+            // �떎�젣 �븣由� 諛쒖넚 濡쒖쭅 (�씠硫붿씪, Slack �벑)
+            // TODO: �떎�젣 援ы쁽 �븘�슂
+            
+<span class="nc" id="L48">            log.info(&quot;Notification created for analysisId={}&quot;, analysisResult.getId());</span>
+<span class="nc" id="L49">        } catch (Exception e) {</span>
+<span class="nc" id="L50">            log.error(&quot;Failed to send notification for analysisId={}&quot;, </span>
+<span class="nc" id="L51">                analysisResult.getId(), e);</span>
+<span class="nc" id="L52">        }</span>
+<span class="nc" id="L53">    }</span>
+    
+    private String buildNotificationMessage(AnalysisResult analysisResult) {
+<span class="nc" id="L56">        return String.format(</span>
+            &quot;�슑截� Log Analysis Alert\n\n&quot; +
+            &quot;Service: %s\n&quot; +
+            &quot;Environment: %s\n&quot; +
+            &quot;Severity: %s\n\n&quot; +
+            &quot;Summary: %s\n&quot; +
+            &quot;Root Cause: %s\n&quot; +
+            &quot;Recommendation: %s\n\n&quot; +
+            &quot;Confidence: %.2f%%&quot;,
+<span class="nc" id="L65">            analysisResult.getLogEntry().getServiceName(),</span>
+<span class="nc" id="L66">            analysisResult.getLogEntry().getEnvironment(),</span>
+<span class="nc" id="L67">            analysisResult.getSeverity(),</span>
+<span class="nc" id="L68">            analysisResult.getSummary(),</span>
+<span class="nc" id="L69">            analysisResult.getRootCause(),</span>
+<span class="nc" id="L70">            analysisResult.getRecommendation(),</span>
+<span class="nc" id="L71">            analysisResult.getConfidence().doubleValue() * 100</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

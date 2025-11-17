@@ -31,16 +31,17 @@ public class ElasticsearchConfig extends ElasticsearchConfiguration {
 
     @Override
     public ClientConfiguration clientConfiguration() {
-        ClientConfiguration.MaybeSecureClientConfigurationBuilder builder = ClientConfiguration.builder()
+        var builder = ClientConfiguration.builder()
             .connectedTo(elasticsearchUri)
-            .withConnectTimeout(java.time.Duration.parse("PT" + connectionTimeout.toUpperCase()))
-            .withSocketTimeout(java.time.Duration.parse("PT" + socketTimeout.toUpperCase()));
+            .withConnectTimeout(java.time.Duration.parse("PT" + connectionTimeout.toUpperCase()));
 
         // Basic Authentication 설정
         if (username != null && password != null) {
             builder.withBasicAuth(username, password);
         }
 
-        return builder.build();
+        return builder
+            .withSocketTimeout(java.time.Duration.parse("PT" + socketTimeout.toUpperCase()))
+            .build();
     }
 }

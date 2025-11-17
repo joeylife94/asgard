@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogProcessingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.service</a> &gt; <span class="el_source">LogProcessingService.java</span></div><h1>LogProcessingService.java</h1><pre class="source lang-java linenums">package com.heimdall.service;
+
+import com.heimdall.entity.AnalysisResult;
+import com.heimdall.entity.LogEntry;
+import com.heimdall.kafka.event.AnalysisResultEvent;
+import com.heimdall.repository.AnalysisResultRepository;
+import com.heimdall.repository.LogEntryRepository;
+import com.heimdall.util.DateTimeUtil;
+import io.micrometer.core.instrument.MeterRegistry;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+<span class="nc" id="L16">@RequiredArgsConstructor</span>
+<span class="nc" id="L17">@Slf4j</span>
+public class LogProcessingService {
+    
+    private final LogEntryRepository logEntryRepository;
+    private final AnalysisResultRepository analysisResultRepository;
+    private final NotificationService notificationService;
+    private final MeterRegistry meterRegistry;
+    
+    @Transactional
+    public void processAnalysisResult(AnalysisResultEvent event) {
+<span class="nc" id="L27">        log.info(&quot;Processing analysis result: requestId={}, logId={}&quot;, </span>
+<span class="nc" id="L28">            event.getRequestId(), event.getLogId());</span>
+        
+        // 濡쒓렇 �뿏�듃由� 議고쉶
+<span class="nc" id="L31">        LogEntry logEntry = logEntryRepository.findById(event.getLogId())</span>
+<span class="nc" id="L32">            .orElseThrow(() -&gt; new RuntimeException(&quot;LogEntry not found: &quot; + event.getLogId()));</span>
+        
+        // 遺꾩꽍 寃곌낵 �깮�꽦
+<span class="nc" id="L35">        AnalysisResult analysisResult = new AnalysisResult();</span>
+<span class="nc" id="L36">        analysisResult.setLogEntry(logEntry);</span>
+<span class="nc" id="L37">        analysisResult.setBifrostAnalysisId(event.getBifrostAnalysisId());</span>
+<span class="nc" id="L38">        analysisResult.setRequestId(event.getRequestId());</span>
+<span class="nc" id="L39">        analysisResult.setCorrelationId(event.getCorrelationId());</span>
+<span class="nc" id="L40">        analysisResult.setSummary(event.getAnalysisResult().getSummary());</span>
+<span class="nc" id="L41">        analysisResult.setRootCause(event.getAnalysisResult().getRootCause());</span>
+<span class="nc" id="L42">        analysisResult.setRecommendation(event.getAnalysisResult().getRecommendation());</span>
+<span class="nc" id="L43">        analysisResult.setSeverity(event.getAnalysisResult().getSeverity());</span>
+<span class="nc" id="L44">        analysisResult.setConfidence(event.getAnalysisResult().getConfidence());</span>
+<span class="nc" id="L45">        analysisResult.setModel(event.getModel());</span>
+<span class="nc" id="L46">        analysisResult.setDurationSeconds(event.getDurationSeconds());</span>
+<span class="nc" id="L47">        analysisResult.setAnalyzedAt(event.getTimestamp());</span>
+<span class="nc" id="L48">        analysisResult.setCreatedAt(DateTimeUtil.now());</span>
+        
+        // �뜲�씠�꽣踰좎씠�뒪 ���옣
+<span class="nc" id="L51">        AnalysisResult savedResult = analysisResultRepository.save(analysisResult);</span>
+        
+        // 硫뷀듃由� 湲곕줉
+<span class="nc" id="L54">        meterRegistry.counter(&quot;analysis.completed.total&quot;,</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">            &quot;service&quot;, logEntry.getServiceName() != null ? logEntry.getServiceName() : &quot;unknown&quot;,</span>
+<span class="nc" id="L56">            &quot;severity&quot;, event.getAnalysisResult().getSeverity()</span>
+<span class="nc" id="L57">        ).increment();</span>
+        
+<span class="nc" id="L59">        meterRegistry.timer(&quot;analysis.duration&quot;,</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">            &quot;service&quot;, logEntry.getServiceName() != null ? logEntry.getServiceName() : &quot;unknown&quot;</span>
+<span class="nc" id="L61">        ).record(java.time.Duration.ofMillis(</span>
+<span class="nc" id="L62">            event.getDurationSeconds().multiply(java.math.BigDecimal.valueOf(1000)).longValue()</span>
+        ));
+        
+        // �븣由� 泥섎━ (議곌굔 異⑹” �떆)
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (shouldSendNotification(savedResult)) {</span>
+<span class="nc" id="L67">            notificationService.sendAnalysisNotification(savedResult);</span>
+        }
+        
+<span class="nc" id="L70">        log.info(&quot;Analysis result processed: analysisId={}, logId={}&quot;, </span>
+<span class="nc" id="L71">            savedResult.getId(), logEntry.getId());</span>
+<span class="nc" id="L72">    }</span>
+    
+    private boolean shouldSendNotification(AnalysisResult analysisResult) {
+        // HIGH �삉�뒗 CRITICAL �떖媛곷룄�씤 寃쎌슦 �븣由� 諛쒖넚
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        return &quot;HIGH&quot;.equals(analysisResult.getSeverity()) ||</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">               &quot;CRITICAL&quot;.equals(analysisResult.getSeverity());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

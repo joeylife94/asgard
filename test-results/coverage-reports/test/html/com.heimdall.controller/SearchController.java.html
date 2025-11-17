@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SearchController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.controller</a> &gt; <span class="el_source">SearchController.java</span></div><h1>SearchController.java</h1><pre class="source lang-java linenums">package com.heimdall.controller;
+
+import com.heimdall.dto.LogSearchRequest;
+import com.heimdall.dto.LogSearchResponse;
+import com.heimdall.service.SearchService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping(&quot;/api/v1/logs&quot;)
+<span class="nc" id="L13">@RequiredArgsConstructor</span>
+<span class="nc" id="L14">@Slf4j</span>
+public class SearchController {
+    
+    private final SearchService searchService;
+    
+    @GetMapping(&quot;/search&quot;)
+    public ResponseEntity&lt;LogSearchResponse&gt; searchLogs(
+        @RequestParam(required = false) String serviceName,
+        @RequestParam(required = false) String environment,
+        @RequestParam(required = false) String severity,
+        @RequestParam(required = false) String from,
+        @RequestParam(required = false) String to,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = &quot;0&quot;) Integer page,
+        @RequestParam(defaultValue = &quot;20&quot;) Integer size
+    ) {
+<span class="nc" id="L30">        log.debug(&quot;Search logs request: service={}, environment={}, severity={}, keyword={}&quot;, </span>
+            serviceName, environment, severity, keyword);
+        
+<span class="nc" id="L33">        LogSearchRequest request = LogSearchRequest.builder()</span>
+<span class="nc" id="L34">            .serviceName(serviceName)</span>
+<span class="nc" id="L35">            .environment(environment)</span>
+<span class="nc" id="L36">            .severity(severity)</span>
+<span class="nc" id="L37">            .from(from)</span>
+<span class="nc" id="L38">            .to(to)</span>
+<span class="nc" id="L39">            .keyword(keyword)</span>
+<span class="nc" id="L40">            .page(page)</span>
+<span class="nc" id="L41">            .size(size)</span>
+<span class="nc" id="L42">            .build();</span>
+        
+<span class="nc" id="L44">        LogSearchResponse response = searchService.searchLogs(request);</span>
+        
+<span class="nc" id="L46">        return ResponseEntity.ok(response);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

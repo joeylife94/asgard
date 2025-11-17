@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AnalysisResultEvent.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.kafka.event</a> &gt; <span class="el_source">AnalysisResultEvent.java</span></div><h1>AnalysisResultEvent.java</h1><pre class="source lang-java linenums">package com.heimdall.kafka.event;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+<span class="nc bnc" id="L12" title="All 70 branches missed.">@Data</span>
+<span class="nc" id="L13">@NoArgsConstructor</span>
+<span class="nc" id="L14">@AllArgsConstructor</span>
+<span class="nc" id="L15">@Builder</span>
+public class AnalysisResultEvent {
+    
+<span class="nc" id="L18">    private String requestId;</span>
+    
+<span class="nc" id="L20">    private String correlationId;</span>
+    
+    @JsonFormat(pattern = &quot;yyyy-MM-dd'T'HH:mm:ss'Z'&quot;)
+<span class="nc" id="L23">    private LocalDateTime timestamp;</span>
+    
+<span class="nc" id="L25">    private Long logId;</span>
+    
+<span class="nc" id="L27">    private AnalysisResultDetail analysisResult;</span>
+    
+<span class="nc" id="L29">    private Long bifrostAnalysisId;</span>
+    
+<span class="nc" id="L31">    private String model;</span>
+    
+<span class="nc" id="L33">    private BigDecimal durationSeconds;</span>
+    
+<span class="nc bnc" id="L35" title="All 46 branches missed.">    @Data</span>
+<span class="nc" id="L36">    @NoArgsConstructor</span>
+<span class="nc" id="L37">    @AllArgsConstructor</span>
+<span class="nc" id="L38">    @Builder</span>
+    public static class AnalysisResultDetail {
+<span class="nc" id="L40">        private String summary;</span>
+<span class="nc" id="L41">        private String rootCause;</span>
+<span class="nc" id="L42">        private String recommendation;</span>
+<span class="nc" id="L43">        private String severity;</span>
+<span class="nc" id="L44">        private BigDecimal confidence;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

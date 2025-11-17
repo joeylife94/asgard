@@ -1,0 +1,106 @@
+{
+  "testExecution": {
+    "timestamp": "2025-11-17T21:28:00+09:00",
+    "environment": {
+      "os": "Windows 11",
+      "java": "OpenJDK Temurin 17.0.16",
+      "gradle": "8.5",
+      "springBoot": "3.2.0"
+    },
+    "project": {
+      "name": "asgard",
+      "module": "heimdall",
+      "version": "1.0.0"
+    }
+  },
+  "results": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "successRate": 100.0
+  },
+  "tests": [
+    {
+      "name": "healthEndpoint_ShouldReturnUpStatus",
+      "displayName": "헬스 체크 엔드포인트는 UP 상태를 반환해야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    },
+    {
+      "name": "echoEndpoint_ShouldReturnRequestData",
+      "displayName": "Echo 엔드포인트는 요청 데이터를 반환해야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    },
+    {
+      "name": "cpuStressEndpoint_ShouldCompleteSuccessfully",
+      "displayName": "CPU 스트레스 엔드포인트는 정상적으로 완료되어야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    },
+    {
+      "name": "memoryStressEndpoint_ShouldCompleteSuccessfully",
+      "displayName": "메모리 스트레스 엔드포인트는 정상적으로 완료되어야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    },
+    {
+      "name": "delayEndpoint_ShouldDelayForRequestedTime",
+      "displayName": "지연 엔드포인트는 요청된 시간만큼 지연되어야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    },
+    {
+      "name": "randomErrorEndpoint_WithHighErrorRate_ShouldEventuallyFail",
+      "displayName": "랜덤 에러 엔드포인트는 때때로 에러를 발생시켜야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    },
+    {
+      "name": "randomErrorEndpoint_WithLowErrorRate_CanSucceed",
+      "displayName": "랜덤 에러 엔드포인트는 낮은 에러율에서 성공할 수 있어야 한다",
+      "status": "PASSED",
+      "duration_ms": null
+    }
+  ],
+  "coverage": {
+    "enabled": true,
+    "tool": "JaCoCo",
+    "target": 80.0,
+    "reportLocation": "test-results/coverage-reports/test/"
+  },
+  "artifacts": {
+    "htmlReports": "test-results/unit-test-reports/",
+    "xmlResults": "test-results/test-xml-results/",
+    "coverageReports": "test-results/coverage-reports/",
+    "logs": "test-results/unit-test-results.txt",
+    "jar": "heimdall/build/libs/heimdall-1.0.0.jar"
+  },
+  "issues": {
+    "resolved": [
+      {
+        "issue": "Gradle Wrapper 누락",
+        "solution": "Gradle 8.5 다운로드 후 wrapper 재생성"
+      },
+      {
+        "issue": "Protobuf 의존성 오류",
+        "solution": "protobuf 플러그인 비활성화 및 gRPC 파일 제외"
+      },
+      {
+        "issue": "Elasticsearch 설정 오류",
+        "solution": "ClientConfiguration 빌더 순서 수정"
+      },
+      {
+        "issue": "Spring Security 401 에러",
+        "solution": "@TestPropertySource로 SecurityAutoConfiguration 제외"
+      }
+    ]
+  },
+  "nextSteps": [
+    "Heimdall 애플리케이션 실행 및 API 통합 테스트",
+    "K6 설치 후 스트레스 테스트 실행",
+    "Gatling 시뮬레이션 실행",
+    "Prometheus/Grafana 모니터링 검증"
+  ]
+}

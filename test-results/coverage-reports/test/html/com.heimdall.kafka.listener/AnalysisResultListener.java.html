@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AnalysisResultListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.kafka.listener</a> &gt; <span class="el_source">AnalysisResultListener.java</span></div><h1>AnalysisResultListener.java</h1><pre class="source lang-java linenums">package com.heimdall.kafka.listener;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.heimdall.kafka.event.AnalysisResultEvent;
+import com.heimdall.service.LogProcessingService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Component;
+
+@Component
+<span class="nc" id="L16">@RequiredArgsConstructor</span>
+<span class="nc" id="L17">@Slf4j</span>
+public class AnalysisResultListener {
+    
+    private final LogProcessingService logProcessingService;
+    private final ObjectMapper objectMapper;
+    
+    @KafkaListener(
+        topics = &quot;${kafka.topics.analysis-result}&quot;,
+        groupId = &quot;${spring.kafka.consumer.group-id}&quot;,
+        containerFactory = &quot;kafkaListenerContainerFactory&quot;
+    )
+    public void handleAnalysisResult(
+        @Payload String message,
+        @Header(KafkaHeaders.RECEIVED_KEY) String key,
+        @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
+        @Header(KafkaHeaders.OFFSET) long offset,
+        Acknowledgment acknowledgment
+    ) {
+        try {
+<span class="nc" id="L36">            log.debug(&quot;Received analysis result message: key={}, partition={}, offset={}&quot;, </span>
+<span class="nc" id="L37">                key, partition, offset);</span>
+            
+<span class="nc" id="L39">            AnalysisResultEvent event = objectMapper.readValue(message, AnalysisResultEvent.class);</span>
+<span class="nc" id="L40">            logProcessingService.processAnalysisResult(event);</span>
+            
+            // �닔�룞 而ㅻ컠
+<span class="nc" id="L43">            acknowledgment.acknowledge();</span>
+            
+<span class="nc" id="L45">            log.info(&quot;Successfully processed analysis result: requestId={}, logId={}&quot;, </span>
+<span class="nc" id="L46">                event.getRequestId(), event.getLogId());</span>
+<span class="nc" id="L47">        } catch (Exception e) {</span>
+<span class="nc" id="L48">            log.error(&quot;Error processing analysis result message: key={}, offset={}&quot;, </span>
+<span class="nc" id="L49">                key, offset, e);</span>
+            // �뿉�윭 諛쒖깮 �떆�뿉�룄 acknowledge
+<span class="nc" id="L51">            acknowledgment.acknowledge();</span>
+<span class="nc" id="L52">        }</span>
+<span class="nc" id="L53">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

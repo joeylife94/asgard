@@ -297,6 +297,33 @@ Each service has its own `application.yml` or `application.properties`:
 ./gradlew test jacocoTestReport
 ```
 
+## 🧪 Testing
+
+### Quick Test
+
+```powershell
+# 전체 테스트 실행 (자동화 스크립트)
+.\run-tests.ps1
+
+# Unit 테스트만
+.\gradlew.bat test
+
+# 커버리지 포함
+.\gradlew.bat test jacocoTestReport
+```
+
+### Stress Testing
+
+```powershell
+# K6 스트레스 테스트 (K6 설치 필요)
+k6 run heimdall\src\test\k6\stress-test.js
+
+# 높은 부하 테스트
+k6 run --vus 200 --duration 5m heimdall\src\test\k6\stress-test.js
+```
+
+**상세 가이드**: [TESTING_GUIDE.md](TESTING_GUIDE.md)
+
 ## 📊 Monitoring
 
 ### Metrics

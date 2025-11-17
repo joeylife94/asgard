@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SearchService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.service</a> &gt; <span class="el_source">SearchService.java</span></div><h1>SearchService.java</h1><pre class="source lang-java linenums">package com.heimdall.service;
+
+import com.heimdall.dto.LogSearchRequest;
+import com.heimdall.dto.LogSearchResponse;
+import com.heimdall.entity.LogEntry;
+import com.heimdall.repository.LogEntryRepository;
+import com.heimdall.util.DateTimeUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+<span class="nc" id="L22">@RequiredArgsConstructor</span>
+<span class="nc" id="L23">@Slf4j</span>
+public class SearchService {
+    
+    private final LogEntryRepository logEntryRepository;
+    
+    @Transactional(readOnly = true)
+    public LogSearchResponse searchLogs(LogSearchRequest request) {
+<span class="nc" id="L30">        log.debug(&quot;Searching logs: {}&quot;, request);</span>
+        
+<span class="nc" id="L32">        Pageable pageable = PageRequest.of(</span>
+<span class="nc" id="L33">            request.getPage(),</span>
+<span class="nc" id="L34">            request.getSize(),</span>
+<span class="nc" id="L35">            Sort.by(Sort.Direction.DESC, &quot;timestamp&quot;)</span>
+        );
+        
+        Page&lt;LogEntry&gt; logPage;
+        
+<span class="nc bnc" id="L40" title="All 4 branches missed.">        if (request.getKeyword() != null &amp;&amp; !request.getKeyword().isEmpty()) {</span>
+            // �궎�썙�뱶 寃��깋
+<span class="nc bnc" id="L42" title="All 2 branches missed.">            LocalDateTime from = request.getFrom() != null ? </span>
+<span class="nc" id="L43">                DateTimeUtil.parseIso(request.getFrom()) : LocalDateTime.now().minusDays(7);</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">            LocalDateTime to = request.getTo() != null ? </span>
+<span class="nc" id="L45">                DateTimeUtil.parseIso(request.getTo()) : LocalDateTime.now();</span>
+            
+<span class="nc" id="L47">            logPage = logEntryRepository.searchByKeyword(</span>
+<span class="nc" id="L48">                request.getKeyword(),</span>
+                from,
+                to,
+                pageable
+            );
+<span class="nc bnc" id="L53" title="All 2 branches missed.">        } else if (request.getServiceName() != null &amp;&amp; </span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">                   request.getEnvironment() != null &amp;&amp;</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">                   request.getSeverity() != null) {</span>
+            // �긽�꽭 寃��깋
+<span class="nc bnc" id="L57" title="All 2 branches missed.">            LocalDateTime from = request.getFrom() != null ? </span>
+<span class="nc" id="L58">                DateTimeUtil.parseIso(request.getFrom()) : LocalDateTime.now().minusDays(7);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">            LocalDateTime to = request.getTo() != null ? </span>
+<span class="nc" id="L60">                DateTimeUtil.parseIso(request.getTo()) : LocalDateTime.now();</span>
+            
+<span class="nc" id="L62">            logPage = logEntryRepository.searchLogs(</span>
+<span class="nc" id="L63">                request.getServiceName(),</span>
+<span class="nc" id="L64">                request.getEnvironment(),</span>
+<span class="nc" id="L65">                LogEntry.SeverityLevel.valueOf(request.getSeverity()),</span>
+                from,
+                to,
+                pageable
+            );
+<span class="nc bnc" id="L70" title="All 4 branches missed.">        } else if (request.getServiceName() != null &amp;&amp; request.getEnvironment() != null) {</span>
+            // �꽌鍮꾩뒪 + �솚寃� 寃��깋
+<span class="nc" id="L72">            logPage = logEntryRepository.findByServiceNameAndEnvironment(</span>
+<span class="nc" id="L73">                request.getServiceName(),</span>
+<span class="nc" id="L74">                request.getEnvironment(),</span>
+                pageable
+            );
+<span class="nc bnc" id="L77" title="All 4 branches missed.">        } else if (request.getFrom() != null &amp;&amp; request.getTo() != null) {</span>
+            // �떆媛� 踰붿쐞 寃��깋
+<span class="nc" id="L79">            LocalDateTime from = DateTimeUtil.parseIso(request.getFrom());</span>
+<span class="nc" id="L80">            LocalDateTime to = DateTimeUtil.parseIso(request.getTo());</span>
+            
+<span class="nc" id="L82">            logPage = logEntryRepository.findByTimestampBetween(from, to, pageable);</span>
+<span class="nc" id="L83">        } else {</span>
+            // �쟾泥� 議고쉶
+<span class="nc" id="L85">            logPage = logEntryRepository.findAll(pageable);</span>
+        }
+        
+        // DTO 蹂��솚
+<span class="nc" id="L89">        List&lt;LogSearchResponse.LogEntryDto&gt; content = logPage.getContent().stream()</span>
+<span class="nc" id="L90">            .map(this::convertToDto)</span>
+<span class="nc" id="L91">            .collect(Collectors.toList());</span>
+        
+<span class="nc" id="L93">        LogSearchResponse.PageInfo pageInfo = LogSearchResponse.PageInfo.builder()</span>
+<span class="nc" id="L94">            .size(logPage.getSize())</span>
+<span class="nc" id="L95">            .totalElements(logPage.getTotalElements())</span>
+<span class="nc" id="L96">            .totalPages(logPage.getTotalPages())</span>
+<span class="nc" id="L97">            .number(logPage.getNumber())</span>
+<span class="nc" id="L98">            .build();</span>
+        
+<span class="nc" id="L100">        return LogSearchResponse.builder()</span>
+<span class="nc" id="L101">            .content(content)</span>
+<span class="nc" id="L102">            .page(pageInfo)</span>
+<span class="nc" id="L103">            .build();</span>
+    }
+    
+    private LogSearchResponse.LogEntryDto convertToDto(LogEntry logEntry) {
+<span class="nc" id="L107">        return LogSearchResponse.LogEntryDto.builder()</span>
+<span class="nc" id="L108">            .logId(logEntry.getId())</span>
+<span class="nc" id="L109">            .timestamp(logEntry.getTimestamp())</span>
+<span class="nc" id="L110">            .serviceName(logEntry.getServiceName())</span>
+<span class="nc" id="L111">            .environment(logEntry.getEnvironment())</span>
+<span class="nc" id="L112">            .severity(logEntry.getSeverity().name())</span>
+<span class="nc" id="L113">            .logContent(logEntry.getLogContent())</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            .hasAnalysis(!logEntry.getAnalysisResults().isEmpty())</span>
+<span class="nc" id="L115">            .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StatisticsService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.service</a> &gt; <span class="el_source">StatisticsService.java</span></div><h1>StatisticsService.java</h1><pre class="source lang-java linenums">package com.heimdall.service;
+
+import com.heimdall.dto.StatisticsResponse;
+import com.heimdall.entity.LogStatistics;
+import com.heimdall.repository.LogStatisticsRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+<span class="nc" id="L20">@RequiredArgsConstructor</span>
+<span class="nc" id="L21">@Slf4j</span>
+public class StatisticsService {
+    
+    private final LogStatisticsRepository logStatisticsRepository;
+    
+    @Transactional(readOnly = true)
+    public StatisticsResponse getStatistics(LocalDate date, String serviceName, String environment) {
+<span class="nc" id="L28">        log.debug(&quot;Getting statistics: date={}, service={}, environment={}&quot;, </span>
+            date, serviceName, environment);
+        
+<span class="nc" id="L31">        List&lt;LogStatistics&gt; stats = logStatisticsRepository.findHourlyStats(</span>
+            date, serviceName, environment
+        );
+        
+        // �떆媛꾨퀎濡� 洹몃９�솕
+<span class="nc" id="L36">        Map&lt;Short, List&lt;LogStatistics&gt;&gt; hourlyMap = stats.stream()</span>
+<span class="nc" id="L37">            .collect(Collectors.groupingBy(LogStatistics::getHour));</span>
+        
+<span class="nc" id="L39">        List&lt;StatisticsResponse.StatisticEntry&gt; entries = new ArrayList&lt;&gt;();</span>
+        
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        for (short hour = 0; hour &lt; 24; hour++) {</span>
+<span class="nc" id="L42">            List&lt;LogStatistics&gt; hourStats = hourlyMap.getOrDefault(hour, new ArrayList&lt;&gt;());</span>
+            
+<span class="nc bnc" id="L44" title="All 2 branches missed.">            if (!hourStats.isEmpty()) {</span>
+<span class="nc" id="L45">                StatisticsResponse.StatisticEntry entry = buildStatisticEntry(</span>
+                    date, hour, serviceName, environment, hourStats
+                );
+<span class="nc" id="L48">                entries.add(entry);</span>
+            }
+        }
+        
+<span class="nc" id="L52">        StatisticsResponse.PeriodInfo periodInfo = StatisticsResponse.PeriodInfo.builder()</span>
+<span class="nc" id="L53">            .from(date.atStartOfDay())</span>
+<span class="nc" id="L54">            .to(date.atTime(23, 59, 59))</span>
+<span class="nc" id="L55">            .build();</span>
+        
+<span class="nc" id="L57">        return StatisticsResponse.builder()</span>
+<span class="nc" id="L58">            .period(periodInfo)</span>
+<span class="nc" id="L59">            .statistics(entries)</span>
+<span class="nc" id="L60">            .build();</span>
+    }
+    
+    private StatisticsResponse.StatisticEntry buildStatisticEntry(
+        LocalDate date,
+        short hour,
+        String serviceName,
+        String environment,
+        List&lt;LogStatistics&gt; stats
+    ) {
+<span class="nc" id="L70">        int totalLogs = stats.stream()</span>
+<span class="nc" id="L71">            .mapToInt(LogStatistics::getCount)</span>
+<span class="nc" id="L72">            .sum();</span>
+        
+<span class="nc" id="L74">        Map&lt;String, Integer&gt; bySeverity = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        for (LogStatistics stat : stats) {</span>
+<span class="nc" id="L76">            bySeverity.put(stat.getSeverity(), stat.getCount());</span>
+<span class="nc" id="L77">        }</span>
+        
+<span class="nc" id="L79">        int avgSizeBytes = stats.stream()</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">            .filter(s -&gt; s.getAvgSizeBytes() != null)</span>
+<span class="nc" id="L81">            .mapToInt(LogStatistics::getAvgSizeBytes)</span>
+<span class="nc" id="L82">            .findFirst()</span>
+<span class="nc" id="L83">            .orElse(0);</span>
+        
+<span class="nc" id="L85">        return StatisticsResponse.StatisticEntry.builder()</span>
+<span class="nc" id="L86">            .timestamp(date.atTime(hour, 0))</span>
+<span class="nc" id="L87">            .serviceName(serviceName)</span>
+<span class="nc" id="L88">            .environment(environment)</span>
+<span class="nc" id="L89">            .totalLogs(totalLogs)</span>
+<span class="nc" id="L90">            .bySeverity(bySeverity)</span>
+<span class="nc" id="L91">            .avgSizeBytes(avgSizeBytes)</span>
+<span class="nc" id="L92">            .build();</span>
+    }
+    
+    @Transactional
+    public void updateStatistics(LogStatistics statistics) {
+<span class="nc" id="L97">        logStatisticsRepository.save(statistics);</span>
+<span class="nc" id="L98">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

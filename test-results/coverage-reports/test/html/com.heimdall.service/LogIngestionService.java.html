@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogIngestionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.service</a> &gt; <span class="el_source">LogIngestionService.java</span></div><h1>LogIngestionService.java</h1><pre class="source lang-java linenums">package com.heimdall.service;
+
+import com.heimdall.entity.LogEntry;
+import com.heimdall.kafka.event.AnalysisRequestEvent;
+import com.heimdall.kafka.event.LogIngestionEvent;
+import com.heimdall.kafka.producer.KafkaProducerService;
+import com.heimdall.repository.LogEntryRepository;
+import com.heimdall.util.DateTimeUtil;
+import com.heimdall.util.HashUtil;
+import io.micrometer.core.instrument.MeterRegistry;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+<span class="nc" id="L20">@RequiredArgsConstructor</span>
+<span class="nc" id="L21">@Slf4j</span>
+public class LogIngestionService {
+    
+    private final LogEntryRepository logEntryRepository;
+    private final KafkaProducerService kafkaProducerService;
+    private final MeterRegistry meterRegistry;
+    
+    @Value(&quot;${heimdall.analysis.enabled:true}&quot;)
+    private boolean analysisEnabled;
+    
+    @Value(&quot;${heimdall.analysis.auto-request:true}&quot;)
+    private boolean autoRequestAnalysis;
+    
+    @Transactional
+    public LogEntry processLogIngestion(LogIngestionEvent event) {
+<span class="nc" id="L36">        log.info(&quot;Processing log ingestion: eventId={}, source={}, severity={}&quot;, </span>
+<span class="nc" id="L37">            event.getEventId(), event.getSource(), event.getSeverity());</span>
+        
+        // 濡쒓렇 �뿏�듃由� �깮�꽦
+<span class="nc" id="L40">        LogEntry logEntry = new LogEntry();</span>
+<span class="nc" id="L41">        logEntry.setEventId(event.getEventId());</span>
+<span class="nc" id="L42">        logEntry.setTimestamp(event.getTimestamp());</span>
+<span class="nc" id="L43">        logEntry.setSource(event.getSource());</span>
+<span class="nc" id="L44">        logEntry.setServiceName(event.getServiceName());</span>
+<span class="nc" id="L45">        logEntry.setEnvironment(event.getEnvironment());</span>
+<span class="nc" id="L46">        logEntry.setSeverity(LogEntry.SeverityLevel.valueOf(event.getSeverity()));</span>
+<span class="nc" id="L47">        logEntry.setLogContent(event.getLogContent());</span>
+<span class="nc" id="L48">        logEntry.setLogHash(HashUtil.sha256(event.getLogContent()));</span>
+<span class="nc" id="L49">        logEntry.setMetadata(event.getMetadata());</span>
+<span class="nc" id="L50">        logEntry.setCreatedAt(DateTimeUtil.now());</span>
+        
+        // �뜲�씠�꽣踰좎씠�뒪 ���옣
+<span class="nc" id="L53">        LogEntry savedEntry = logEntryRepository.save(logEntry);</span>
+        
+        // 硫뷀듃由� 湲곕줉
+<span class="nc" id="L56">        meterRegistry.counter(&quot;logs.ingested.total&quot;,</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">            &quot;service&quot;, event.getServiceName() != null ? event.getServiceName() : &quot;unknown&quot;,</span>
+<span class="nc" id="L58">            &quot;severity&quot;, event.getSeverity()</span>
+<span class="nc" id="L59">        ).increment();</span>
+        
+        // AI 遺꾩꽍 �슂泥� (議곌굔 異⑹” �떆)
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (shouldRequestAnalysis(savedEntry)) {</span>
+<span class="nc" id="L63">            requestAnalysis(savedEntry);</span>
+        }
+        
+<span class="nc" id="L66">        log.info(&quot;Log ingestion completed: logId={}, eventId={}&quot;, </span>
+<span class="nc" id="L67">            savedEntry.getId(), savedEntry.getEventId());</span>
+        
+<span class="nc" id="L69">        return savedEntry;</span>
+    }
+    
+    private boolean shouldRequestAnalysis(LogEntry logEntry) {
+<span class="nc bnc" id="L73" title="All 4 branches missed.">        if (!analysisEnabled || !autoRequestAnalysis) {</span>
+<span class="nc" id="L74">            return false;</span>
+        }
+        
+        // ERROR �씠�긽�쓽 �떖媛곷룄留� 遺꾩꽍 �슂泥�
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        return logEntry.getSeverity() == LogEntry.SeverityLevel.ERROR ||</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">               logEntry.getSeverity() == LogEntry.SeverityLevel.FATAL;</span>
+    }
+    
+    private void requestAnalysis(LogEntry logEntry) {
+        try {
+<span class="nc" id="L84">            AnalysisRequestEvent analysisRequest = AnalysisRequestEvent.builder()</span>
+<span class="nc" id="L85">                .requestId(UUID.randomUUID().toString())</span>
+<span class="nc" id="L86">                .timestamp(DateTimeUtil.now())</span>
+<span class="nc" id="L87">                .logId(logEntry.getId())</span>
+<span class="nc" id="L88">                .logContent(logEntry.getLogContent())</span>
+<span class="nc" id="L89">                .serviceName(logEntry.getServiceName())</span>
+<span class="nc" id="L90">                .environment(logEntry.getEnvironment())</span>
+<span class="nc" id="L91">                .analysisType(&quot;error&quot;)</span>
+<span class="nc" id="L92">                .priority(determinePriority(logEntry))</span>
+<span class="nc" id="L93">                .callbackTopic(&quot;analysis.result&quot;)</span>
+<span class="nc" id="L94">                .correlationId(logEntry.getEventId())</span>
+<span class="nc" id="L95">                .build();</span>
+            
+<span class="nc" id="L97">            kafkaProducerService.sendAnalysisRequest(analysisRequest);</span>
+            
+<span class="nc" id="L99">            meterRegistry.counter(&quot;analysis.requested.total&quot;,</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">                &quot;service&quot;, logEntry.getServiceName() != null ? logEntry.getServiceName() : &quot;unknown&quot;,</span>
+<span class="nc" id="L101">                &quot;severity&quot;, logEntry.getSeverity().name()</span>
+<span class="nc" id="L102">            ).increment();</span>
+            
+<span class="nc" id="L104">            log.info(&quot;Analysis requested for logId={}&quot;, logEntry.getId());</span>
+<span class="nc" id="L105">        } catch (Exception e) {</span>
+<span class="nc" id="L106">            log.error(&quot;Failed to request analysis for logId={}&quot;, logEntry.getId(), e);</span>
+<span class="nc" id="L107">        }</span>
+<span class="nc" id="L108">    }</span>
+    
+    private String determinePriority(LogEntry logEntry) {
+<span class="nc bnc" id="L111" title="All 4 branches missed.">        return switch (logEntry.getSeverity()) {</span>
+<span class="nc" id="L112">            case FATAL -&gt; &quot;CRITICAL&quot;;</span>
+<span class="nc" id="L113">            case ERROR -&gt; &quot;HIGH&quot;;</span>
+<span class="nc" id="L114">            case WARN -&gt; &quot;MEDIUM&quot;;</span>
+<span class="nc" id="L115">            default -&gt; &quot;LOW&quot;;</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

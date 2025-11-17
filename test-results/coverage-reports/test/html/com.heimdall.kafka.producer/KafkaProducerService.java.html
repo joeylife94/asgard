@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>KafkaProducerService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.kafka.producer</a> &gt; <span class="el_source">KafkaProducerService.java</span></div><h1>KafkaProducerService.java</h1><pre class="source lang-java linenums">package com.heimdall.kafka.producer;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.heimdall.kafka.event.AnalysisRequestEvent;
+import com.heimdall.kafka.event.LogIngestionEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
+
+@Service
+<span class="nc" id="L16">@RequiredArgsConstructor</span>
+<span class="nc" id="L17">@Slf4j</span>
+public class KafkaProducerService {
+    
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final ObjectMapper objectMapper;
+    
+    @Value(&quot;${kafka.topics.logs-ingestion}&quot;)
+    private String logsIngestionTopic;
+    
+    @Value(&quot;${kafka.topics.analysis-request}&quot;)
+    private String analysisRequestTopic;
+    
+    @Value(&quot;${kafka.topics.notification-alert}&quot;)
+    private String notificationAlertTopic;
+    
+    public void sendLogIngestion(LogIngestionEvent event) {
+        try {
+<span class="nc" id="L34">            String key = event.getEventId();</span>
+<span class="nc" id="L35">            String value = objectMapper.writeValueAsString(event);</span>
+            
+<span class="nc" id="L37">            CompletableFuture&lt;SendResult&lt;String, String&gt;&gt; future = </span>
+<span class="nc" id="L38">                kafkaTemplate.send(logsIngestionTopic, key, value);</span>
+            
+<span class="nc" id="L40">            future.whenComplete((result, ex) -&gt; {</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">                if (ex == null) {</span>
+<span class="nc" id="L42">                    log.info(&quot;Log ingestion message sent successfully: eventId={}, offset={}&quot;,</span>
+<span class="nc" id="L43">                        event.getEventId(), result.getRecordMetadata().offset());</span>
+                } else {
+<span class="nc" id="L45">                    log.error(&quot;Failed to send log ingestion message: eventId={}&quot;, </span>
+<span class="nc" id="L46">                        event.getEventId(), ex);</span>
+                }
+<span class="nc" id="L48">            });</span>
+<span class="nc" id="L49">        } catch (Exception e) {</span>
+<span class="nc" id="L50">            log.error(&quot;Error serializing log ingestion event&quot;, e);</span>
+<span class="nc" id="L51">        }</span>
+<span class="nc" id="L52">    }</span>
+    
+    public void sendAnalysisRequest(AnalysisRequestEvent event) {
+        try {
+<span class="nc" id="L56">            String key = event.getLogId().toString();</span>
+<span class="nc" id="L57">            String value = objectMapper.writeValueAsString(event);</span>
+            
+<span class="nc" id="L59">            CompletableFuture&lt;SendResult&lt;String, String&gt;&gt; future = </span>
+<span class="nc" id="L60">                kafkaTemplate.send(analysisRequestTopic, key, value);</span>
+            
+<span class="nc" id="L62">            future.whenComplete((result, ex) -&gt; {</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">                if (ex == null) {</span>
+<span class="nc" id="L64">                    log.info(&quot;Analysis request sent successfully: requestId={}, logId={}, offset={}&quot;,</span>
+<span class="nc" id="L65">                        event.getRequestId(), event.getLogId(), </span>
+<span class="nc" id="L66">                        result.getRecordMetadata().offset());</span>
+                } else {
+<span class="nc" id="L68">                    log.error(&quot;Failed to send analysis request: requestId={}, logId={}&quot;, </span>
+<span class="nc" id="L69">                        event.getRequestId(), event.getLogId(), ex);</span>
+                }
+<span class="nc" id="L71">            });</span>
+<span class="nc" id="L72">        } catch (Exception e) {</span>
+<span class="nc" id="L73">            log.error(&quot;Error serializing analysis request event&quot;, e);</span>
+<span class="nc" id="L74">        }</span>
+<span class="nc" id="L75">    }</span>
+    
+    public void sendNotificationAlert(String key, String message) {
+<span class="nc" id="L78">        CompletableFuture&lt;SendResult&lt;String, String&gt;&gt; future = </span>
+<span class="nc" id="L79">            kafkaTemplate.send(notificationAlertTopic, key, message);</span>
+        
+<span class="nc" id="L81">        future.whenComplete((result, ex) -&gt; {</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">            if (ex == null) {</span>
+<span class="nc" id="L83">                log.info(&quot;Notification alert sent: key={}, offset={}&quot;,</span>
+<span class="nc" id="L84">                    key, result.getRecordMetadata().offset());</span>
+            } else {
+<span class="nc" id="L86">                log.error(&quot;Failed to send notification alert: key={}&quot;, key, ex);</span>
+            }
+<span class="nc" id="L88">        });</span>
+<span class="nc" id="L89">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

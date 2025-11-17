@@ -1,7 +1,7 @@
 // Apply gRPC plugin specific to Heimdall
-plugins {
-    id 'com.google.protobuf' version '0.9.4'
-}
+// plugins {
+//     id 'com.google.protobuf' version '0.9.4'
+// }
 
 // Override group if needed (inherits from root by default)
 group = 'com.heimdall'
@@ -65,31 +65,35 @@ dependencies {
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'com.h2database:h2'
+    
+    // Performance Testing
+    testImplementation 'io.gatling.highcharts:gatling-charts-highcharts:3.9.5'
+    testImplementation 'io.gatling:gatling-app:3.9.5'
 }
 
-// Protobuf configuration for gRPC
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.24.0"
-    }
-    plugins {
-        grpc {
-            artifact = 'io.grpc:protoc-gen-grpc-java:1.59.0'
-        }
-    }
-    generateProtoTasks {
-        all()*.plugins {
-            grpc {}
-        }
-    }
-}
+// Protobuf configuration for gRPC (disabled for testing)
+// protobuf {
+//     protoc {
+//         artifact = "com.google.protobuf:protoc:3.24.0"
+//     }
+//     plugins {
+//         grpc {
+//             artifact = 'io.grpc:protoc-gen-grpc-java:1.59.0'
+//         }
+//     }
+//     generateProtoTasks {
+//         all()*.plugins {
+//             grpc {}
+//         }
+//     }
+// }
 
-// Generated source paths for protobuf
-sourceSets {
-    main {
-        java {
-            srcDirs 'build/generated/source/proto/main/grpc'
-            srcDirs 'build/generated/source/proto/main/java'
-        }
-    }
-}
+// Generated source paths for protobuf (disabled for testing)
+// sourceSets {
+//     main {
+//         java {
+//             srcDirs 'build/generated/source/proto/main/grpc'
+//             srcDirs 'build/generated/source/proto/main/java'
+//         }
+//     }
+// }

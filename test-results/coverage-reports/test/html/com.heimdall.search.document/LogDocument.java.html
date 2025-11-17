@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="ko"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogDocument.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">heimdall</a> &gt; <a href="index.source.html" class="el_package">com.heimdall.search.document</a> &gt; <span class="el_source">LogDocument.java</span></div><h1>LogDocument.java</h1><pre class="source lang-java linenums">package com.heimdall.search.document;
+
+import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
+import org.springframework.data.elasticsearch.annotations.Setting;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+/**
+ * Elasticsearch 濡쒓렇 臾몄꽌
+ * �쟾臾� 寃��깋�쓣 �쐞�븳 濡쒓렇 �씤�뜳�뒪
+ */
+@Document(indexName = &quot;heimdall-logs&quot;)
+@Setting(shards = 3, replicas = 1)
+@Getter
+<span class="nc" id="L20">@Setter</span>
+<span class="nc" id="L21">@NoArgsConstructor</span>
+<span class="nc" id="L22">@AllArgsConstructor</span>
+<span class="nc" id="L23">@Builder</span>
+public class LogDocument {
+
+    @Id
+<span class="nc" id="L27">    private String id; // eventId</span>
+
+    @Field(type = FieldType.Long)
+<span class="nc" id="L30">    private Long logId;</span>
+
+    @Field(type = FieldType.Date)
+<span class="nc" id="L33">    private LocalDateTime timestamp;</span>
+
+    @Field(type = FieldType.Keyword)
+<span class="nc" id="L36">    private String source;</span>
+
+    @Field(type = FieldType.Keyword)
+<span class="nc" id="L39">    private String serviceName;</span>
+
+    @Field(type = FieldType.Keyword)
+<span class="nc" id="L42">    private String environment;</span>
+
+    @Field(type = FieldType.Keyword)
+<span class="nc" id="L45">    private String severity;</span>
+
+    @Field(type = FieldType.Text, analyzer = &quot;standard&quot;)
+<span class="nc" id="L48">    private String logContent;</span>
+
+    @Field(type = FieldType.Keyword)
+<span class="nc" id="L51">    private String logHash;</span>
+
+    @Field(type = FieldType.Object)
+<span class="nc" id="L54">    private Map&lt;String, Object&gt; metadata;</span>
+
+    @Field(type = FieldType.Boolean)
+<span class="nc" id="L57">    private Boolean hasAnalysis;</span>
+
+    @Field(type = FieldType.Keyword)
+<span class="nc" id="L60">    private String analysisStatus;</span>
+
+    @Field(type = FieldType.Date)
+<span class="nc" id="L63">    private LocalDateTime createdAt;</span>
+
+    @Field(type = FieldType.Date)
+<span class="nc" id="L66">    private LocalDateTime updatedAt;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
