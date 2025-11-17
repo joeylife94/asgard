@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bifrost - MLOps Log Analyzer</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main {
+            padding: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        textarea, input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+        
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .result h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .result pre {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌈 Bifrost</h1>
+            <p>The Rainbow Bridge for MLOps - AI-powered Log Analyzer</p>
+        </div>
+        
+        <div class="main">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('analyze')">로그 분석</button>
+                <button class="tab" onclick="showTab('history')">분석 히스토리</button>
+                <button class="tab" onclick="showTab('stats')">통계</button>
+            </div>
+            
+            <!-- 로그 분석 탭 -->
+            <div id="analyze-tab">
+                <form hx-post="/api/analyze-web" hx-target="#result" hx-indicator="#loading">
+                    <div class="form-group">
+                        <label for="log_content">로그 내용 *</label>
+                        <textarea 
+                            id="log_content" 
+                            name="log_content" 
+                            placeholder="여기에 로그를 붙여넣으세요...&#10;예: ERROR: Connection timeout at 2024-10-25 10:15:32&#10;    at com.example.Service.connect(Service.java:45)"
+                            required
+                        ></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="source">분석 소스</label>
+                            <select id="source" name="source">
+                                <option value="local">Local (Ollama)</option>
+                                <option value="cloud">Cloud (Bedrock)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="severity">심각도 필터</label>
+                            <select id="severity" name="severity">
+                                <option value="">필터 없음</option>
+                                <option value="INFO">INFO 이상</option>
+                                <option value="WARN">WARN 이상</option>
+                                <option value="ERROR">ERROR 이상</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="form-group">
+                            <label for="service_name">서비스명 (선택)</label>
+                            <input type="text" id="service_name" name="service_name" placeholder="예: api-server">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="environment">환경 (선택)</label>
+                            <select id="environment" name="environment">
+                                <option value="">선택</option>
+                                <option value="prod">Production</option>
+                                <option value="staging">Staging</option>
+                                <option value="dev">Development</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="submit">
+                        분석 시작
+                        <span id="loading" class="loading htmx-indicator"></span>
+                    </button>
+                </form>
+                
+                <div id="result"></div>
+            </div>
+            
+            <!-- 히스토리 탭 (향후 구현) -->
+            <div id="history-tab" style="display:none;">
+                <p>히스토리 기능은 곧 추가됩니다!</p>
+            </div>
+            
+            <!-- 통계 탭 (향후 구현) -->
+            <div id="stats-tab" style="display:none;">
+                <p>통계 기능은 곧 추가됩니다!</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // 모든 탭 숨기기
+            document.querySelectorAll('[id$="-tab"]').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // 선택한 탭 표시
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            
+            // 탭 버튼 active 상태
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

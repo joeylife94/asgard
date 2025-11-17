@@ -1,0 +1,81 @@
+{
+  "greeting": {
+    "hello": "Hello, {name}!",
+    "welcome": "Welcome to Bifrost",
+    "goodbye": "Goodbye"
+  },
+  "analysis": {
+    "start": "Starting log analysis...",
+    "processing": "Analyzing... ({progress}%)",
+    "complete": "Analyzed {count} logs in {duration} seconds",
+    "failed": "Analysis failed: {error}",
+    "no_logs": "No logs to analyze"
+  },
+  "error": {
+    "database_connection": "Failed to connect to database",
+    "not_found": "Resource not found",
+    "unauthorized": "Unauthorized request",
+    "rate_limit": "Rate limit exceeded. Please try again later",
+    "invalid_input": "Invalid input: {message}",
+    "server_error": "Server error occurred"
+  },
+  "success": {
+    "created": "{name} created successfully",
+    "updated": "{name} updated successfully",
+    "deleted": "{name} deleted successfully",
+    "exported": "Exported {count} items to {format} format"
+  },
+  "prompt": {
+    "create": "Create Prompt Template",
+    "edit": "Edit Prompt",
+    "delete_confirm": "Are you sure you want to delete this prompt?",
+    "version_history": "Version History",
+    "rollback": "Rollback to version {version}"
+  },
+  "export": {
+    "csv": "Export CSV",
+    "json": "Export JSON",
+    "downloading": "Downloading...",
+    "complete": "Download complete"
+  },
+  "filter": {
+    "severity": "Severity",
+    "keyword": "Keyword",
+    "time_range": "Time Range",
+    "apply": "Apply Filter",
+    "clear": "Clear Filter"
+  },
+  "stats": {
+    "total_analyses": "Total Analyses",
+    "total_errors": "Total Errors",
+    "avg_duration": "Average Duration",
+    "success_rate": "Success Rate"
+  },
+  "mlflow": {
+    "experiment": "Experiment",
+    "run": "Run",
+    "metrics": "Metrics",
+    "params": "Parameters",
+    "artifacts": "Artifacts",
+    "compare": "Compare Runs"
+  },
+  "ui": {
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "filter": "Filter",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "no_data": "No data available"
+  },
+  "validation": {
+    "required": "{field} is required",
+    "min_length": "{field} must be at least {min} characters",
+    "max_length": "{field} must be at most {max} characters",
+    "invalid_format": "Invalid {field} format"
+  }
+}

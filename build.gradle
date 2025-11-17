@@ -1,0 +1,132 @@
+plugins {
+    id 'java' apply false
+    id 'org.springframework.boot' version '3.2.0' apply false
+    id 'io.spring.dependency-management' version '1.1.4' apply false
+    id 'com.google.protobuf' version '0.9.4' apply false
+    id 'jacoco' apply false
+    id 'checkstyle' apply false
+}
+
+// Common configuration for all subprojects
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'jacoco'
+    apply plugin: 'checkstyle'
+    
+    group = 'com.asgard'
+    version = '1.0.0'
+    sourceCompatibility = '17'
+    
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+    }
+    
+    repositories {
+        mavenCentral()
+    }
+    
+    ext {
+        springCloudVersion = '2023.0.0'
+    }
+    
+    // Common dependencies for all Spring Boot modules
+    dependencies {
+        // Spring Boot Starters
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        
+        // Lombok
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        
+        // Development Tools
+        developmentOnly 'org.springframework.boot:spring-boot-devtools'
+        
+        // Jackson
+        implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+        implementation 'com.fasterxml.jackson.core:jackson-databind'
+        
+        // Utilities
+        implementation 'org.apache.commons:commons-lang3'
+        
+        // Testing
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    }
+    
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+        }
+    }
+    
+    // JaCoCo configuration for code coverage
+    jacoco {
+        toolVersion = "0.8.11"
+    }
+    
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
+        }
+        afterEvaluate {
+            classDirectories.setFrom(files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                    '**/config/**',
+                    '**/dto/**',
+                    '**/entity/**',
+                    '**/exception/**',
+                    '**/*Application.class'
+                ])
+            }))
+        }
+    }
+    
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    minimum = 0.80 // 80% coverage minimum
+                }
+            }
+        }
+    }
+    
+    // Checkstyle configuration
+    checkstyle {
+        toolVersion = '10.12.5'
+        configFile = file("${rootProject.projectDir}/config/checkstyle/checkstyle.xml")
+        ignoreFailures = false
+        maxWarnings = 0
+    }
+    
+    checkstyleMain {
+        source = 'src/main/java'
+    }
+    
+    checkstyleTest {
+        source = 'src/test/java'
+    }
+    
+    tasks.named('test') {
+        useJUnitPlatform()
+        finalizedBy jacocoTestReport
+    }
+    
+    tasks.named('build') {
+        dependsOn jacocoTestCoverageVerification
+    }
+}
+
+// Root project configuration
+wrapper {
+    gradleVersion = '8.5'
+    distributionType = Wrapper.DistributionType.ALL
+}

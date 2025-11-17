@@ -1,0 +1,63 @@
+# Bifrost 설정 파일 예시
+# 복사: cp bifrost.yaml.example bifrost.yaml
+
+# Ollama 로컬 모드 설정
+ollama:
+  url: http://localhost:11434
+  model: mistral  # 또는 llama2, codellama, etc.
+  timeout: 120
+  max_retries: 3
+
+# AWS Bedrock 클라우드 모드 설정
+bedrock:
+  region: us-east-1
+  model: anthropic.claude-3-sonnet-20240229-v1:0
+  profile: default  # AWS CLI 프로파일
+
+# 로그 전처리 설정
+log:
+  max_size_mb: 5        # 최대 로그 크기 (MB)
+  truncate: true        # 크기 초과 시 자르기
+  remove_timestamps: false  # 타임스탬프 제거 여부
+
+# 출력 설정
+output:
+  format: markdown      # markdown, json, plain
+  color: true          # 컬러 출력
+  verbose: false       # 상세 출력
+
+# ============================================
+# MSA Integration Settings (Heimdall 연동)
+# ============================================
+
+# Kafka Configuration
+kafka:
+  enabled: false  # CLI 모드에서는 false, API 서버 모드에서는 true
+  bootstrap_servers: localhost:9092
+  
+  consumer:
+    group_id: bifrost-consumer-group
+    auto_offset_reset: earliest
+    enable_auto_commit: false
+    max_poll_records: 100
+    session_timeout_ms: 30000
+  
+  producer:
+    acks: all
+    retries: 3
+    max_in_flight_requests_per_connection: 1
+    compression_type: snappy
+  
+  topics:
+    analysis_request: analysis.request
+    analysis_result: analysis.result
+    dlq: dlq.failed
+
+# Heimdall Integration
+heimdall:
+  enabled: false  # Heimdall과 연동 시 true로 설정
+  callback_topic: analysis.result
+  timeout_seconds: 60
+  retry_attempts: 3
+  retry_backoff_seconds: 5
+  ai_source: local  # local (Ollama) or cloud (Bedrock)

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bifrost-config
+data:
+  bifrost.yaml: |
+    ollama:
+      url: http://ollama-service:11434
+      model: mistral
+      timeout: 120
+      max_retries: 3
+    
+    log:
+      max_size_mb: 5
+      truncate: true
+      remove_timestamps: false
+    
+    output:
+      format: json
+      color: false
+      verbose: false
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bifrost-secrets
+type: Opaque
+stringData:
+  database-url: "postgresql://bifrost:PASSWORD@postgres-service:5432/bifrost"
+  api-key: "your-secret-api-key-here"

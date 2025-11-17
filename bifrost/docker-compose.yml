@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  # Bifrost API 서버
+  api:
+    build: .
+    container_name: bifrost-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://bifrost:bifrost123@postgres:5432/bifrost
+      - BIFROST_OLLAMA_URL=http://ollama:11434
+      - PYTHONUNBUFFERED=1
+      # Kafka & Heimdall Integration
+      - KAFKA_ENABLED=true
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - HEIMDALL_ENABLED=true
+    volumes:
+      - ./bifrost:/app/bifrost
+      - ./data:/app/data
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: bifrost-postgres
+    environment:
+      - POSTGRES_USER=bifrost
+      - POSTGRES_PASSWORD=bifrost123
+      - POSTGRES_DB=bifrost
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bifrost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (캐시 & 큐)
+  redis:
+    image: redis:7-alpine
+    container_name: bifrost-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Ollama (로컬 LLM)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: bifrost-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+    # GPU 지원 (선택)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Prometheus (메트릭 수집)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: bifrost-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+
+  # Grafana (대시보드)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: bifrost-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+
+  # ============================================
+  # Kafka & Zookeeper (MSA Integration)
+  # ============================================
+  
+  # Zookeeper (Kafka 의존성)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: bifrost-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka (이벤트 스트리밍)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: bifrost-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168  # 7 days
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # Kafka UI (선택적 - 개발/디버깅용)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: bifrost-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: bifrost-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - bifrost-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  ollama-data:
+  prometheus-data:
+  grafana-data:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+
+networks:
+  bifrost-network:
+    driver: bridge

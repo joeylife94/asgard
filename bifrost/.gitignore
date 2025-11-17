@@ -1,0 +1,140 @@
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ==================== Virtual Environment ====================
+venv/
+ENV/
+env/
+.venv/
+
+# ==================== IDE ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ==================== OS ====================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==================== Logs & Database ====================
+*.log
+*.sqlite
+*.db
+bifrost.db
+bifrost-*.db
+
+# ==================== Config & Secrets ====================
+# 실제 설정 파일 (예시 파일은 커밋)
+bifrost.yaml
+.bifrost.yaml
+!bifrost.yaml.example
+
+# 환경변수
+.env
+.env.local
+.env.*.local
+
+# AWS credentials
+.aws/
+*.pem
+
+# ==================== Application Specific ====================
+# 분석 결과 캐시
+.cache/
+data/
+logs/
+temp/
+tmp/
+
+# Docker 볼륨
+volumes/
+
+# ==================== Monitoring & Metrics ====================
+# Prometheus data
+prometheus-data/
+grafana-data/
+
+# ==================== Node (if web UI added) ====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==================== Jupyter Notebook ====================
+.ipynb_checkpoints
+
+# ==================== Distribution ====================
+*.tar.gz
+*.zip
+
+# ==================== Temporary ====================
+*.tmp
+*.bak
+*.swp
+*~.nib
+local_settings.py
+
+# ==================== Cloud ====================
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Kubernetes secrets
+k8s/secrets/
+*.secret.yaml
+
+# ==================== Personal ====================
+# 인터뷰 준비 (개인용, Git에 포함 안 됨)
+INTERVIEW_PREP.md
