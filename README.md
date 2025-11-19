@@ -34,54 +34,78 @@ Named after the mythological realm connecting all worlds, **Asgard** serves as a
 
 ## 🏗️ System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Client Layer                             │
-│                    (Web / Mobile / API)                          │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        API Gateway                               │
-│                        (Heimdall)                                │
-│  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌─────────────────┐  │
-│  │   Auth   │ │Rate Limit │ │  Circuit │ │   Load Balance  │  │
-│  │  & JWT   │ │  Control  │ │  Breaker │ │    & Routing    │  │
-│  └──────────┘ └───────────┘ └──────────┘ └─────────────────┘  │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                ┌────────────┼────────────┐
-                ▼            ▼            ▼
-        ┌──────────┐  ┌──────────┐  ┌──────────┐
-        │ Service  │  │ Service  │  │   ML/AI  │
-        │    A     │  │    B     │  │ Service  │
-        │          │  │          │  │ (Bifrost)│
-        └────┬─────┘  └────┬─────┘  └────┬─────┘
-             │             │              │
-             └─────────────┼──────────────┘
-                           ▼
-        ┌──────────────────────────────────────┐
-        │       Message Broker (Kafka)         │
-        │    ┌─────────┐      ┌─────────┐     │
-        │    │ Topic 1 │ ···  │ Topic N │     │
-        │    └─────────┘      └─────────┘     │
-        └──────────────────────────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
-  ┌──────────┐      ┌──────────┐      ┌──────────┐
-  │PostgreSQL│      │  Redis   │      │Elasticsearch│
-  │          │      │  Cache   │      │   Search    │
-  └──────────┘      └──────────┘      └──────────┘
-                           │
-                           ▼
-        ┌──────────────────────────────────────┐
-        │      Observability Stack             │
-        │  ┌──────────┐ ┌─────────┐ ┌────────┐│
-        │  │Prometheus│ │ Grafana │ │ Zipkin ││
-        │  │ Metrics  │ │Dashboard│ │Tracing ││
-        │  └──────────┘ └─────────┘ └────────┘│
-        └──────────────────────────────────────┘
+```mermaid
+graph TD
+    %% Client Layer
+    Client["💻 Client / Web & Mobile"]
+    
+    %% Gateway Layer (Heimdall)
+    subgraph "🛡️ Heimdall (API Gateway)"
+        Gateway["Spring Cloud Gateway"]
+        Auth["JWT Auth & Security"]
+        RateLimit["Rate Limiter"]
+    end
+
+    %% Message Broker
+    subgraph "📨 Event Backbone"
+        Kafka{{"Apache Kafka"}}
+        Zookeeper["Zookeeper"]
+    end
+
+    %% Service Layer
+    subgraph "🧠 AI & Logic Services"
+        Bifrost["🐍 Bifrost (Python/AI Service)"]
+        LogService["📝 Logging Service"]
+        NotiService["🔔 Notification Service"]
+    end
+
+    %% Data Layer
+    subgraph "💾 Persistence"
+        Postgres[("PostgreSQL")]
+        Redis[("Redis Cache")]
+        Elastic[("Elasticsearch")]
+    end
+
+    %% Observability Stack
+    subgraph "👀 Observability (Ops)"
+        Prometheus["🔥 Prometheus"]
+        Grafana["📊 Grafana"]
+        Zipkin["📍 Zipkin Tracing"]
+    end
+
+    %% Connections
+    Client -->|HTTPS/REST| Gateway
+    Gateway -->|Auth Check| Auth
+    Gateway -->|Sync REST| Bifrost
+    Gateway -.->|Async Events| Kafka
+
+    %% Kafka Flows
+    Kafka ==>|Consume Events| Bifrost
+    Kafka ==>|Consume Logs| LogService
+    Kafka ==>|Trigger Alerts| NotiService
+
+    %% Data Connections
+    Bifrost --> Postgres
+    Gateway --> Redis
+    LogService --> Elastic
+
+    %% Monitoring Connections
+    Gateway -.->|Metrics| Prometheus
+    Bifrost -.->|Metrics| Prometheus
+    Kafka -.->|JMX Metrics| Prometheus
+    Prometheus --> Grafana
+    Gateway -.->|Trace ID| Zipkin
+    Bifrost -.->|Trace ID| Zipkin
+
+    %% Styling
+    classDef java fill:#f89820,stroke:#333,stroke-width:2px,color:white;
+    classDef python fill:#3776ab,stroke:#333,stroke-width:2px,color:white;
+    classDef infra fill:#e1e4e8,stroke:#333,stroke-width:1px;
+    classDef db fill:#336791,stroke:#333,stroke-width:2px,color:white;
+    
+    class Gateway,Auth,LogService,NotiService java;
+    class Bifrost python;
+    class Postgres,Redis,Elastic,Kafka db;
 ```
 
 ## 📦 Project Structure
