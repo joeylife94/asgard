@@ -7,10 +7,47 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  # Build and test Heimdall (Spring Boot)
+  # Detect changes to determine which services to build
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      heimdall: ${{ steps.filter.outputs.heimdall }}
+      bifrost: ${{ steps.filter.outputs.bifrost }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      infrastructure: ${{ steps.filter.outputs.infrastructure }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Check for changes
+      uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          heimdall:
+            - 'heimdall/**'
+            - 'build.gradle'
+            - 'settings.gradle'
+            - 'gradle/**'
+            - 'gradlew*'
+          bifrost:
+            - 'bifrost/**'
+            - '!bifrost/frontend/**'
+          frontend:
+            - 'bifrost/frontend/**'
+          infrastructure:
+            - 'docker-compose*.yml'
+            - '.github/workflows/**'
+            - 'monitoring/**'
+            - 'scripts/**'
+
+  # Build and test Heimdall (Spring Boot) - Only if changed
   build-heimdall:
     name: Build & Test Heimdall
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.heimdall == 'true' || needs.detect-changes.outputs.infrastructure == 'true'
     
     steps:
     - name: Checkout code
@@ -49,10 +86,12 @@ jobs:
         path: heimdall/build/libs/*.jar
         retention-days: 7
 
-  # Build and test Bifrost (Python)
+  # Build and test Bifrost (Python) - Only if changed
   build-bifrost:
     name: Build & Test Bifrost
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.bifrost == 'true' || needs.detect-changes.outputs.infrastructure == 'true'
     
     steps:
     - name: Checkout code
@@ -89,11 +128,57 @@ jobs:
         flags: bifrost
         name: bifrost-coverage
 
-  # Code quality analysis
+  # Build and test Frontend (React) - Only if changed
+  build-frontend:
+    name: Build & Test Frontend
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: bifrost/frontend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd bifrost/frontend
+        npm ci
+        
+    - name: Lint code
+      run: |
+        cd bifrost/frontend
+        npm run lint
+      continue-on-error: true
+        
+    - name: Build production bundle
+      run: |
+        cd bifrost/frontend
+        npm run build
+        
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: bifrost/frontend/dist/
+        retention-days: 7
+
+  # Code quality analysis - Only if code changed
   code-quality:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
-    needs: [build-heimdall, build-bifrost]
+    needs: [detect-changes, build-heimdall, build-bifrost]
+    if: |
+      always() && 
+      (needs.detect-changes.outputs.heimdall == 'true' || 
+       needs.detect-changes.outputs.bifrost == 'true')
     
     steps:
     - name: Checkout code
@@ -122,12 +207,16 @@ jobs:
     #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     #   run: ./gradlew sonarqube --info
 
-  # Docker build (optional, for future deployment)
+  # Docker build (optional, for future deployment) - Only on main branch push
   docker-build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: [build-heimdall, build-bifrost]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [detect-changes, build-heimdall, build-bifrost]
+    if: |
+      github.event_name == 'push' && 
+      github.ref == 'refs/heads/main' &&
+      (needs.detect-changes.outputs.heimdall == 'true' || 
+       needs.detect-changes.outputs.bifrost == 'true')
     
     steps:
     - name: Checkout code
@@ -144,6 +233,7 @@ jobs:
     #     password: ${{ secrets.DOCKERHUB_TOKEN }}
     
     - name: Build Heimdall Docker image
+      if: needs.detect-changes.outputs.heimdall == 'true'
       uses: docker/build-push-action@v5
       with:
         context: ./heimdall
@@ -154,6 +244,7 @@ jobs:
         cache-to: type=gha,mode=max
         
     - name: Build Bifrost Docker image
+      if: needs.detect-changes.outputs.bifrost == 'true'
       uses: docker/build-push-action@v5
       with:
         context: ./bifrost
@@ -163,10 +254,12 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # Dependency check
+  # Dependency check - Only if Gradle or dependencies changed
   dependency-check:
     name: Dependency Security Check
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.heimdall == 'true' || needs.detect-changes.outputs.infrastructure == 'true'
     
     steps:
     - name: Checkout code
@@ -190,3 +283,45 @@ jobs:
         name: dependency-check-report
         path: build/reports/dependency-check-report.html
         retention-days: 30
+
+  # Summary job - Always runs to show what was executed
+  ci-summary:
+    name: CI/CD Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-heimdall, build-bifrost, build-frontend]
+    if: always()
+    
+    steps:
+    - name: Generate summary
+      run: |
+        echo "## 🎯 CI/CD Execution Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Services Built:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.detect-changes.outputs.heimdall }}" == "true" ]; then
+          echo "- ✅ Heimdall (Java/Spring Boot)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ⏭️ Heimdall (no changes)" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.detect-changes.outputs.bifrost }}" == "true" ]; then
+          echo "- ✅ Bifrost (Python/FastAPI)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ⏭️ Bifrost (no changes)" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.detect-changes.outputs.frontend }}" == "true" ]; then
+          echo "- ✅ Frontend (React/Vite)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- ⏭️ Frontend (no changes)" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📈 Build Results:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Heimdall: ${{ needs.build-heimdall.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Bifrost: ${{ needs.build-bifrost.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Frontend: ${{ needs.build-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "💡 **Optimization**: Only changed services were built, saving CI/CD time and resources!" >> $GITHUB_STEP_SUMMARY

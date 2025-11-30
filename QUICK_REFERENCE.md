@@ -2,15 +2,45 @@
 
 ## 🚀 Quick Commands
 
+### 🎯 Unified Scripts (Recommended)
+
+```powershell
+# BUILD all services (Java + Python + Frontend)
+.\build-all.ps1                    # Build everything
+.\build-all.ps1 -SkipTests         # Skip tests
+.\build-all.ps1 -SkipFrontend      # Skip frontend build
+.\build-all.ps1 -Clean             # Clean build
+
+# TEST all services
+.\test-all.ps1                     # Run all tests
+.\test-all.ps1 -Coverage           # With coverage reports
+.\test-all.ps1 -Service heimdall   # Test specific service
+.\test-all.ps1 -SkipIntegration    # Skip integration tests
+
+# START all services (Infrastructure + Apps)
+.\start-all.ps1                    # Start everything
+.\start-all.ps1 -BuildFirst        # Build before starting
+.\start-all.ps1 -ServicesOnly      # Skip frontend
+.\start-all.ps1 -FrontendOnly      # Only frontend
+
+# STOP all services
+.\stop-all.ps1                     # Stop everything
+.\stop-all.ps1 -RemoveVolumes      # Remove data volumes
+.\stop-all.ps1 -Force              # Force kill processes
+```
+
 ### Infrastructure
 ```powershell
-# Start all services
-./start-dev.ps1
+# Start infrastructure only (Docker Compose)
+.\start-dev.ps1
 # OR
 docker-compose up -d
 
-# Stop all services
-./stop-dev.ps1
+# Start infrastructure only (Docker Compose)
+.\start-dev.ps1
+
+# Stop infrastructure
+.\stop-dev.ps1
 # OR
 docker-compose down
 
@@ -24,7 +54,7 @@ docker-compose logs -f
 docker-compose logs -f kafka
 ```
 
-### Gradle
+### Gradle (Manual Control)
 ```powershell
 # Build everything
 ./gradlew build
@@ -54,24 +84,62 @@ docker-compose logs -f kafka
 ./gradlew :heimdall:dependencies
 ```
 
-### Python (Bifrost)
+### Python (Bifrost - Manual Control)
 ```powershell
 cd bifrost
+
+# Create virtual environment (first time)
+python -m venv .venv
+
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Run Bifrost
 python -m bifrost.main
+
+# Run tests
+pytest tests/ -v
+pytest tests/ --cov=bifrost --cov-report=html
+```
+
+### Frontend (React - Manual Control)
+```powershell
+cd bifrost\frontend
+
+# Install dependencies
+npm install
+
+# Development server
+npm run dev
+
+# Build production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint code
+npm run lint
 ```
 
 ## 🌐 Service URLs
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
+| **Applications** | | |
+| Heimdall API | http://localhost:8080 | - |
+| Bifrost API | http://localhost:8000 | - |
+| Frontend Dashboard | http://localhost:5173 | - |
+| **Infrastructure** | | |
 | Kafka UI | http://localhost:8090 | - |
 | Redis Commander | http://localhost:8081 | - |
+| **Monitoring** | | |
 | Prometheus | http://localhost:9090 | - |
 | Grafana | http://localhost:3000 | admin/admin |
 | Zipkin | http://localhost:9411 | - |
-| Heimdall API | http://localhost:8080 | - |
-| Bifrost API | http://localhost:8000 | - |
 
 ## 🔌 Connection Strings
 

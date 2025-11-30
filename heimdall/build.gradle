@@ -25,7 +25,12 @@ dependencies {
     // Redis (optional cache)
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     
-    // JWT
+    // JWT - Using JJWT library
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    
+    // JWT - Spring Security OAuth2 (alternative/additional)
     implementation 'org.springframework.security:spring-security-oauth2-resource-server'
     implementation 'org.springframework.security:spring-security-oauth2-jose'
     
@@ -60,6 +65,9 @@ dependencies {
     
     // Guava (additional utility)
     implementation 'com.google.guava:guava:32.1.3-jre'
+    
+    // SpringDoc OpenAPI (Swagger)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
     
     // Additional Testing
     testImplementation 'org.springframework.kafka:spring-kafka-test'

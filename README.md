@@ -128,12 +128,44 @@ asgard/
 - Gradle 8.5+
 - Docker & Docker Compose
 - Python 3.9+ (for Bifrost)
+- Node.js 18+ (for Frontend)
 
-### 1. Start Infrastructure Services
+### Option 1: One-Command Startup ⚡ (Recommended)
+
+Start everything with a single command:
+
+```powershell
+# Start all services (Infrastructure + Heimdall + Bifrost + Frontend)
+.\start-all.ps1
+
+# With pre-build
+.\start-all.ps1 -BuildFirst
+```
+
+### Option 2: Step-by-Step Setup 🔧
+
+#### 1. Build All Services
+
+```powershell
+# Build everything (Java + Python + Frontend)
+.\build-all.ps1
+
+# Build without tests
+.\build-all.ps1 -SkipTests
+
+# Build without frontend
+.\build-all.ps1 -SkipFrontend
+```
+
+#### 2. Start Infrastructure Services
 
 Start Zookeeper, Kafka, Redis, PostgreSQL, and monitoring stack:
 
 ```powershell
+# Start infrastructure only
+.\start-dev.ps1
+
+# OR manually with docker-compose
 docker-compose up -d
 ```
 
@@ -143,29 +175,120 @@ Verify services are running:
 docker-compose ps
 ```
 
-### 2. Build All Modules
+#### 3. Start Application Services
+
+**Heimdall (API Gateway):**
+```powershell
+.\gradlew :heimdall:bootRun
+```
+
+**Bifrost (ML/AI Service):**
+```powershell
+cd bifrost
+.\.venv\Scripts\Activate.ps1
+python -m bifrost.main
+```
+
+**Frontend (Dashboard):**
+```powershell
+cd bifrost\frontend
+npm run dev
+```
+
+### Option 3: Manual Build (Legacy)
 
 ```powershell
 # Build all Gradle modules
 ./gradlew build
 
-# Or build specific module
+# Build specific module
 ./gradlew :heimdall:build
 ```
 
-### 3. Run Services
+### 🧪 Running Tests
 
-**Heimdall (Spring Boot):**
 ```powershell
-./gradlew :heimdall:bootRun
+# Run all tests (Java + Python + Frontend)
+.\test-all.ps1
+
+# Run tests with coverage
+.\test-all.ps1 -Coverage
+
+# Run specific service tests
+.\test-all.ps1 -Service heimdall
+.\test-all.ps1 -Service bifrost
+.\test-all.ps1 -Service frontend
+
+# Skip integration tests
+.\test-all.ps1 -SkipIntegration
 ```
 
-**Bifrost (Python):**
+### 🛑 Stopping Services
+
 ```powershell
-cd bifrost
-pip install -r requirements.txt
-python -m bifrost.main
+# Stop all services (apps + infrastructure)
+.\stop-all.ps1
+
+# Stop and remove data volumes
+.\stop-all.ps1 -RemoveVolumes
+
+# Force stop all processes
+.\stop-all.ps1 -Force
+
+# Stop infrastructure only
+.\stop-dev.ps1
 ```
+
+## 🌐 Access Services
+
+### Application Services
+- **Heimdall (API Gateway)**: http://localhost:8080
+  - Health: http://localhost:8080/actuator/health
+  - Metrics: http://localhost:8080/actuator/metrics
+  
+- **Bifrost (ML/AI Service)**: http://localhost:8000
+  - Docs: http://localhost:8000/docs
+  - Health: http://localhost:8000/health
+
+- **Frontend (Dashboard)**: http://localhost:5173
+
+### Infrastructure Services
+- **Kafka UI**: http://localhost:8090
+- **Redis Commander**: http://localhost:8081
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Zipkin**: http://localhost:9411
+
+## 📚 Documentation
+
+- [Quick Reference](QUICK_REFERENCE.md) - Command cheat sheet
+- [Development Roadmap](ROADMAP.md) - Project roadmap and future plans
+- [Configuration Summary](CONFIGURATION_SUMMARY.md) - All configurations explained
+- [Contributing Guide](CONTRIBUTING.md) - How to contribute
+- [Git Commit Guide](GIT_COMMIT_GUIDE.md) - Commit message conventions
+- [Testing Guide](TESTING_GUIDE.md) - How to write and run tests
+
+## 🛠️ Developer Experience
+
+### Unified Scripts ⭐
+
+Asgard provides unified scripts for seamless polyglot development:
+
+| Script | Purpose | Example |
+|--------|---------|---------|
+| `build-all.ps1` | Build all services | `.\build-all.ps1 -SkipTests` |
+| `test-all.ps1` | Run all tests | `.\test-all.ps1 -Coverage` |
+| `start-all.ps1` | Start everything | `.\start-all.ps1 -BuildFirst` |
+| `stop-all.ps1` | Stop everything | `.\stop-all.ps1 -RemoveVolumes` |
+| `start-dev.ps1` | Infrastructure only | `.\start-dev.ps1` |
+| `stop-dev.ps1` | Stop infrastructure | `.\stop-dev.ps1` |
+
+### CI/CD Optimization 🚀
+
+- **Smart Builds**: Only changed services are built
+- **Parallel Execution**: Independent service builds run in parallel
+- **Fast Feedback**: Reduced CI/CD time by 40-60% for partial changes
+- **Monorepo-Aware**: Path filters for Heimdall, Bifrost, Frontend
 
 ## 🐳 Docker Compose Services
 

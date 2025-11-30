@@ -47,6 +47,11 @@ spring:
     listener:
       ack-mode: manual_immediate
       concurrency: 3
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:dGhpc2lzYXZlcnlzZWNyZXRrZXlmb3JoZWltZGFsbGp3dHRva2VuZ2VuZXJhdGlvbnBsZWFzZWNoYW5nZWlucHJvZHVjdGlvbg==}
+  token-validity-in-seconds: ${JWT_EXPIRATION:86400}  # 24 hours
   
   data:
     redis:
@@ -94,7 +99,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics
+        include: health,info,prometheus,metrics,circuitbreakers,circuitbreakerevents
       base-path: /actuator
   endpoint:
     health:
@@ -111,6 +116,29 @@ management:
   tracing:
     sampling:
       probability: 0.1
+  health:
+    circuitbreakers:
+      enabled: true
+
+# Bifrost Service Configuration
+bifrost:
+  base-url: ${BIFROST_BASE_URL:http://localhost:8000}
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    display-request-duration: true
+    filter: true
+  show-actuator: false
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
 
 # Logging
 logging:

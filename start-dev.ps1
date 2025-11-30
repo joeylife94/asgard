@@ -29,14 +29,9 @@ Write-Host ""
 Write-Host "🔍 Checking service health..." -ForegroundColor Yellow
 docker-compose ps
 
-# Build Gradle projects
-Write-Host ""
-Write-Host "🏗️  Building Gradle modules..." -ForegroundColor Yellow
-./gradlew clean build -x test
-
 # Display service URLs
 Write-Host ""
-Write-Host "✅ Setup complete! Services are available at:" -ForegroundColor Green
+Write-Host "✅ Infrastructure setup complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "📊 Infrastructure Services:" -ForegroundColor Cyan
 Write-Host "  • Kafka UI:          http://localhost:8090" -ForegroundColor White
@@ -49,8 +44,19 @@ Write-Host "  • Prometheus:        http://localhost:9090" -ForegroundColor Whi
 Write-Host "  • Grafana:           http://localhost:3000 (admin/admin)" -ForegroundColor White
 Write-Host "  • Zipkin:            http://localhost:9411" -ForegroundColor White
 Write-Host ""
-Write-Host "🚀 To start services:" -ForegroundColor Yellow
-Write-Host "  • Heimdall:  ./gradlew :heimdall:bootRun" -ForegroundColor White
-Write-Host "  • Bifrost:   cd bifrost; python -m bifrost.main" -ForegroundColor White
+Write-Host "🚀 Next Steps - Choose your workflow:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  Option 1: Quick Start (Recommended)" -ForegroundColor Cyan
+Write-Host "    .\start-all.ps1            # Starts everything (Heimdall + Bifrost + Frontend)" -ForegroundColor White
+Write-Host ""
+Write-Host "  Option 2: Manual Control" -ForegroundColor Cyan
+Write-Host "    .\build-all.ps1            # Build all services" -ForegroundColor White
+Write-Host "    .\gradlew :heimdall:bootRun  # Start Heimdall" -ForegroundColor White
+Write-Host "    cd bifrost; python -m bifrost.main  # Start Bifrost" -ForegroundColor White
+Write-Host "    cd bifrost\frontend; npm run dev    # Start Frontend" -ForegroundColor White
+Write-Host ""
+Write-Host "  Option 3: Testing" -ForegroundColor Cyan
+Write-Host "    .\test-all.ps1             # Run all tests" -ForegroundColor White
+Write-Host "    .\test-all.ps1 -Coverage   # Run tests with coverage" -ForegroundColor White
 Write-Host ""
 Write-Host "📚 For more information, see README.md" -ForegroundColor Yellow
