@@ -4,6 +4,11 @@ plugins {
     id 'com.google.protobuf' version '0.9.4' apply false
 }
 
+// Pin common versions for tools/libraries used by subprojects
+ext {
+    lombokVersion = '1.18.26'
+}
+
 // Common configuration for all subprojects
 subprojects {
     apply plugin: 'java'
@@ -16,9 +21,19 @@ subprojects {
     version = '1.0.0'
     sourceCompatibility = '17'
     
+    // Java Toolchain - Gradle will auto-download JDK 17 if needed
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+    
     configurations {
         compileOnly {
             extendsFrom annotationProcessor
+        }
+        testCompileOnly {
+            extendsFrom testAnnotationProcessor
         }
     }
     
@@ -37,9 +52,11 @@ subprojects {
         implementation 'org.springframework.boot:spring-boot-starter-validation'
         implementation 'org.springframework.boot:spring-boot-starter-actuator'
         
-        // Lombok
-        compileOnly 'org.projectlombok:lombok'
-        annotationProcessor 'org.projectlombok:lombok'
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
         
         // Development Tools
         developmentOnly 'org.springframework.boot:spring-boot-devtools'

@@ -22,7 +22,7 @@ class JwtTokenProviderTest {
     private JwtTokenProvider tokenProvider;
     
     private static final String TEST_SECRET = Base64.getEncoder()
-            .encodeToString("testSecretKeyForJwtTokenGenerationAtLeast256BitsLong12345678".getBytes());
+            .encodeToString("testSecretKeyForJwtTokenGenerationAtLeast256BitsLongShouldBeVeryLongForHS256Algorithm1234567890".getBytes());
     private static final long TOKEN_VALIDITY = 3600; // 1 hour
     
     @BeforeEach

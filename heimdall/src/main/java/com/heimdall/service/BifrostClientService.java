@@ -69,7 +69,7 @@ public class BifrostClientService {
      * @param logData Log data to analyze
      * @return Analysis result
      */
-    @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "analyzeLogFallback")
+    @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "analyzeLogFallbackAsync")
     @Retry(name = CIRCUIT_BREAKER_NAME)
     @TimeLimiter(name = CIRCUIT_BREAKER_NAME)
     public CompletableFuture<Map<String, Object>> analyzeLogAsync(Map<String, Object> logData) {
@@ -183,7 +183,7 @@ public class BifrostClientService {
     /**
      * Fallback method for log analysis (async)
      */
-    private CompletableFuture<Map<String, Object>> analyzeLogFallback(
+    private CompletableFuture<Map<String, Object>> analyzeLogFallbackAsync(
             Map<String, Object> logData, Exception e) {
         logger.warn("Bifrost analyze log async fallback triggered: {}", e.getMessage());
         

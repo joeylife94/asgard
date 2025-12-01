@@ -34,6 +34,11 @@ dependencies {
     implementation 'org.springframework.security:spring-security-oauth2-resource-server'
     implementation 'org.springframework.security:spring-security-oauth2-jose'
     
+    // Lombok is provided by root `subprojects` config (pinned via root ext.lombokVersion)
+    
+    // Annotation Processor Binding for Lombok compatibility
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    
     // Micrometer & Prometheus
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
@@ -77,6 +82,11 @@ dependencies {
     // Performance Testing
     testImplementation 'io.gatling.highcharts:gatling-charts-highcharts:3.9.5'
     testImplementation 'io.gatling:gatling-app:3.9.5'
+}
+
+// Enable annotation processing for Lombok
+tasks.withType(JavaCompile).configureEach {
+    options.annotationProcessorPath = configurations.annotationProcessor
 }
 
 // Protobuf configuration for gRPC (disabled for testing)
