@@ -12,14 +12,14 @@
 #### `build.gradle`
 - **Plugins declared** (with `apply false` for subprojects):
   - `java`
-  - `org.springframework.boot` (3.2.0)
-  - `io.spring.dependency-management` (1.1.4)
+  - `org.springframework.boot` (3.3.5)
+  - `io.spring.dependency-management` (1.1.6)
   - `com.google.protobuf` (0.9.4)
 
 - **Common configurations in `subprojects` block**:
-  - Java 17 source compatibility
+  - Java 21 source compatibility
   - Maven Central repository
-  - Spring Cloud BOM (2023.0.0)
+  - Spring Cloud BOM (2023.0.3)
   - Common dependencies:
     - Spring Boot Web, Validation, Actuator
     - Lombok

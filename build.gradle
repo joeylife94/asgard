@@ -1,12 +1,12 @@
 plugins {
-    id 'org.springframework.boot' version '3.2.0' apply false
-    id 'io.spring.dependency-management' version '1.1.4' apply false
+    id 'org.springframework.boot' version '3.3.5' apply false
+    id 'io.spring.dependency-management' version '1.1.6' apply false
     id 'com.google.protobuf' version '0.9.4' apply false
 }
 
 // Pin common versions for tools/libraries used by subprojects
 ext {
-    lombokVersion = '1.18.26'
+    lombokVersion = '1.18.30'
 }
 
 // Common configuration for all subprojects
@@ -19,12 +19,12 @@ subprojects {
     
     group = 'com.asgard'
     version = '1.0.0'
-    sourceCompatibility = '17'
+    sourceCompatibility = '21'
     
-    // Java Toolchain - Gradle will auto-download JDK 17 if needed
+    // Java Toolchain - Gradle will auto-download JDK 21 if needed
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(17)
+            languageVersion = JavaLanguageVersion.of(21)
         }
     }
     
@@ -42,7 +42,7 @@ subprojects {
     }
     
     ext {
-        springCloudVersion = '2023.0.0'
+        springCloudVersion = '2023.0.3'
     }
     
     // Common dependencies for all Spring Boot modules

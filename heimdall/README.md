@@ -29,8 +29,8 @@ Heimdall is a Spring Boot-based microservice designed to handle log collection, 
 
 ### Technology Stack
 
-- **Framework**: Spring Boot 3.2.x
-- **Language**: Java 17 (LTS)
+- **Framework**: Spring Boot 3.3.5
+- **Language**: Java 21 (LTS)
 - **Build Tool**: Gradle 8.x
 - **Database**: PostgreSQL 16
 - **Message Queue**: Apache Kafka 3.6

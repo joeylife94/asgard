@@ -2,8 +2,8 @@
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/joeylife94/asgard)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Java Version](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Java Version](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 
 > **A production-ready, cloud-native microservices platform built with Spring Boot and Python, featuring API Gateway, ML/AI services, and comprehensive observability.**
@@ -15,7 +15,7 @@ Named after the mythological realm connecting all worlds, **Asgard** serves as a
 **Purpose**: Demonstrate enterprise-level microservices architecture with modern DevOps practices
 
 **Tech Stack**:
-- **Backend**: Spring Boot 3.2, Spring Cloud, gRPC
+- **Backend**: Spring Boot 3.3.5, Spring Cloud, gRPC, Java 21
 - **Message Broker**: Apache Kafka
 - **Databases**: PostgreSQL, Redis, Elasticsearch
 - **Monitoring**: Prometheus, Grafana, Zipkin
@@ -124,7 +124,7 @@ asgard/
 
 ### Prerequisites
 
-- Java 17+
+- Java 21+ (LTS)
 - Gradle 8.5+
 - Docker & Docker Compose
 - Python 3.9+ (for Bifrost)
