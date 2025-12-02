@@ -22,6 +22,7 @@ from bifrost.validators import InputValidator
 from bifrost.filters import LogFilter, SeverityLevel
 from bifrost.export import DataExporter
 from bifrost.slack import SlackNotifier
+from bifrost.router import get_router  # Privacy Router 추가
 
 # FastAPI 앱
 app = FastAPI(
@@ -76,7 +77,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 class AnalyzeRequest(BaseModel):
     """분석 요청"""
     log_content: str = Field(..., description="로그 내용")
-    source: str = Field("local", description="분석 소스 (local/cloud)")
+    source: Optional[str] = Field(None, description="분석 소스 (local/cloud) - None이면 자동 라우팅")
     model: Optional[str] = Field(None, description="모델명")
     service_name: Optional[str] = Field(None, description="서비스 이름")
     environment: Optional[str] = Field(None, description="환경 (prod/staging)")
@@ -234,9 +235,24 @@ async def heimdall_integration_status(_: bool = Depends(verify_api_key)):
 
 @app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key)])
 async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks):
-    """로그 분석 API"""
+    """
+    로그 분석 API - Two-Track AI Strategy
+    
+    자동 라우팅:
+    - Track A (Local): HIGH/MEDIUM 민감도 → Ollama (GDPR-compliant)
+    - Track B (Cloud): LOW 민감도 → AWS Bedrock (cost-effective)
+    """
     start_time = time.time()
     db = get_database()
+    
+    # ===== Privacy Router: 자동 라우팅 =====
+    privacy_router = get_router()
+    routing_decision = privacy_router.route(request.log_content)
+    
+    # 사용자가 명시한 source가 있으면 우선, 없으면 자동 라우팅
+    if not request.source:
+        request.source = routing_decision["track"]  # "local" or "cloud"
+        logger.info(f"Auto-routed to {request.source}: {routing_decision['reason']}")
     
     # 캐시 확인 (중복 분석 방지)
     import hashlib
@@ -265,7 +281,7 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
     try:
         # 분석 실행
         if request.source == "local":
-            client = OllamaClient(model=request.model or "mistral")
+            client = OllamaClient(model=request.model or "llama3.1:8b")  # 업데이트: Llama 3.1 8B
             result = client.analyze(prompt, stream=False)  # API는 스트리밍 미지원
         elif request.source == "cloud":
             if not is_bedrock_available():
@@ -277,7 +293,7 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
         
         duration = time.time() - start_time
         
-        # DB 저장 (백그라운드)
+        # DB 저장 (백그라운드) - Privacy Router 메타데이터 추가
         analysis_id = db.save_analysis(
             source=request.source,
             model=result["metadata"]["model"],
@@ -295,13 +311,20 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
         metrics.increment_analysis_count(request.source)
         metrics.observe_analysis_duration(duration, request.source)
         
-        return AnalyzeResponse(
+        # 응답에 Privacy Router 메타데이터 포함
+        response_data = AnalyzeResponse(
             id=analysis_id,
             response=result["response"],
             duration_seconds=round(duration, 2),
             model=result["metadata"]["model"],
             cached=False,
         )
+        
+        # Privacy Router 정보를 응답에 추가 (dict로 변환 후)
+        response_dict = response_data.dict()
+        response_dict["routing"] = routing_decision
+        
+        return response_dict
     
     except Exception as e:
         # 에러 저장
@@ -860,6 +883,47 @@ async def compare_mlflow_runs(
     comparison = tracker.compare_runs(request.run_ids, request.metric_names)
     
     return comparison
+
+
+# ==================== Privacy Router API ====================
+
+@app.post("/api/router/classify")
+async def classify_sensitivity(
+    request: dict,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Privacy Router: 데이터 민감도 분류
+    
+    로그 컨텐츠의 민감도를 분석하고 적절한 AI Track을 추천합니다.
+    """
+    log_content = request.get("log_content", "")
+    if not log_content:
+        raise HTTPException(status_code=400, detail="log_content is required")
+    
+    privacy_router = get_router()
+    routing_decision = privacy_router.route(log_content)
+    explanation = privacy_router.explain_route(log_content)
+    
+    return {
+        "routing": routing_decision,
+        "explanation": explanation,
+        "recommended_track": routing_decision["track"],
+    }
+
+
+@app.get("/api/router/status")
+async def router_status():
+    """Privacy Router 상태 확인"""
+    privacy_router = get_router()
+    
+    return {
+        "status": "operational",
+        "high_patterns": len(privacy_router.HIGH_PATTERNS),
+        "medium_patterns": len(privacy_router.MEDIUM_PATTERNS),
+        "gdpr_keywords": len(privacy_router.GDPR_KEYWORDS),
+        "version": "1.0.0",
+    }
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 # Bifrost 설정 파일 예시
 # 복사: cp bifrost.yaml.example bifrost.yaml
 
-# Ollama 로컬 모드 설정
+# Ollama 로컬 모드 설정 (Track A: Privacy-First)
 ollama:
   url: http://localhost:11434
-  model: mistral  # 또는 llama2, codellama, etc.
+  model: llama3.1:8b  # Llama 3.1 8B - 한글 지원, 고성능
   timeout: 120
   max_retries: 3
 
