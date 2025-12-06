@@ -460,8 +460,7 @@ Contributions are welcome! Please read the contributing guidelines before submit
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-06
+**Developer**: Dongyoun Jeon (Joey)  
+📧 sho801921@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/dongyoun-jeon) | 🐙 [@joeylife94](https://github.com/joeylife94)
 
-[![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/dongyoun-jeon/)
-📧 **Contact**: sho801921@gmail.com
+**Version**: 1.0.0 | **Last Updated**: 2025-12-06

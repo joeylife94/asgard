@@ -1634,9 +1634,9 @@ MIT License - see [LICENSE](LICENSE) for details
 
 ## 👨‍💻 Author
 
-**Joey**  
+**Developer**: Dongyoun Jeon (Joey)  
 MLOps & Backend Engineer  
-[@joeylife94](https://github.com/joeylife94)
+📧 sho801921@gmail.com | 💼 [LinkedIn](https://www.linkedin.com/in/dongyoun-jeon) | 🐙 [@joeylife94](https://github.com/joeylife94)
 
 ---
 
