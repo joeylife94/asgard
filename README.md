@@ -826,13 +826,13 @@ See individual module LICENSE files.
 
 ## 📧 Contact & Connect
 
-**Developer**: Dongyup Park (Joey)
+**Developer**: Dongyoun Jeon (Joey)
 
-- 📧 **Email**: [joeylife94@gmail.com](mailto:joeylife94@gmail.com)
-- 💼 **LinkedIn**: [linkedin.com/in/dongyup-park](https://www.linkedin.com/in/dongyup-park)
+- 📧 **Email**: [sho801921@gmail.com](mailto:sho801921@gmail.com)
+- 💼 **LinkedIn**: [linkedin.com/in/dongyoun-jeon](https://www.linkedin.com/in/dongyoun-jeon)
 - 🐙 **GitHub**: [@joeylife94](https://github.com/joeylife94)
-- 🌍 **Location**: Seoul, South Korea
-- 🎯 **Open to**: Backend Engineer / Platform Engineer roles in **Berlin** or **Amsterdam**
+- 🌍 **Location**: Berlin, Germany (Relocating Dec 27, 2025)
+- 🎯 **Seeking**: Backend Engineer / Platform Engineer roles in **Berlin** or **Amsterdam**
 
 **Interested in discussing**:
 - Hybrid AI architectures and cost optimization strategies
