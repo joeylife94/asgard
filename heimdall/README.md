@@ -1,6 +1,6 @@
 # 🛡️ Heimdall - Event-driven Log Processing Microservice
 
-> **"The Guardian of the Rainbow Bridge"** - Companion service to Bifrost for log collection, processing, and analysis
+> **High-Throughput Log Ingestion & Gateway Service**
 
 ## 🎉 Verified Working - MSA Integration
 
@@ -14,6 +14,8 @@
 
 Heimdall is a Spring Boot-based microservice designed to handle log collection, processing, storage, and analysis in conjunction with the Bifrost AI analysis system. It provides a robust, scalable, and fault-tolerant platform for managing application logs across your infrastructure.
 
+Heimdall serves as the **Entry Point** of the Asgard Ecosystem, ensuring data integrity before AI processing.
+
 ### Key Features
 
 - 📊 **Log Collection & Ingestion**: REST API and Kafka-based log ingestion
@@ -24,6 +26,23 @@ Heimdall is a Spring Boot-based microservice designed to handle log collection, 
 - 🔍 **Advanced Search**: Full-text search capabilities via Elasticsearch
 - 📡 **Notification System**: Alert notifications based on analysis results
 - 📊 **Observability**: Built-in metrics, health checks, and monitoring
+
+## 🏗️ Architectural Design Decisions
+
+### 1. Decoupling Ingestion (Heimdall) from Analysis (Bifrost)
+* **Problem:** AI Analysis (LLM) is **CPU/GPU intensive and slow**, while Log Ingestion is **I/O intensive and fast**.
+* **Solution:** Separated concerns. Heimdall acts as a high-throughput **buffer**.
+* **Result:** Even if the AI Analysis layer (Bifrost) slows down under load, Heimdall continues to ingest logs at high speed without blocking clients.
+
+### 2. The Role of Apache Kafka (Backpressure Handling)
+* **Pattern:** Asynchronous Event-Driven Architecture.
+* **Why:** Direct HTTP calls to the AI engine would cause cascading failures during traffic spikes.
+* **Strategy:** Kafka acts as a **persistent buffer**. If the consumer lags, data is safe in the queue (Dead Letter Queues configured for failed analysis).
+
+### 3. Dual-Storage Strategy (PostgreSQL + Elasticsearch)
+* **PostgreSQL:** Used as the **Source of Truth** for structured metadata, audit trails, and relational integrity.
+* **Elasticsearch:** Used exclusively for **high-performance text search** and aggregation.
+* **Trade-off:** Accepted eventual consistency between SQL and NoSQL in exchange for optimized search performance.
 
 ## 🏗️ Architecture
 
@@ -433,7 +452,7 @@ Heimdall works in tandem with Bifrost for AI-powered log analysis:
 
 ## 📄 License
 
-This project is part of the Bifrost ecosystem.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 👥 Contributing
 
@@ -441,7 +460,8 @@ Contributions are welcome! Please read the contributing guidelines before submit
 
 ---
 
-**Built with ❤️ using Spring Boot and Kafka**
+**Version**: 1.0.0
+**Last Updated**: 2025-12-06
 
-**Version**: 1.0.0  
-**Last Updated**: 2024-11-11
+[![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/dongyoun-jeon/)
+📧 **Contact**: sho801921@gmail.com
