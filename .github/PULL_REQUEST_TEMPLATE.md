@@ -28,9 +28,16 @@ Closes #(issue)
 - [ ] All existing tests pass
 - [ ] Manual testing completed
 
-**Test command:**
-```bash
-./gradlew test
+**Test commands (PowerShell):**
+```powershell
+# Heimdall
+.\gradlew.bat :heimdall:test --no-daemon
+
+# Full suite (optional)
+.\test-all.ps1
+
+# Bifrost only (optional)
+pytest bifrost\tests -q
 ```
 
 ## 📝 Checklist
@@ -40,6 +47,7 @@ Closes #(issue)
 - [ ] I have performed a self-review of my code
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation
+- [ ] I did not commit secrets (JWT/API keys, cloud credentials)
 - [ ] My changes generate no new warnings
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally with my changes

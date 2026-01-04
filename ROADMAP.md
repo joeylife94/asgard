@@ -92,8 +92,8 @@ Build a production-grade, cloud-native microservices platform that demonstrates 
 
 ### 🔴 Critical Priority (즉시 필요)
 - [ ] **Production 보안 설정**
-  - [ ] JWT Secret 환경변수 강화 (현재 Base64 기본값)
-  - [ ] CORS origin 제한 (현재 `allow_origins=["*"]`)
+  - [x] JWT Secret 환경변수 강화 (prod에서 `${JWT_SECRET}` 필수화)
+  - [x] CORS origin 제한 (Bifrost: `BIFROST_CORS_ORIGINS` 환경변수 기반 allowlist)
   - [ ] Rate Limiter 튜닝 (서비스별 차등)
 - [ ] **테스트 커버리지 확대**
   - [ ] Heimdall 단위 테스트 (현재 7개 → 30개 목표)
@@ -102,7 +102,7 @@ Build a production-grade, cloud-native microservices platform that demonstrates 
 - [ ] **테스트/에러 처리 품질 기준 정립**
   - [ ] 4xx/5xx 매핑 원칙 문서화 (예: 미존재 리소스는 404)
   - [ ] 통합테스트를 “응답 스키마” 기준으로 유지 (Page/Content 구조 고정)
-  - [ ] Actuator health(테스트 프로필) 기대값 정리 또는 test profile에서 contributor 제어
+  - [ ] Actuator health(테스트 프로필) 기대값을 UP로 고정하거나, contributor/indicator 제어로 예측 가능하게 만들기
 - [ ] **Database 마이그레이션**
   - [ ] Flyway 또는 Liquibase 설정
   - [ ] JPA Entity 정의 완성
@@ -449,17 +449,47 @@ Build a production-grade, cloud-native microservices platform that demonstrates 
 ## 🎯 Next Steps (2026년 1월 기준)
 
 ### 1. **Immediate** (이번 주)
-- [ ] 🔴 JWT Secret 환경변수화 (보안 필수)
-- [ ] 🔴 CORS Origin 제한 설정
+- [x] 🔴 JWT Secret 환경변수화 (prod 기준, 보안 필수)
+- [x] 🔴 CORS Origin 제한 설정 (Bifrost allowlist)
+- [ ] 🔴 Rate Limit 정책표 확정 + 서비스별 차등 적용 (엔드포인트 단위)
+- [ ] 🔴 에러 매핑 원칙 문서화 + 대표 케이스 테스트 고정 (404/400/401/500)
 - [ ] 🟡 Heimdall 단위 테스트 추가 (15개 이상)
-- [ ] 🟡 E2E 테스트 시나리오 작성
+- [ ] 🟡 E2E 테스트 시나리오 작성 (Kafka 포함)
+- [ ] 🟡 Test health 기대값 정책 확정 (UP 고정 vs 환경별 허용) + 테스트 반영
 
 ### 2. **Short Term** (이번 달)
-- [ ] Flyway DB 마이그레이션 설정
-- [ ] User Entity + AuthController 완성
+- [ ] Flyway DB 마이그레이션 설정 (최소 V1 스키마)
+- [ ] User/RBAC/Refresh Token 설계 및 최소 구현
+- [ ] API Contract Testing 도입 (Pact 등) - 최소 1개 계약부터
 - [ ] Grafana 대시보드 3종 (JVM, Python, Kafka)
 - [ ] Frontend 빌드 파이프라인 통합
 - [ ] API Versioning 적용
+
+---
+
+## 🏃 2-Week Execution Plan (Phase 1 - P0/P1)
+
+### Week 1 (P0: Security + Quality Gate)
+- Rate Limit 정책표 확정 및 적용 (엔드포인트별 기본값 + 서비스별 차등)
+- 4xx/5xx 매핑 원칙 문서화 + 대표 케이스 테스트 고정
+- Search 응답 스키마(contract 성격) 테스트 추가 (content/page 구조)
+- Test profile health 정책 확정 및 테스트 반영 (UP 고정 또는 contributor/indicator 제어)
+
+**Verification**
+```powershell
+.\gradlew.bat :heimdall:test --no-daemon
+pytest bifrost\tests -q
+```
+
+### Week 2 (P1: DB Migration + Auth Hardening)
+- Flyway/Liquibase 도입 + 최소 V1 마이그레이션
+- RBAC/Refresh Token 설계 및 최소 구현 착수
+- E2E 시나리오 1개 (Kafka 포함) 작성
+
+**Verification**
+```powershell
+.\gradlew.bat :heimdall:test --no-daemon
+```
 
 ### 3. **Medium Term** (Q1 2026)
 - [ ] Phase 1 100% 완료
