@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.time.temporal.ChronoUnit;
+
+import com.heimdall.ratelimit.RateLimit;
 
 /**
  * Authentication Controller
@@ -45,6 +48,7 @@ public class AuthController {
      * POST /api/v1/auth/login
      */
     @PostMapping("/login")
+    @RateLimit(maxRequests = 20, duration = 1, timeUnit = ChronoUnit.MINUTES, keyType = RateLimit.KeyType.IP)
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             // Authenticate user

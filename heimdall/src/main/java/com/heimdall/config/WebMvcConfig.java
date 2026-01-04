@@ -23,8 +23,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(rateLimitInterceptor)
                 .addPathPatterns("/api/**")  // Apply to all API endpoints
                 .excludePathPatterns(
-                        "/api/auth/login",    // Don't rate limit login
-                        "/actuator/**"        // Don't rate limit actuator endpoints
+                "/actuator/**"        // Don't rate limit actuator endpoints
                 );
     }
 }
