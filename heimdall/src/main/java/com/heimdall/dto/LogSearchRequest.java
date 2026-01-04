@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class LogSearchRequest {
     
+    private String eventId;
+
     private String serviceName;
     
     private String environment;

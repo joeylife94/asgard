@@ -5,7 +5,9 @@ import com.heimdall.entity.AnalysisResult;
 import com.heimdall.repository.AnalysisResultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,7 +26,10 @@ public class AnalysisController {
         
         AnalysisResult analysisResult = analysisResultRepository
             .findFirstByLogEntry_IdOrderByAnalyzedAtDesc(logId)
-            .orElseThrow(() -> new RuntimeException("Analysis result not found for logId: " + logId));
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Analysis result not found for logId: " + logId
+            ));
         
         AnalysisResultResponse response = AnalysisResultResponse.builder()
             .analysisId(analysisResult.getId())

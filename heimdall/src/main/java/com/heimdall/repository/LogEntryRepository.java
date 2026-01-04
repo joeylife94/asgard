@@ -16,6 +16,12 @@ import java.util.Optional;
 public interface LogEntryRepository extends JpaRepository<LogEntry, Long> {
     
     Optional<LogEntry> findByEventId(String eventId);
+
+    @Query("SELECT l FROM LogEntry l WHERE l.eventId = :eventId")
+    Page<LogEntry> findPageByEventId(
+        @Param("eventId") String eventId,
+        Pageable pageable
+    );
     
     Page<LogEntry> findByServiceNameAndEnvironment(
         String serviceName,

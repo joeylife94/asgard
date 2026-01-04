@@ -18,6 +18,7 @@ public class SearchController {
     
     @GetMapping("/search")
     public ResponseEntity<LogSearchResponse> searchLogs(
+        @RequestParam(required = false) String eventId,
         @RequestParam(required = false) String serviceName,
         @RequestParam(required = false) String environment,
         @RequestParam(required = false) String severity,
@@ -31,6 +32,7 @@ public class SearchController {
             serviceName, environment, severity, keyword);
         
         LogSearchRequest request = LogSearchRequest.builder()
+            .eventId(eventId)
             .serviceName(serviceName)
             .environment(environment)
             .severity(severity)

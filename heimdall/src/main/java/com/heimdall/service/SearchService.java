@@ -36,8 +36,11 @@ public class SearchService {
         );
         
         Page<LogEntry> logPage;
-        
-        if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
+
+        if (request.getEventId() != null && !request.getEventId().isEmpty()) {
+            logPage = logEntryRepository.findPageByEventId(request.getEventId(), pageable);
+        }
+        else if (request.getKeyword() != null && !request.getKeyword().isEmpty()) {
             // 키워드 검색
             LocalDateTime from = request.getFrom() != null ? 
                 DateTimeUtil.parseIso(request.getFrom()) : LocalDateTime.now().minusDays(7);
