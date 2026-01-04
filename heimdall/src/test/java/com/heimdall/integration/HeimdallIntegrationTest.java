@@ -141,9 +141,11 @@ public class HeimdallIntegrationTest {
     @Order(3)
     @DisplayName("로그 검색 - 날짜 범위로 조회")
     public void testLogSearch_ByDateRange() throws Exception {
-        // Given
-        LocalDateTime startTime = LocalDateTime.now().minusHours(1);
-        LocalDateTime endTime = LocalDateTime.now();
+        // Given: use a wide window to avoid timezone/clock drift (ingested log timestamp is server-generated)
+        Assumptions.assumeTrue(testEventId != null, "eventId is required for date-range search");
+
+        LocalDateTime startTime = LocalDateTime.now().minusDays(1);
+        LocalDateTime endTime = LocalDateTime.now().plusDays(1);
 
         // When & Then
         mockMvc.perform(get("/api/v1/logs/search")

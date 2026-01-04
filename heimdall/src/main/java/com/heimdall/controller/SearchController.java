@@ -2,11 +2,14 @@ package com.heimdall.controller;
 
 import com.heimdall.dto.LogSearchRequest;
 import com.heimdall.dto.LogSearchResponse;
+import com.heimdall.ratelimit.RateLimit;
 import com.heimdall.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.temporal.ChronoUnit;
 
 @RestController
 @RequestMapping("/api/v1/logs")
@@ -17,6 +20,7 @@ public class SearchController {
     private final SearchService searchService;
     
     @GetMapping("/search")
+    @RateLimit(maxRequests = 120, duration = 1, timeUnit = ChronoUnit.MINUTES, keyType = RateLimit.KeyType.USER)
     public ResponseEntity<LogSearchResponse> searchLogs(
         @RequestParam(required = false) String eventId,
         @RequestParam(required = false) String serviceName,
