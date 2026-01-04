@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
     username: sa
     password: 
@@ -10,6 +10,9 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
   
   kafka:
     bootstrap-servers: localhost:9092
@@ -19,6 +22,39 @@ spring:
     producer:
       acks: all
 
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
+      - net.devh.boot.grpc.client.autoconfigure.GrpcClientAutoConfiguration
+      - net.devh.boot.grpc.client.autoconfigure.GrpcClientHealthAutoConfiguration
+      - net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration
+      - net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration
+      - net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration
+      - net.devh.boot.grpc.server.autoconfigure.GrpcServerMetricAutoConfiguration
+      - net.devh.boot.grpc.server.autoconfigure.GrpcMetadataEurekaConfiguration
+
+heimdall:
+  elasticsearch:
+    enabled: false
+
+  analysis:
+    enabled: false
+
 logging:
   level:
     com.heimdall: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.hibernate.type.descriptor.jdbc: TRACE
+    org.springframework.orm.jpa: DEBUG
+    org.springframework.jdbc: DEBUG
+
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-exception: true
+    include-stacktrace: always

@@ -4,8 +4,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -13,12 +13,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
 
+import com.heimdall.ratelimit.RateLimiterService;
+
 @WebMvcTest(HealthController.class)
 @TestPropertySource(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration"
+    "spring.autoconfigure.exclude=" +
+        "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
+        "net.devh.boot.grpc.client.autoconfigure.GrpcClientAutoConfiguration," +
+        "net.devh.boot.grpc.client.autoconfigure.GrpcClientHealthAutoConfiguration," +
+        "net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration," +
+        "net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration," +
+        "net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration," +
+        "net.devh.boot.grpc.server.autoconfigure.GrpcServerMetricAutoConfiguration," +
+        "net.devh.boot.grpc.server.autoconfigure.GrpcMetadataEurekaConfiguration"
 })
 @DisplayName("HealthController Unit Tests")
 class HealthControllerTest {
+
+    @MockBean
+    private RateLimiterService rateLimiterService;
 
     @Autowired
     private MockMvc mockMvc;
