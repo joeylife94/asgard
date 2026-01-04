@@ -2,6 +2,7 @@ package com.heimdall.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.elasticsearch.client.ClientConfiguration;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchConfiguration;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
@@ -11,6 +12,7 @@ import org.springframework.data.elasticsearch.repository.config.EnableElasticsea
  * 전문 검색 기능을 위한 설정
  */
 @Configuration
+@ConditionalOnProperty(prefix = "heimdall.elasticsearch", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableElasticsearchRepositories(basePackages = "com.heimdall.search.repository")
 public class ElasticsearchConfig extends ElasticsearchConfiguration {
 

@@ -1,6 +1,7 @@
 """FastAPI REST API 서버"""
 
 import time
+import os
 from typing import Optional, List
 from datetime import datetime
 
@@ -32,9 +33,12 @@ app = FastAPI(
 )
 
 # CORS 설정
+cors_origins_env = os.getenv("BIFROST_CORS_ORIGINS", "*")
+cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 프로덕션에서는 제한 필요
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

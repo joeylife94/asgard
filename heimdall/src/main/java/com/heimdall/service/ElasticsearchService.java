@@ -4,6 +4,7 @@ import com.heimdall.search.document.LogDocument;
 import com.heimdall.search.repository.LogSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
  * 전문 검색 및 고급 필터링 기능 제공
  */
 @Service
+@ConditionalOnProperty(prefix = "heimdall.elasticsearch", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 @Slf4j
 public class ElasticsearchService {
