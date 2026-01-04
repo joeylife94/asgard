@@ -1,6 +1,7 @@
 package com.heimdall.ratelimit;
 
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -29,24 +30,29 @@ public class RateLimiterService {
      */
     public boolean isAllowed(String key, int maxRequests, Duration duration) {
         String redisKey = "ratelimit:" + key;
-        
-        // Get current counter
-        Long currentCount = redisTemplate.opsForValue().get(redisKey);
-        
-        if (currentCount == null) {
-            // First request - initialize counter
-            redisTemplate.opsForValue().set(redisKey, 1L, duration.getSeconds(), TimeUnit.SECONDS);
+
+        try {
+            // Get current counter
+            Long currentCount = redisTemplate.opsForValue().get(redisKey);
+
+            if (currentCount == null) {
+                // First request - initialize counter
+                redisTemplate.opsForValue().set(redisKey, 1L, duration.getSeconds(), TimeUnit.SECONDS);
+                return true;
+            }
+
+            if (currentCount >= maxRequests) {
+                // Rate limit exceeded
+                return false;
+            }
+
+            // Increment counter
+            redisTemplate.opsForValue().increment(redisKey);
+            return true;
+        } catch (RedisConnectionFailureException ex) {
+            // Fail-open when Redis is unavailable to avoid taking down core APIs.
             return true;
         }
-        
-        if (currentCount >= maxRequests) {
-            // Rate limit exceeded
-            return false;
-        }
-        
-        // Increment counter
-        redisTemplate.opsForValue().increment(redisKey);
-        return true;
     }
     
     /**
@@ -58,13 +64,18 @@ public class RateLimiterService {
      */
     public long getRemainingRequests(String key, int maxRequests) {
         String redisKey = "ratelimit:" + key;
-        Long currentCount = redisTemplate.opsForValue().get(redisKey);
-        
-        if (currentCount == null) {
+
+        try {
+            Long currentCount = redisTemplate.opsForValue().get(redisKey);
+
+            if (currentCount == null) {
+                return maxRequests;
+            }
+
+            return Math.max(0, maxRequests - currentCount);
+        } catch (RedisConnectionFailureException ex) {
             return maxRequests;
         }
-        
-        return Math.max(0, maxRequests - currentCount);
     }
     
     /**
@@ -75,9 +86,13 @@ public class RateLimiterService {
      */
     public long getTimeUntilReset(String key) {
         String redisKey = "ratelimit:" + key;
-        Long ttl = redisTemplate.getExpire(redisKey, TimeUnit.SECONDS);
-        
-        return ttl != null && ttl > 0 ? ttl : 0;
+
+        try {
+            Long ttl = redisTemplate.getExpire(redisKey, TimeUnit.SECONDS);
+            return ttl != null && ttl > 0 ? ttl : 0;
+        } catch (RedisConnectionFailureException ex) {
+            return 0;
+        }
     }
     
     /**
