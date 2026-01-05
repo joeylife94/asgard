@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import psutil
 import platform
 
@@ -77,7 +77,7 @@ async def health_check():
     
     return {
         "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "0.2.0",
         "components": {
             "database": check_database_health(db),

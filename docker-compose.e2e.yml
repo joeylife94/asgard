@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # Disable host port publishing for optional observability UIs during E2E
+  grafana:
+    ports:
+      - "3001:3000"
+
+  # Heimdall API Gateway (runs against the shared infra from docker-compose.yml)
+  heimdall:
+    build:
+      context: .
+      dockerfile: heimdall/docker/Dockerfile
+    container_name: asgard-heimdall
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://postgres:5432/heimdall
+      DATABASE_USERNAME: asgard
+      DATABASE_PASSWORD: asgard_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: redis_password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      SPRING_DATA_REDIS_PASSWORD: redis_password
+      # Disable optional subsystems for E2E stability
+      HEIMDALL_ELASTICSEARCH_ENABLED: "false"
+      GRPC_SERVER_ENABLED: "false"
+      GRPC_SERVER_SECURITY_ENABLED: "false"
+      # For E2E we keep the core Kafka+DB path only; optional subsystems must not block startup.
+      SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration,org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientAutoConfiguration,org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration,net.devh.boot.grpc.server.autoconfigure.GrpcServerFactoryAutoConfiguration,net.devh.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration,net.devh.boot.grpc.server.autoconfigure.GrpcServerSecurityAutoConfiguration,net.devh.boot.grpc.server.autoconfigure.GrpcServerMetricAutoConfiguration,net.devh.boot.grpc.server.autoconfigure.GrpcMetadataEurekaConfiguration
+      JWT_SECRET: e2e-jwt-secret
+      HEIMDALL_SECURITY_ADMIN_USERNAME: admin
+      HEIMDALL_SECURITY_ADMIN_PASSWORD: admin123
+      HEIMDALL_SECURITY_ADMIN_ROLES: ADMIN,USER
+      HEIMDALL_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_COMPONENTS: always
+      # Ensure schema initializes in Postgres for prod profile
+      SPRING_SQL_INIT_MODE: always
+      SPRING_SQL_INIT_SCHEMA_LOCATIONS: classpath:db/schema.sql
+    networks:
+      - asgard-network
+
+  # Bifrost worker/API (consumes analysis.request, publishes analysis.result)
+  bifrost:
+    build:
+      context: ./bifrost
+      dockerfile: Dockerfile
+    container_name: asgard-bifrost
+    depends_on:
+      - postgres
+      - kafka
+    ports:
+      - "8001:8000"
+    environment:
+      KAFKA_ENABLED: "true"
+      HEIMDALL_ENABLED: "true"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      HEIMDALL_DATABASE_URL: postgresql://asgard:asgard_password@postgres:5432/heimdall
+      BIFROST_OLLAMA_URL: http://ollama:11434
+      BIFROST_OLLAMA_ALLOW_FALLBACK: "true"
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - asgard-network
+
+  # Optional local LLM (kept minimal for E2E; tests can still pass without it)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: asgard-ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - asgard-network
+
+networks:
+  asgard-network:
+    external: false

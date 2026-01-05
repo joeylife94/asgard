@@ -1,7 +1,6 @@
 package com.heimdall.service;
 
 import com.heimdall.entity.LogEntry;
-import com.heimdall.kafka.event.AnalysisRequestEvent;
 import com.heimdall.kafka.event.LogIngestionEvent;
 import com.heimdall.kafka.producer.KafkaProducerService;
 import com.heimdall.repository.LogEntryRepository;
@@ -14,8 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,6 +20,7 @@ public class LogIngestionService {
     
     private final LogEntryRepository logEntryRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final AnalysisOrchestratorService analysisOrchestratorService;
     private final MeterRegistry meterRegistry;
     
     @Value("${heimdall.analysis.enabled:true}")
@@ -81,20 +79,14 @@ public class LogIngestionService {
     
     private void requestAnalysis(LogEntry logEntry) {
         try {
-            AnalysisRequestEvent analysisRequest = AnalysisRequestEvent.builder()
-                .requestId(UUID.randomUUID().toString())
-                .timestamp(DateTimeUtil.now())
-                .logId(logEntry.getId())
-                .logContent(logEntry.getLogContent())
-                .serviceName(logEntry.getServiceName())
-                .environment(logEntry.getEnvironment())
-                .analysisType("error")
-                .priority(determinePriority(logEntry))
-                .callbackTopic("analysis.result")
-                .correlationId(logEntry.getEventId())
-                .build();
-            
-            kafkaProducerService.sendAnalysisRequest(analysisRequest);
+            // Auto-analysis uses a stable idempotency key per ingested log
+            String idempotencyKey = "auto:" + logEntry.getEventId();
+            analysisOrchestratorService.requestAnalysisForLog(
+                logEntry.getId(),
+                idempotencyKey,
+                logEntry.getEventId(),
+                null
+            );
             
             meterRegistry.counter("analysis.requested.total",
                 "service", logEntry.getServiceName() != null ? logEntry.getServiceName() : "unknown",
@@ -116,3 +108,4 @@ public class LogIngestionService {
         };
     }
 }
+

@@ -330,7 +330,7 @@ Created: {prompt.get('created_at', 'N/A')}
             json.dump({
                 "prompt_id": prompt_id,
                 "variables": variables,
-                "updated_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.now(datetime.UTC).isoformat(),
             }, f, indent=2)
     
     def _save_version_history(self, prompt_id: int, prompt_data: Dict):
@@ -352,7 +352,7 @@ Created: {prompt.get('created_at', 'N/A')}
             "content": prompt_data.get("content"),
             "description": prompt_data.get("description"),
             "tags": prompt_data.get("tags", []),
-            "updated_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.now(datetime.UTC).isoformat(),
         })
         
         # 저장

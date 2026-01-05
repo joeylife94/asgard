@@ -1,23 +1,21 @@
-# Multi-stage build for Heimdall
 FROM gradle:8-jdk17 AS builder
 
-WORKDIR /app
+WORKDIR /workspace
 
-# Copy gradle files
-COPY build.gradle settings.gradle ./
+# Copy root Gradle project files (multi-module build)
+COPY gradlew gradlew.bat settings.gradle build.gradle gradle.properties ./
 COPY gradle ./gradle
+COPY config ./config
 
-# Download dependencies
-RUN gradle dependencies --no-daemon
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
-# Copy source code
-COPY src ./src
+# Copy Heimdall module sources
+COPY heimdall ./heimdall
 
-# Build application
-RUN gradle clean build -x test --no-daemon
+# Build Heimdall only (skip tests for container build)
+RUN ./gradlew :heimdall:bootJar -x test --no-daemon
 
-# Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
@@ -25,8 +23,10 @@ WORKDIR /app
 RUN addgroup -g 1000 heimdall && \
     adduser -D -u 1000 -G heimdall heimdall
 
+RUN mkdir -p /app/logs
+
 # Copy JAR from builder
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY --from=builder /workspace/heimdall/build/libs/*.jar app.jar
 
 # Change ownership
 RUN chown -R heimdall:heimdall /app

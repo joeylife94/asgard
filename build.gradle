@@ -130,7 +130,19 @@ subprojects {
     }
     
     tasks.named('test') {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            def excludeTagsProp = System.getProperty('test.excludeTags')
+            if (excludeTagsProp != null && !excludeTagsProp.trim().isEmpty()) {
+                def excludeTagsList = excludeTagsProp.split(',')*.trim().findAll { it }
+                excludeTags(*excludeTagsList)
+            }
+
+            def includeTagsProp = System.getProperty('test.includeTags')
+            if (includeTagsProp != null && !includeTagsProp.trim().isEmpty()) {
+                def includeTagsList = includeTagsProp.split(',')*.trim().findAll { it }
+                includeTags(*includeTagsList)
+            }
+        }
         finalizedBy jacocoTestReport
     }
     

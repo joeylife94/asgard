@@ -8,46 +8,45 @@ from decimal import Decimal
 from bifrost.kafka_events import (
     AnalysisRequestEvent,
     AnalysisResultEvent,
-    AnalysisResultData,
     AnalysisPriority
 )
+
+
+# This module exercises Kafka/event wiring and is intentionally excluded
+# from the default unit test run (see test-all.ps1: -m "not integration").
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
 def sample_analysis_request():
     """샘플 분석 요청 이벤트"""
     return AnalysisRequestEvent(
-        request_id="test-request-123",
+        job_id="00000000-0000-0000-0000-000000000123",
+        idempotency_key="idem-test-123",
         log_id=12345,
-        log_content="ERROR: Connection timeout to database",
-        service_name="user-service",
-        environment="test",
-        analysis_type="error",
         priority=AnalysisPriority.HIGH,
-        callback_topic="analysis.result",
-        correlation_id="corr-123"
+        trace_id="trace-test-123",
+        # legacy aliases (optional)
+        request_id="test-request-123",
+        correlation_id="corr-123",
     )
 
 
 @pytest.fixture
 def sample_analysis_result():
     """샘플 분석 결과 이벤트"""
-    result_data = AnalysisResultData(
+    return AnalysisResultEvent(
+        job_id="00000000-0000-0000-0000-000000000123",
+        status="SUCCEEDED",
         summary="Database connection timeout",
         root_cause="Connection pool exhausted",
         recommendation="Increase max_connections setting",
         severity="HIGH",
-        confidence=Decimal("0.95")
-    )
-    
-    return AnalysisResultEvent(
-        request_id="test-request-123",
-        correlation_id="corr-123",
+        confidence=Decimal("0.95"),
+        model_used="mistral-7b",
+        latency_ms=2500,
+        trace_id="trace-test-123",
         log_id=12345,
-        analysis_result=result_data,
-        bifrost_analysis_id=789,
-        model="mistral-7b",
-        duration_seconds=Decimal("2.5")
     )
 
 
@@ -58,10 +57,10 @@ class TestKafkaEvents:
         """분석 요청 이벤트 생성 테스트"""
         event = sample_analysis_request
         
-        assert event.request_id == "test-request-123"
+        assert event.job_id == "00000000-0000-0000-0000-000000000123"
         assert event.log_id == 12345
-        assert event.service_name == "user-service"
         assert event.priority == AnalysisPriority.HIGH
+        assert event.trace_id == "trace-test-123"
     
     def test_analysis_request_event_serialization(self, sample_analysis_request):
         """분석 요청 이벤트 직렬화 테스트"""
@@ -69,18 +68,17 @@ class TestKafkaEvents:
         data = event.model_dump()
         
         assert isinstance(data, dict)
-        assert data["request_id"] == "test-request-123"
+        assert data["job_id"] == "00000000-0000-0000-0000-000000000123"
         assert data["log_id"] == 12345
     
     def test_analysis_result_event_creation(self, sample_analysis_result):
         """분석 결과 이벤트 생성 테스트"""
         event = sample_analysis_result
         
-        assert event.request_id == "test-request-123"
+        assert event.job_id == "00000000-0000-0000-0000-000000000123"
         assert event.log_id == 12345
-        assert event.bifrost_analysis_id == 789
-        assert event.analysis_result.severity == "HIGH"
-        assert event.analysis_result.confidence == Decimal("0.95")
+        assert event.severity == "HIGH"
+        assert event.confidence == Decimal("0.95")
 
 
 @pytest.mark.asyncio

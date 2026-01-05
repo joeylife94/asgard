@@ -5,6 +5,7 @@ import com.heimdall.security.JwtAuthenticationFilter;
 import com.heimdall.security.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -25,6 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Security Configuration with JWT Authentication
@@ -36,6 +38,18 @@ public class SecurityConfig {
     
     private final JwtTokenProvider tokenProvider;
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+
+    @Value("${heimdall.security.admin.username}")
+    private String adminUsername;
+
+    @Value("${heimdall.security.admin.password}")
+    private String adminPassword;
+
+    @Value("${heimdall.security.admin.roles:ADMIN,USER}")
+    private String adminRolesCsv;
+
+    @Value("${heimdall.security.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String corsAllowedOriginsCsv;
     
     public SecurityConfig(
             JwtTokenProvider tokenProvider,
@@ -70,30 +84,28 @@ public class SecurityConfig {
     }
     
     /**
-     * In-Memory User Details Service (for demo/testing)
-     * TODO: Replace with database-backed UserDetailsService in production
+     * Env-backed admin user (no hardcoded demo credentials)
      */
     @Bean
     public UserDetailsService userDetailsService() {
+        if (adminUsername == null || adminUsername.isBlank() || adminPassword == null || adminPassword.isBlank()) {
+            throw new IllegalStateException(
+                "Missing Heimdall admin credentials. Set HEIMDALL_SECURITY_ADMIN_USERNAME and HEIMDALL_SECURITY_ADMIN_PASSWORD (or equivalent properties)."
+            );
+        }
+
+        String[] roles = Arrays.stream(adminRolesCsv.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toArray(String[]::new);
+
         UserDetails admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder().encode("admin123"))
-                .roles("ADMIN", "USER")
-                .build();
-        
-        UserDetails user = User.builder()
-                .username("user")
-                .password(passwordEncoder().encode("user123"))
-                .roles("USER")
-                .build();
-        
-        UserDetails developer = User.builder()
-                .username("developer")
-                .password(passwordEncoder().encode("dev123"))
-                .roles("DEVELOPER", "USER")
-                .build();
-        
-        return new InMemoryUserDetailsManager(admin, user, developer);
+            .username(adminUsername)
+            .password(passwordEncoder().encode(adminPassword))
+            .roles(roles)
+            .build();
+
+        return new InMemoryUserDetailsManager(admin);
     }
     
     /**
@@ -138,7 +150,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*"));
+        List<String> origins = Arrays.stream(corsAllowedOriginsCsv.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.toList());
+
+        if (origins.contains("*")) {
+            throw new IllegalStateException("Wildcard CORS origins are not allowed. Configure heimdall.security.cors.allowed-origins without '*'.");
+        }
+
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(false);

@@ -262,8 +262,10 @@ class MLflowTracker:
                 })
                 
                 # 태그
+                from datetime import timezone
+
                 tags = {
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
                 if metadata:
                     tags.update(metadata)

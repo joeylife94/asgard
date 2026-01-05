@@ -53,7 +53,7 @@ public class KafkaProducerService {
     
     public void sendAnalysisRequest(AnalysisRequestEvent event) {
         try {
-            String key = event.getLogId().toString();
+            String key = event.getJobId() != null ? event.getJobId().toString() : (event.getLogId() != null ? event.getLogId().toString() : null);
             String value = objectMapper.writeValueAsString(event);
             
             CompletableFuture<SendResult<String, String>> future = 
@@ -61,12 +61,12 @@ public class KafkaProducerService {
             
             future.whenComplete((result, ex) -> {
                 if (ex == null) {
-                    log.info("Analysis request sent successfully: requestId={}, logId={}, offset={}",
-                        event.getRequestId(), event.getLogId(), 
+                    log.info("Analysis request sent successfully: jobId={}, logId={}, offset={}",
+                        event.getJobId(), event.getLogId(),
                         result.getRecordMetadata().offset());
                 } else {
-                    log.error("Failed to send analysis request: requestId={}, logId={}", 
-                        event.getRequestId(), event.getLogId(), ex);
+                    log.error("Failed to send analysis request: jobId={}, logId={}",
+                        event.getJobId(), event.getLogId(), ex);
                 }
             });
         } catch (Exception e) {

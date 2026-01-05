@@ -3,7 +3,7 @@
 import logging
 import sys
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 
 
@@ -23,7 +23,7 @@ class StructuredLogger:
     def _log(self, level: str, message: str, **kwargs):
         """구조화된 로그 출력"""
         extra = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": level,
             "message": message,
             **kwargs

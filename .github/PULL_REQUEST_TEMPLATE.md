@@ -29,8 +29,15 @@ Closes #(issue)
 - [ ] Manual testing completed
 
 **Test command:**
-```bash
-./gradlew test
+```powershell
+# Full unified suite (recommended)
+./test-all.ps1 -SkipIntegration
+
+# Heimdall only
+./gradlew.bat :heimdall:test -Dtest.excludeTags=integration
+
+# Bifrost only
+Set-Location ./bifrost; pytest tests/ -q -m "not integration"
 ```
 
 ## 📝 Checklist

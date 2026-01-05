@@ -43,6 +43,18 @@ heimdall:
   analysis:
     enabled: false
 
+  security:
+    admin:
+      username: admin
+      password: admin123
+      roles: ADMIN,USER
+    cors:
+      allowed-origins: http://localhost:5173,http://localhost:3000
+
+jwt:
+  # Tests should not depend on external env vars (JWT_SECRET). Raw secrets are supported.
+  secret: test-jwt-secret
+
 logging:
   level:
     com.heimdall: DEBUG

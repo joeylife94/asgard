@@ -27,6 +27,9 @@ public class KafkaConfig {
     
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
+
+    @Value("${spring.kafka.producer.compression-type:gzip}")
+    private String producerCompressionType;
     
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
@@ -86,7 +89,7 @@ public class KafkaConfig {
         config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         
         // 성능 튜닝
-        config.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "snappy");
+        config.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerCompressionType);
         config.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
         config.put(ProducerConfig.LINGER_MS_CONFIG, 10);
         config.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);

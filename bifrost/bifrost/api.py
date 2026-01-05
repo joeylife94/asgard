@@ -3,7 +3,8 @@
 import time
 import os
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Depends, Header, BackgroundTasks, WebSocket, WebSocketDisconnect, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,16 +26,108 @@ from bifrost.export import DataExporter
 from bifrost.slack import SlackNotifier
 from bifrost.router import get_router  # Privacy Router 추가
 
+
+# Kafka 통합 관련 전역 변수
+kafka_consumer_manager = None
+kafka_producer_manager = None
+
+
+async def _startup() -> None:
+    """서버 시작 시"""
+    global kafka_consumer_manager, kafka_producer_manager
+
+    # Database 초기화
+    db = get_database()
+    db.init_db()
+    print("🌈 Bifrost API Server started!")
+
+    # Kafka 통합 활성화 (설정 기반)
+    from bifrost.config import Config
+    config = Config()
+
+    kafka_enabled = config.get("kafka.enabled", False)
+    heimdall_enabled = config.get("heimdall.enabled", False)
+
+    if kafka_enabled and heimdall_enabled:
+        try:
+            from bifrost.kafka_consumer import KafkaConsumerManager
+            from bifrost.kafka_producer import KafkaProducerManager
+            from bifrost.heimdall_integration import HeimdallIntegrationService
+
+            # Producer 초기화
+            kafka_config = config.get("kafka", {})
+            kafka_producer_manager = KafkaProducerManager(kafka_config)
+            await kafka_producer_manager.start()
+
+            # Integration Service 초기화
+            integration_service = HeimdallIntegrationService(
+                config=config.data,
+                producer_manager=kafka_producer_manager
+            )
+
+            # Consumer 초기화 및 시작
+            kafka_consumer_manager = KafkaConsumerManager(kafka_config)
+            await kafka_consumer_manager.start(
+                integration_service.process_analysis_request
+            )
+
+            logger.info(
+                "Kafka integration enabled - Heimdall 연동 시작됨",
+                bootstrap_servers=kafka_config.get("bootstrap_servers")
+            )
+            print("🔗 Kafka integration with Heimdall enabled!")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize Kafka integration: {e}", exc_info=True)
+            print(f"⚠️  Kafka integration failed: {e}")
+    else:
+        print("ℹ️  Kafka integration disabled (CLI mode)")
+
+
+async def _shutdown() -> None:
+    """서버 종료 시"""
+    global kafka_consumer_manager, kafka_producer_manager
+
+    # Kafka 리소스 정리
+    if kafka_consumer_manager:
+        await kafka_consumer_manager.stop()
+        print("🛑 Kafka consumer stopped")
+
+    if kafka_producer_manager:
+        await kafka_producer_manager.stop()
+        print("🛑 Kafka producer stopped")
+
+    print("👋 Bifrost API Server shutting down...")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await _startup()
+    try:
+        yield
+    finally:
+        await _shutdown()
+
+
 # FastAPI 앱
 app = FastAPI(
     title="Bifrost API",
     description="🌈 The Rainbow Bridge for MLOps - AI-powered log analysis",
     version="0.2.0",
+    lifespan=lifespan,
 )
 
 # CORS 설정
-cors_origins_env = os.getenv("BIFROST_CORS_ORIGINS", "*")
-cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+cors_origins_env = os.getenv("BIFROST_CORS_ORIGINS")
+if cors_origins_env is None or not cors_origins_env.strip():
+    cors_origins = ["http://localhost:5173", "http://localhost:3000"]
+else:
+    cors_origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+
+if "*" in cors_origins and os.getenv("BIFROST_ALLOW_WILDCARD_CORS", "false").lower() != "true":
+    raise RuntimeError(
+        "Wildcard CORS origins are disabled. Set BIFROST_CORS_ORIGINS to an explicit origin list, or set BIFROST_ALLOW_WILDCARD_CORS=true (not recommended)."
+    )
 
 app.add_middleware(
     CORSMiddleware,
@@ -175,7 +268,7 @@ async def root():
         "name": "Bifrost API",
         "version": "0.2.0",
         "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -205,7 +298,7 @@ async def health():
             "kafka": kafka_status,
             "heimdall_integration": "enabled" if kafka_consumer_manager else "disabled",
         },
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -443,80 +536,7 @@ async def list_api_keys():
     return db.list_api_keys()
 
 
-# ==================== Startup/Shutdown ====================
-
-# Kafka 통합 관련 전역 변수
-kafka_consumer_manager = None
-kafka_producer_manager = None
-
-@app.on_event("startup")
-async def startup_event():
-    """서버 시작 시"""
-    global kafka_consumer_manager, kafka_producer_manager
-    
-    # Database 초기화
-    db = get_database()
-    db.init_db()
-    print("🌈 Bifrost API Server started!")
-    
-    # Kafka 통합 활성화 (설정 기반)
-    from bifrost.config import Config
-    config = Config()
-    
-    kafka_enabled = config.get("kafka.enabled", False)
-    heimdall_enabled = config.get("heimdall.enabled", False)
-    
-    if kafka_enabled and heimdall_enabled:
-        try:
-            from bifrost.kafka_consumer import KafkaConsumerManager
-            from bifrost.kafka_producer import KafkaProducerManager
-            from bifrost.heimdall_integration import HeimdallIntegrationService
-            
-            # Producer 초기화
-            kafka_config = config.get("kafka", {})
-            kafka_producer_manager = KafkaProducerManager(kafka_config)
-            await kafka_producer_manager.start()
-            
-            # Integration Service 초기화
-            integration_service = HeimdallIntegrationService(
-                config=config.data,
-                producer_manager=kafka_producer_manager
-            )
-            
-            # Consumer 초기화 및 시작
-            kafka_consumer_manager = KafkaConsumerManager(kafka_config)
-            await kafka_consumer_manager.start(
-                integration_service.process_analysis_request
-            )
-            
-            logger.info(
-                "Kafka integration enabled - Heimdall 연동 시작됨",
-                bootstrap_servers=kafka_config.get("bootstrap_servers")
-            )
-            print("🔗 Kafka integration with Heimdall enabled!")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize Kafka integration: {e}", exc_info=True)
-            print(f"⚠️  Kafka integration failed: {e}")
-    else:
-        print("ℹ️  Kafka integration disabled (CLI mode)")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """서버 종료 시"""
-    global kafka_consumer_manager, kafka_producer_manager
-    
-    # Kafka 리소스 정리
-    if kafka_consumer_manager:
-        await kafka_consumer_manager.stop()
-        print("🛑 Kafka consumer stopped")
-    
-    if kafka_producer_manager:
-        await kafka_producer_manager.stop()
-        print("🛑 Kafka producer stopped")
-    
-    print("👋 Bifrost API Server shutting down...")
+ # Startup/Shutdown is handled via FastAPI lifespan
 
 
 # ==================== 새로운 기능 엔드포인트 ====================
@@ -624,7 +644,7 @@ async def export_csv(
         iter([csv_content]),
         media_type="text/csv",
         headers={
-            "Content-Disposition": f"attachment; filename=bifrost_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+            "Content-Disposition": f"attachment; filename=bifrost_export_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
         }
     )
 
@@ -645,7 +665,7 @@ async def export_json(
         iter([json_content]),
         media_type="application/json",
         headers={
-            "Content-Disposition": f"attachment; filename=bifrost_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+            "Content-Disposition": f"attachment; filename=bifrost_export_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
         }
     )
 

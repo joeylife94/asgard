@@ -50,22 +50,9 @@ spring:
 
 # JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:dGhpc2lzYXZlcnlzZWNyZXRrZXlmb3JoZWltZGFsbGp3dHRva2VuZ2VuZXJhdGlvbnBsZWFzZWNoYW5nZWlucHJvZHVjdGlvbg==}
+  # JWT_SECRET must be provided (no default fallback)
+  secret: ${JWT_SECRET}
   token-validity-in-seconds: ${JWT_EXPIRATION:86400}  # 24 hours
-  
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
-  
-  elasticsearch:
-    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
-    username: ${ELASTICSEARCH_USERNAME:}
-    password: ${ELASTICSEARCH_PASSWORD:}
-    connection-timeout: 5s
-    socket-timeout: 30s
 
 # Kafka Topics
 kafka:
@@ -79,6 +66,30 @@ kafka:
 
 # Application Settings
 heimdall:
+  security:
+    admin:
+      # No defaults: must be provided via env/properties
+      username: ${HEIMDALL_SECURITY_ADMIN_USERNAME}
+      password: ${HEIMDALL_SECURITY_ADMIN_PASSWORD}
+      roles: ${HEIMDALL_SECURITY_ADMIN_ROLES:ADMIN,USER}
+    cors:
+      # Comma-separated; no wildcard '*'
+      allowed-origins: ${HEIMDALL_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    connection-timeout: 5s
+    socket-timeout: 30s
+
   log:
     retention-days: 90
     batch-size: 1000

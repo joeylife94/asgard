@@ -2,12 +2,16 @@
 
 import asyncio
 import json
-from aiokafka import AIOKafkaConsumer
 from typing import Optional, Callable, Awaitable
 import logging
 from datetime import datetime
 
-from bifrost.kafka_events import AnalysisRequestEvent, DLQMessage
+try:
+    from aiokafka import AIOKafkaConsumer
+except Exception:  # pragma: no cover
+    AIOKafkaConsumer = None
+
+from bifrost.kafka_events import AnalysisRequestEvent, DlqFailedEvent
 from bifrost.logger import logger
 
 
@@ -30,6 +34,10 @@ class AnalysisRequestConsumer:
         
     async def start(self):
         """Consumer 시작"""
+        if AIOKafkaConsumer is None:
+            raise RuntimeError(
+                "aiokafka is required to start Kafka consumers. Install aiokafka or run the service in Docker/Linux."
+            )
         self.consumer = AIOKafkaConsumer(
             *self.topics,
             bootstrap_servers=self.bootstrap_servers,
@@ -87,12 +95,13 @@ class AnalysisRequestConsumer:
                     
                     # 이벤트 파싱
                     event = AnalysisRequestEvent(**message.value)
+
+                    job_id = event.normalized_job_id()
                     
                     logger.info(
                         f"Processing analysis request",
-                        request_id=event.request_id,
+                        job_id=job_id,
                         log_id=event.log_id,
-                        service_name=event.service_name,
                         priority=event.priority
                     )
                     
@@ -104,7 +113,7 @@ class AnalysisRequestConsumer:
                     
                     logger.info(
                         f"Analysis request processed successfully",
-                        request_id=event.request_id,
+                        job_id=job_id,
                         log_id=event.log_id
                     )
                     
@@ -146,14 +155,18 @@ class AnalysisRequestConsumer:
             return
         
         try:
-            dlq_msg = DLQMessage(
+            payload = message.value if isinstance(message.value, dict) else {}
+            dlq_msg = DlqFailedEvent(
+                schema_version=1,
+                job_id=payload.get("job_id") or payload.get("request_id"),
+                idempotency_key=payload.get("idempotency_key"),
+                error_code="CONSUMER_ERROR",
+                error_message=error_message,
+                trace_id=payload.get("trace_id") or payload.get("correlation_id"),
                 original_topic=message.topic,
                 original_partition=message.partition,
                 original_offset=message.offset,
-                error_message=error_message,
-                error_timestamp=datetime.utcnow(),
-                retry_count=0,
-                payload=message.value
+                payload=payload,
             )
             
             await self.dlq_producer.send_to_dlq(dlq_msg)

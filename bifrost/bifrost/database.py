@@ -3,13 +3,18 @@
 import hashlib
 from contextlib import contextmanager
 from typing import Generator, Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine, desc, func
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
 from bifrost.models import Base, AnalysisResult, AnalysisMetric, PromptTemplate, APIKey
+
+
+def utcnow() -> datetime:
+    """UTC now as naive datetime (UTC)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Database:
@@ -136,7 +141,7 @@ class Database:
     def get_duplicate_analyses(self, log_hash: str, hours: int = 24) -> List[Dict]:
         """중복 분석 찾기 (캐시 활용)"""
         with self.get_session() as session:
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            cutoff = utcnow() - timedelta(hours=hours)
             results = (
                 session.query(AnalysisResult)
                 .filter_by(log_hash=log_hash, status="completed")
@@ -168,7 +173,7 @@ class Database:
     def get_metrics_summary(self, hours: int = 24) -> Dict[str, Any]:
         """메트릭 요약"""
         with self.get_session() as session:
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            cutoff = utcnow() - timedelta(hours=hours)
             
             # 전체 통계
             total = session.query(func.count(AnalysisResult.id)).filter(
@@ -217,7 +222,7 @@ class Database:
                 existing.version = version
                 existing.template = template
                 existing.description = description
-                existing.updated_at = datetime.utcnow()
+                existing.updated_at = utcnow()
                 return existing.id
             else:
                 template_obj = PromptTemplate(
@@ -266,7 +271,7 @@ class Database:
             api_key = session.query(APIKey).filter_by(key=key, is_active=True).first()
             if api_key:
                 # 사용 기록 업데이트
-                api_key.last_used_at = datetime.utcnow()
+                api_key.last_used_at = utcnow()
                 api_key.usage_count += 1
                 return True
             return False

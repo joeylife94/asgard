@@ -1,6 +1,7 @@
 package com.heimdall.integration;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @EmbeddedKafka(partitions = 1)
 @DisplayName("Kafka E2E Skeleton Tests")
+@Tag("integration")
 class KafkaTopicsTest {
 
     @Autowired(required = false)

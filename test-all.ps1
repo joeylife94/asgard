@@ -12,9 +12,9 @@ $ErrorActionPreference = "Stop"
 $StartTime = Get-Date
 
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║       🧪 Asgard Unified Test Suite - All Services         ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host " Asgard Unified Test Suite - All Services" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Configuration
@@ -31,9 +31,9 @@ function Invoke-TestSuite {
         [scriptblock]$Script
     )
     
-    Write-Host "┌─────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
-    Write-Host "│  Testing: $Name" -ForegroundColor Yellow
-    Write-Host "└─────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+    Write-Host "------------------------------------------------------------" -ForegroundColor Yellow
+    Write-Host " Testing: $Name" -ForegroundColor Yellow
+    Write-Host "------------------------------------------------------------" -ForegroundColor Yellow
     Write-Host ""
     
     $stepStart = Get-Date
@@ -61,19 +61,19 @@ function Invoke-TestSuite {
 
 if ($Service -eq "all" -or $Service -eq "heimdall") {
     Invoke-TestSuite -Name "Heimdall" -Script {
-        Write-Host "🔧 Running Heimdall tests (JUnit)..." -ForegroundColor Cyan
+        Write-Host "Running Heimdall tests (JUnit)..." -ForegroundColor Cyan
         
         $gradleCmd = ".\gradlew.bat"
         $testArgs = @(":heimdall:test")
         
         if ($Coverage) {
             $testArgs += "jacocoTestReport"
-            Write-Host "   📊 Code coverage enabled" -ForegroundColor Yellow
+            Write-Host "   Code coverage enabled" -ForegroundColor Yellow
         }
         
         if ($SkipIntegration) {
             $testArgs += "-Dtest.excludeTags=integration"
-            Write-Host "   ⏭️  Skipping integration tests" -ForegroundColor Yellow
+            Write-Host "   Skipping integration tests" -ForegroundColor Yellow
         }
         
         if (-not $Verbose) {
@@ -92,16 +92,16 @@ if ($Service -eq "all" -or $Service -eq "heimdall") {
         # Parse test results
         $testResultFile = "heimdall\build\test-results\test\*.xml"
         if (Test-Path $testResultFile) {
-            Write-Host "   📄 Test report: heimdall\build\reports\tests\test\index.html" -ForegroundColor Gray
+            Write-Host "   Test report: heimdall\build\reports\tests\test\index.html" -ForegroundColor Gray
             
             if ($Coverage) {
-                Write-Host "   📊 Coverage report: heimdall\build\reports\jacoco\test\html\index.html" -ForegroundColor Gray
+                Write-Host "   Coverage report: heimdall\build\reports\jacoco\test\html\index.html" -ForegroundColor Gray
             }
         }
     }
 }
 else {
-    Write-Host "⏭️  Skipping Heimdall tests (Service: $Service)" -ForegroundColor Yellow
+    Write-Host "Skipping Heimdall tests (Service: $Service)" -ForegroundColor Yellow
     $TestResults.Heimdall.Status = "⏭️  Skipped"
     Write-Host ""
 }
@@ -112,17 +112,68 @@ else {
 
 if ($Service -eq "all" -or $Service -eq "bifrost") {
     Invoke-TestSuite -Name "Bifrost" -Script {
-        Write-Host "🐍 Running Bifrost tests (Pytest)..." -ForegroundColor Cyan
+        Write-Host "Running Bifrost tests (Pytest)..." -ForegroundColor Cyan
         
         Push-Location "bifrost"
         try {
             # Activate virtual environment
             if (Test-Path ".venv\Scripts\Activate.ps1") {
-                Write-Host "   🔄 Activating virtual environment..." -ForegroundColor Gray
+                Write-Host "   Activating virtual environment..." -ForegroundColor Gray
                 & ".venv\Scripts\Activate.ps1"
+
+                if (Test-Path "requirements.txt") {
+                    python -m pip install --upgrade pip setuptools wheel --quiet
+
+                    # Install dependencies if core imports are missing
+                    python -c "import sqlalchemy, multipart" 2>$null
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "   Installing requirements.txt..." -ForegroundColor Gray
+                        python -m pip install -r requirements.txt --quiet
+                        if ($LASTEXITCODE -ne 0) {
+                            Write-Host "   requirements.txt install failed; retrying without aiokafka (Windows toolchain issue)" -ForegroundColor Yellow
+                            $tmpReq = Join-Path $env:TEMP "bifrost-requirements-no-aiokafka.txt"
+                            (Get-Content "requirements.txt" | Where-Object { $_ -notmatch '^\s*aiokafka\s*==' }) | Set-Content -Path $tmpReq
+                            python -m pip install -r $tmpReq --quiet
+                        }
+                    }
+                }
+
+                # Ensure local package import works even if the venv already existed
+                python -m pip install -e . --no-deps --quiet
             }
             else {
-                throw "Virtual environment not found. Run 'build-all.ps1' first."
+                Write-Host "   Virtual environment not found; creating .venv..." -ForegroundColor Yellow
+
+                $pythonCmd = $null
+                if (Get-Command python -ErrorAction SilentlyContinue) {
+                    $pythonCmd = "python"
+                }
+                elseif (Get-Command py -ErrorAction SilentlyContinue) {
+                    $pythonCmd = "py -3"
+                }
+                else {
+                    throw "Python not found. Install Python 3.10+ or ensure 'python'/'py' is on PATH."
+                }
+
+                Invoke-Expression "$pythonCmd -m venv .venv"
+                & ".venv\Scripts\Activate.ps1"
+
+                if (Test-Path "requirements.txt") {
+                    Write-Host "   Installing requirements.txt..." -ForegroundColor Gray
+                    python -m pip install --upgrade pip setuptools wheel --quiet
+
+                    # Try full install first
+                    python -m pip install -r requirements.txt --quiet
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "   requirements.txt install failed; retrying without aiokafka (Windows toolchain issue)" -ForegroundColor Yellow
+                        $tmpReq = Join-Path $env:TEMP "bifrost-requirements-no-aiokafka.txt"
+                        (Get-Content "requirements.txt" | Where-Object { $_ -notmatch '^\s*aiokafka\s*==' }) | Set-Content -Path $tmpReq
+                        python -m pip install -r $tmpReq --quiet
+                    }
+
+                    # Ensure local package import works
+                    python -m pip install -e . --no-deps --quiet
+                }
             }
             
             # Ensure pytest is installed
@@ -140,12 +191,12 @@ if ($Service -eq "all" -or $Service -eq "bifrost") {
             
             if ($Coverage) {
                 $pytestArgs += "--cov=bifrost", "--cov-report=html", "--cov-report=term"
-                Write-Host "   📊 Code coverage enabled" -ForegroundColor Yellow
+                Write-Host "   Code coverage enabled" -ForegroundColor Yellow
             }
             
             if ($SkipIntegration) {
                 $pytestArgs += "-m", "not integration"
-                Write-Host "   ⏭️  Skipping integration tests" -ForegroundColor Yellow
+                Write-Host "   Skipping integration tests" -ForegroundColor Yellow
             }
             
             Write-Host "   Command: pytest $($pytestArgs -join ' ')" -ForegroundColor Gray
@@ -158,7 +209,7 @@ if ($Service -eq "all" -or $Service -eq "bifrost") {
             }
             
             if ($Coverage -and (Test-Path "htmlcov\index.html")) {
-                Write-Host "   📊 Coverage report: bifrost\htmlcov\index.html" -ForegroundColor Gray
+                Write-Host "   Coverage report: bifrost\htmlcov\index.html" -ForegroundColor Gray
             }
         }
         finally {
@@ -167,7 +218,7 @@ if ($Service -eq "all" -or $Service -eq "bifrost") {
     }
 }
 else {
-    Write-Host "⏭️  Skipping Bifrost tests (Service: $Service)" -ForegroundColor Yellow
+    Write-Host "Skipping Bifrost tests (Service: $Service)" -ForegroundColor Yellow
     $TestResults.Bifrost.Status = "⏭️  Skipped"
     Write-Host ""
 }
@@ -178,7 +229,7 @@ else {
 
 if ($Service -eq "all" -or $Service -eq "frontend") {
     Invoke-TestSuite -Name "Frontend" -Script {
-        Write-Host "⚛️  Running Frontend tests (Vitest)..." -ForegroundColor Cyan
+        Write-Host "Running Frontend tests (Vitest)..." -ForegroundColor Cyan
         
         Push-Location "bifrost\frontend"
         try {
@@ -186,7 +237,7 @@ if ($Service -eq "all" -or $Service -eq "frontend") {
             $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
             
             if ($packageJson.scripts.test) {
-                Write-Host "   📦 Running npm test..." -ForegroundColor Gray
+                Write-Host "   Running npm test..." -ForegroundColor Gray
                 npm test -- --run
                 
                 if ($LASTEXITCODE -ne 0) {
@@ -194,8 +245,8 @@ if ($Service -eq "all" -or $Service -eq "frontend") {
                 }
             }
             else {
-                Write-Host "   ⚠️  No test script found in package.json" -ForegroundColor Yellow
-                Write-Host "   💡 Consider adding Vitest or Jest for frontend testing" -ForegroundColor Gray
+                Write-Host "   No test script found in package.json" -ForegroundColor Yellow
+                Write-Host "   Consider adding Vitest or Jest for frontend testing" -ForegroundColor Gray
                 $TestResults.Frontend.Status = "⏭️  No tests"
             }
         }
@@ -205,7 +256,7 @@ if ($Service -eq "all" -or $Service -eq "frontend") {
     }
 }
 else {
-    Write-Host "⏭️  Skipping Frontend tests (Service: $Service)" -ForegroundColor Yellow
+    Write-Host "Skipping Frontend tests (Service: $Service)" -ForegroundColor Yellow
     $TestResults.Frontend.Status = "⏭️  Skipped"
     Write-Host ""
 }
@@ -217,9 +268,9 @@ else {
 $TotalTime = [math]::Round(((Get-Date) - $StartTime).TotalSeconds, 2)
 
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║                   📊 TEST SUMMARY                          ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host " TEST SUMMARY" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host ""
 
 foreach ($service in $TestResults.Keys) {
@@ -237,11 +288,11 @@ Write-Host ""
 $allPassed = ($TestResults.Values | Where-Object { $_.Status -like "*Failed*" }).Count -eq 0
 
 if ($allPassed) {
-    Write-Host "✅ All tests passed successfully!" -ForegroundColor Green
+    Write-Host "All tests passed successfully!" -ForegroundColor Green
     Write-Host ""
     
     if ($Coverage) {
-        Write-Host "📊 Coverage Reports:" -ForegroundColor Yellow
+        Write-Host "Coverage Reports:" -ForegroundColor Yellow
         Write-Host "   • Heimdall: heimdall\build\reports\jacoco\test\html\index.html" -ForegroundColor White
         Write-Host "   • Bifrost:  bifrost\htmlcov\index.html" -ForegroundColor White
         Write-Host ""
@@ -252,7 +303,7 @@ if ($allPassed) {
 else {
     Write-Host "❌ Some tests failed. Please check the errors above." -ForegroundColor Red
     Write-Host ""
-    Write-Host "💡 Quick tips:" -ForegroundColor Yellow
+    Write-Host "Quick tips:" -ForegroundColor Yellow
     Write-Host "   • Check test reports for details" -ForegroundColor White
     Write-Host "   • Run specific service: .\test-all.ps1 -Service heimdall" -ForegroundColor White
     Write-Host "   • Skip integration tests: .\test-all.ps1 -SkipIntegration" -ForegroundColor White

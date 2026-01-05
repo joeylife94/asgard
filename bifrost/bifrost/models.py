@@ -1,15 +1,19 @@
 """데이터베이스 모델"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import (
     Column, Integer, String, Text, Float, DateTime, 
     Boolean, JSON, ForeignKey, Index
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
+
+
+def utcnow() -> datetime:
+    """UTC now as naive datetime (UTC)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class AnalysisResult(Base):
@@ -19,7 +23,7 @@ class AnalysisResult(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     
     # 메타데이터
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, default=utcnow, nullable=False, index=True)
     source = Column(String(50), nullable=False)  # "local" or "cloud"
     model = Column(String(100), nullable=False, index=True)
     
@@ -89,7 +93,7 @@ class AnalysisMetric(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     analysis_id = Column(Integer, ForeignKey("analysis_results.id"), nullable=False)
     
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp = Column(DateTime, default=utcnow, nullable=False, index=True)
     metric_name = Column(String(100), nullable=False, index=True)
     metric_value = Column(Float, nullable=False)
     metric_unit = Column(String(20), nullable=True)
@@ -114,8 +118,8 @@ class PromptTemplate(Base):
     description = Column(Text, nullable=True)
     
     # 메타데이터
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     is_active = Column(Boolean, default=True, index=True)
     
     # A/B 테스팅
@@ -150,7 +154,7 @@ class APIKey(Base):
     rate_limit_per_hour = Column(Integer, default=100)
     
     # 사용 통계
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
     last_used_at = Column(DateTime, nullable=True)
     usage_count = Column(Integer, default=0)
     

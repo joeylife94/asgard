@@ -39,6 +39,29 @@ CREATE TABLE IF NOT EXISTS analysis_results (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Analysis Jobs Table (Kafka control plane orchestration)
+CREATE TABLE IF NOT EXISTS analysis_jobs (
+    job_id UUID PRIMARY KEY,
+    idempotency_key VARCHAR(200) UNIQUE NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at TIMESTAMP,
+    finished_at TIMESTAMP,
+    trace_id VARCHAR(128),
+    model_policy JSONB,
+    log_id BIGINT,
+    input_ref VARCHAR(200),
+    result_ref BIGINT,
+    result_summary TEXT,
+    result_payload JSONB,
+    error_code VARCHAR(100),
+    error_message TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_analysis_jobs_status_created ON analysis_jobs(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analysis_jobs_log_id ON analysis_jobs(log_id);
+
 -- Indexes for analysis_results
 CREATE INDEX IF NOT EXISTS idx_analysis_results_log_id ON analysis_results(log_id);
 CREATE INDEX IF NOT EXISTS idx_analysis_results_analyzed_at ON analysis_results(analyzed_at DESC);

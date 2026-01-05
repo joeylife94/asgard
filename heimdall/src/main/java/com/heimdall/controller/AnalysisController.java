@@ -1,6 +1,9 @@
 package com.heimdall.controller;
 
 import com.heimdall.dto.AnalysisResultResponse;
+import com.heimdall.dto.AnalysisJobAcceptedResponse;
+import com.heimdall.dto.RequestLogAnalysis;
+import com.heimdall.service.AnalysisOrchestratorService;
 import com.heimdall.entity.AnalysisResult;
 import com.heimdall.repository.AnalysisResultRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class AnalysisController {
     
     private final AnalysisResultRepository analysisResultRepository;
+    private final AnalysisOrchestratorService analysisOrchestratorService;
     
     @GetMapping("/{logId}/analysis")
     public ResponseEntity<AnalysisResultResponse> getAnalysisResult(
@@ -46,4 +50,32 @@ public class AnalysisController {
         
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{logId}/analysis")
+    public ResponseEntity<AnalysisJobAcceptedResponse> requestAnalysis(
+        @PathVariable Long logId,
+        @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKeyHeader,
+        @RequestBody(required = false) RequestLogAnalysis request
+    ) {
+        String idempotencyKey = (request != null && request.idempotencyKey() != null)
+            ? request.idempotencyKey()
+            : (idempotencyKeyHeader != null ? idempotencyKeyHeader : ("manual:log:" + logId + ":" + java.util.UUID.randomUUID()));
+
+        String traceId = java.util.UUID.randomUUID().toString();
+        var result = analysisOrchestratorService.requestAnalysisForLog(
+            logId,
+            idempotencyKey,
+            traceId,
+            request != null ? request.modelPolicy() : null
+        );
+
+        AnalysisJobAcceptedResponse response = AnalysisJobAcceptedResponse.builder()
+            .jobId(result.job().getJobId())
+            .status(result.job().getStatus())
+            .created(result.created())
+            .build();
+
+        return ResponseEntity.accepted().body(response);
+    }
 }
+

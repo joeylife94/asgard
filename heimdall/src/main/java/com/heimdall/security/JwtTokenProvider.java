@@ -13,6 +13,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.stream.Collectors;
@@ -32,9 +35,36 @@ public class JwtTokenProvider {
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secretKey,
             @Value("${jwt.token-validity-in-seconds:86400}") long tokenValidityInSeconds) {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = deriveSigningKeyBytes(secretKey);
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.tokenValidityInMilliseconds = tokenValidityInSeconds * 1000;
+    }
+
+    private static byte[] deriveSigningKeyBytes(String secretKey) {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalArgumentException("jwt.secret must be set");
+        }
+
+        try {
+            byte[] decoded = Decoders.BASE64.decode(secretKey);
+            // HS512 requires >= 512 bits (64 bytes). If decoded is shorter, derive fixed-length key material.
+            if (decoded.length >= 64) {
+                return decoded;
+            }
+            return sha512(decoded);
+        } catch (Exception ignored) {
+            // Accept non-base64 secrets by deriving fixed-length key material.
+            return sha512(secretKey.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private static byte[] sha512(byte[] input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-512");
+            return digest.digest(input);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-512 not available", e);
+        }
     }
     
     /**

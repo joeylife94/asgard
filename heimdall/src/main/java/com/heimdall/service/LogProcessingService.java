@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,13 +21,29 @@ public class LogProcessingService {
     
     private final LogEntryRepository logEntryRepository;
     private final AnalysisResultRepository analysisResultRepository;
+    private final AnalysisJobService analysisJobService;
     private final NotificationService notificationService;
     private final MeterRegistry meterRegistry;
     
     @Transactional
     public void processAnalysisResult(AnalysisResultEvent event) {
-        log.info("Processing analysis result: requestId={}, logId={}", 
-            event.getRequestId(), event.getLogId());
+        log.info("Processing analysis result: jobId={}, logId={}, status={}",
+            event.getJobId(), event.getLogId(), event.getStatus());
+
+        UUID jobId = event.getJobId();
+        if (jobId == null) {
+            throw new IllegalArgumentException("Missing job_id in analysis result event");
+        }
+
+        if (event.getStatus() == null) {
+            throw new IllegalArgumentException("Missing status in analysis result event");
+        }
+
+        if ("FAILED".equalsIgnoreCase(event.getStatus())) {
+            analysisJobService.markFailed(jobId, event.getErrorCode(), event.getErrorMessage(), event.getTraceId());
+            meterRegistry.counter("ai_job_failed_total").increment();
+            return;
+        }
         
         // 로그 엔트리 조회
         LogEntry logEntry = logEntryRepository.findById(event.getLogId())
@@ -34,41 +52,44 @@ public class LogProcessingService {
         // 분석 결과 생성
         AnalysisResult analysisResult = new AnalysisResult();
         analysisResult.setLogEntry(logEntry);
-        analysisResult.setBifrostAnalysisId(event.getBifrostAnalysisId());
-        analysisResult.setRequestId(event.getRequestId());
-        analysisResult.setCorrelationId(event.getCorrelationId());
-        analysisResult.setSummary(event.getAnalysisResult().getSummary());
-        analysisResult.setRootCause(event.getAnalysisResult().getRootCause());
-        analysisResult.setRecommendation(event.getAnalysisResult().getRecommendation());
-        analysisResult.setSeverity(event.getAnalysisResult().getSeverity());
-        analysisResult.setConfidence(event.getAnalysisResult().getConfidence());
-        analysisResult.setModel(event.getModel());
-        analysisResult.setDurationSeconds(event.getDurationSeconds());
-        analysisResult.setAnalyzedAt(event.getTimestamp());
+        analysisResult.setRequestId(jobId.toString());
+        analysisResult.setCorrelationId(event.getTraceId());
+        analysisResult.setSummary(event.getSummary());
+        analysisResult.setRootCause(event.getRootCause());
+        analysisResult.setRecommendation(event.getRecommendation());
+        analysisResult.setSeverity(event.getSeverity());
+        analysisResult.setConfidence(event.getConfidence());
+        analysisResult.setModel(event.getModelUsed());
+        if (event.getLatencyMs() != null) {
+            analysisResult.setDurationSeconds(new java.math.BigDecimal(event.getLatencyMs()).divide(java.math.BigDecimal.valueOf(1000), 2, java.math.RoundingMode.HALF_UP));
+        }
+        analysisResult.setAnalyzedAt(event.getTimestamp() != null ? event.getTimestamp() : DateTimeUtil.now());
         analysisResult.setCreatedAt(DateTimeUtil.now());
         
         // 데이터베이스 저장
         AnalysisResult savedResult = analysisResultRepository.save(analysisResult);
+
+        analysisJobService.markSucceeded(
+            jobId,
+            savedResult.getId(),
+            savedResult.getSummary(),
+            null,
+            event.getTraceId()
+        );
         
         // 메트릭 기록
-        meterRegistry.counter("analysis.completed.total",
-            "service", logEntry.getServiceName() != null ? logEntry.getServiceName() : "unknown",
-            "severity", event.getAnalysisResult().getSeverity()
-        ).increment();
-        
-        meterRegistry.timer("analysis.duration",
-            "service", logEntry.getServiceName() != null ? logEntry.getServiceName() : "unknown"
-        ).record(java.time.Duration.ofMillis(
-            event.getDurationSeconds().multiply(java.math.BigDecimal.valueOf(1000)).longValue()
-        ));
+        meterRegistry.counter("ai_job_success_total").increment();
+        if (event.getLatencyMs() != null) {
+            meterRegistry.timer("ai_job_latency_ms").record(java.time.Duration.ofMillis(event.getLatencyMs()));
+        }
         
         // 알림 처리 (조건 충족 시)
         if (shouldSendNotification(savedResult)) {
             notificationService.sendAnalysisNotification(savedResult);
         }
         
-        log.info("Analysis result processed: analysisId={}, logId={}", 
-            savedResult.getId(), logEntry.getId());
+        log.info("Analysis result processed: analysisId={}, logId={}, jobId={}",
+            savedResult.getId(), logEntry.getId(), jobId);
     }
     
     private boolean shouldSendNotification(AnalysisResult analysisResult) {

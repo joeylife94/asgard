@@ -45,52 +45,6 @@ public class BifrostController {
         return ResponseEntity.ok(health);
     }
     
-    /**
-     * Analyze log endpoint (synchronous)
-     * 
-     * POST /api/bifrost/analyze
-     * Body: { "log": "error message", "level": "ERROR", ... }
-     * 
-     * Rate Limit: 100 requests per hour per user
-     */
-    @PostMapping("/analyze")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @RateLimit(maxRequests = 100, duration = 1, timeUnit = ChronoUnit.HOURS)
-    public ResponseEntity<Map<String, Object>> analyzeLog(@RequestBody Map<String, Object> logData) {
-        Map<String, Object> result = bifrostService.analyzeLog(logData);
-        return ResponseEntity.ok(result);
-    }
-    
-    /**
-     * Analyze log endpoint (asynchronous)
-     * 
-     * POST /api/bifrost/analyze/async
-     * 
-     * Rate Limit: 100 requests per hour per user
-     */
-    @PostMapping("/analyze/async")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @RateLimit(maxRequests = 100, duration = 1, timeUnit = ChronoUnit.HOURS)
-    public CompletableFuture<ResponseEntity<Map<String, Object>>> analyzeLogAsync(
-            @RequestBody Map<String, Object> logData) {
-        return bifrostService.analyzeLogAsync(logData)
-                .thenApply(ResponseEntity::ok);
-    }
-    
-    /**
-     * Get analysis history
-     * 
-     * GET /api/bifrost/history?page=0&size=20
-     * 
-     * Rate Limit: 200 requests per hour per user
-     */
-    @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('DEVELOPER', 'ADMIN')")
-    @RateLimit(maxRequests = 200, duration = 1, timeUnit = ChronoUnit.HOURS)
-    public ResponseEntity<Map<String, Object>> getHistory(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Map<String, Object> history = bifrostService.getAnalysisHistory(page, size);
-        return ResponseEntity.ok(history);
-    }
+    // NOTE: Heimdall <-> Bifrost analysis execution is Kafka-only.
+    // REST is intentionally kept for health/debug/manual admin only.
 }

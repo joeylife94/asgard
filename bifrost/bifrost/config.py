@@ -43,7 +43,7 @@ DEFAULT_CONFIG = {
             "acks": "all",
             "retries": 3,
             "max_in_flight_requests_per_connection": 1,
-            "compression_type": "snappy",
+            "compression_type": "gzip",
         },
         "topics": {
             "analysis_request": "analysis.request",

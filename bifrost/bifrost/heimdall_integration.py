@@ -1,15 +1,13 @@
 """Kafka Integration Service - Heimdall 연동 핵심 로직"""
 
+import os
 import time
 from decimal import Decimal
 from typing import Optional
 
-from bifrost.kafka_events import (
-    AnalysisRequestEvent,
-    AnalysisResultEvent,
-    AnalysisResultData
-)
+from bifrost.kafka_events import AnalysisRequestEvent, AnalysisResultEvent, DlqFailedEvent, TokenUsage
 from bifrost.kafka_producer import KafkaProducerManager
+from bifrost.heimdall_store import HeimdallStore
 from bifrost.ollama import OllamaClient
 from bifrost.bedrock import BedrockClient, is_bedrock_available
 from bifrost.preprocessor import LogPreprocessor
@@ -45,6 +43,12 @@ class HeimdallIntegrationService:
         self.producer_manager = producer_manager
         self.preprocessor = LogPreprocessor()
         self.db = get_database()
+
+        heimdall_db_url = os.getenv(
+            "HEIMDALL_DATABASE_URL",
+            "postgresql://asgard:asgard_password@localhost:5432/heimdall",
+        )
+        self.heimdall_store = HeimdallStore(heimdall_db_url)
     
     async def process_analysis_request(self, event: AnalysisRequestEvent):
         """
@@ -54,19 +58,25 @@ class HeimdallIntegrationService:
             event: Heimdall로부터 받은 분석 요청 이벤트
         """
         start_time = time.time()
+
+        job_id = event.normalized_job_id()
+        trace_id = event.normalized_trace_id()
         
         logger.info(
             f"Processing analysis request from Heimdall",
-            request_id=event.request_id,
+            job_id=job_id,
             log_id=event.log_id,
-            service_name=event.service_name,
-            environment=event.environment,
             priority=event.priority
         )
         
         try:
+            # 0. Heimdall DB에서 log_content 조회 (REST 제거)
+            log_entry = self.heimdall_store.get_log_entry(event.log_id)
+            if not log_entry:
+                raise RuntimeError(f"Heimdall log entry not found: log_id={event.log_id}")
+
             # 1. 로그 전처리
-            processed_log = self.preprocessor.process(event.log_content)
+            processed_log = self.preprocessor.process(log_entry.log_content)
             
             # 2. 프롬프트 생성
             prompt = MASTER_PROMPT.format(log_content=processed_log)
@@ -81,24 +91,40 @@ class HeimdallIntegrationService:
             bifrost_analysis_id = self._save_analysis_to_db(
                 event=event,
                 response=analysis_response,
-                duration=time.time() - start_time
+                duration=time.time() - start_time,
+                log_content=log_entry.log_content,
+                service_name=log_entry.service_name,
+                environment=log_entry.environment,
             )
             
             # 5. 분석 결과를 AnalysisResultData로 변환
-            result_data = self._parse_analysis_response(
+            parsed = self._parse_analysis_response(
                 response=analysis_response["response"],
-                confidence=0.85  # TODO: 모델에서 confidence 추출
+                confidence=0.85
             )
             
             # 6. Kafka로 결과 발행 (Heimdall로 전송)
+            latency_ms = int((time.time() - start_time) * 1000)
+            usage = analysis_response.get("metadata", {}).get("usage", {}) or {}
+
             result_event = AnalysisResultEvent(
-                request_id=event.request_id,
-                correlation_id=event.correlation_id,
+                schema_version=1,
+                job_id=job_id,
+                status="SUCCEEDED",
+                summary=parsed.summary,
+                root_cause=parsed.root_cause,
+                recommendation=parsed.recommendation,
+                severity=parsed.severity,
+                confidence=parsed.confidence,
+                model_used=analysis_response.get("metadata", {}).get("model"),
+                token_usage=TokenUsage(
+                    prompt_tokens=usage.get("prompt_tokens"),
+                    completion_tokens=usage.get("completion_tokens"),
+                    total_tokens=usage.get("total_tokens"),
+                ),
+                latency_ms=latency_ms,
+                trace_id=trace_id,
                 log_id=event.log_id,
-                analysis_result=result_data,
-                bifrost_analysis_id=bifrost_analysis_id,
-                model=analysis_response["metadata"]["model"],
-                duration_seconds=Decimal(str(round(time.time() - start_time, 2)))
             )
             
             success = await self.producer_manager.send_result(result_event)
@@ -106,26 +132,55 @@ class HeimdallIntegrationService:
             if success:
                 logger.info(
                     f"Analysis completed and sent to Heimdall",
-                    request_id=event.request_id,
+                    job_id=job_id,
                     log_id=event.log_id,
                     bifrost_analysis_id=bifrost_analysis_id,
-                    duration_seconds=result_event.duration_seconds
+                    latency_ms=latency_ms
                 )
             else:
                 logger.error(
                     f"Failed to send analysis result to Heimdall",
-                    request_id=event.request_id,
+                    job_id=job_id,
                     log_id=event.log_id
                 )
             
         except Exception as e:
             logger.error(
                 f"Error processing analysis request",
-                request_id=event.request_id,
+                job_id=job_id,
                 log_id=event.log_id,
                 error=str(e),
                 exc_info=True
             )
+
+            # Failure path: publish FAILED result + DLQ signal
+            try:
+                failed_event = AnalysisResultEvent(
+                    schema_version=1,
+                    job_id=job_id,
+                    status="FAILED",
+                    error_code="PROCESSING_ERROR",
+                    error_message=str(e),
+                    trace_id=trace_id,
+                    log_id=event.log_id,
+                )
+                await self.producer_manager.send_result(failed_event)
+
+                dlq_event = DlqFailedEvent(
+                    schema_version=1,
+                    job_id=job_id,
+                    idempotency_key=event.idempotency_key,
+                    error_code="PROCESSING_ERROR",
+                    error_message=str(e),
+                    trace_id=trace_id,
+                    original_topic=self.config.get("kafka", {}).get("topics", {}).get("analysis_request", "analysis.request"),
+                    original_partition=-1,
+                    original_offset=-1,
+                    payload=getattr(event, "model_dump", lambda: {} )(),
+                )
+                await self.producer_manager.send_dlq(dlq_event)
+            except Exception:
+                logger.error("Failed to publish failure signals", exc_info=True)
             raise
     
     async def _analyze_with_ai(self, prompt: str, source: str) -> dict:
@@ -156,30 +211,33 @@ class HeimdallIntegrationService:
         self,
         event: AnalysisRequestEvent,
         response: dict,
-        duration: float
+        duration: float,
+        log_content: str,
+        service_name: Optional[str],
+        environment: Optional[str],
     ) -> int:
         """분석 결과를 Bifrost DB에 저장"""
         analysis_id = self.db.save_analysis(
             source=self._get_source_from_config(),
             model=response["metadata"]["model"],
-            log_content=event.log_content,
+            log_content=log_content,
             response=response["response"],
             duration=duration,
             tags=[
                 f"heimdall:log_id:{event.log_id}",
-                f"service:{event.service_name}",
-                f"env:{event.environment}",
+                f"service:{service_name}",
+                f"env:{environment}",
                 f"priority:{event.priority}"
             ],
-            service_name=event.service_name,
-            environment=event.environment,
+            service_name=service_name,
+            environment=environment,
             tokens_used=response["metadata"].get("usage", {}).get("total_tokens"),
             status="completed"
         )
         
         return analysis_id
     
-    def _parse_analysis_response(self, response: str, confidence: float) -> AnalysisResultData:
+    def _parse_analysis_response(self, response: str, confidence: float):
         """
         AI 응답을 구조화된 데이터로 변환
         
@@ -221,12 +279,20 @@ class HeimdallIntegrationService:
         else:
             severity = "LOW"
         
-        return AnalysisResultData(
+        class _Parsed:
+            def __init__(self, summary: str, root_cause: str, recommendation: str, severity: str, confidence: Decimal):
+                self.summary = summary
+                self.root_cause = root_cause
+                self.recommendation = recommendation
+                self.severity = severity
+                self.confidence = confidence
+
+        return _Parsed(
             summary=summary.strip() or "분석 요약 정보 없음",
             root_cause=root_cause.strip() or "근본 원인 분석 중",
             recommendation=recommendation.strip() or "권장사항 분석 중",
             severity=severity,
-            confidence=Decimal(str(confidence))
+            confidence=Decimal(str(confidence)),
         )
     
     def _get_source_from_config(self) -> str:

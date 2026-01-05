@@ -2,7 +2,7 @@
 
 import time
 from typing import Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from threading import Lock
 
@@ -68,7 +68,7 @@ class WindowRateLimiter:
     def is_allowed(self, key: str) -> bool:
         """요청 허용 여부"""
         with self.lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             cutoff = now - timedelta(seconds=self.window_seconds)
             
             # 오래된 요청 제거
@@ -86,7 +86,7 @@ class WindowRateLimiter:
     def get_remaining(self, key: str) -> int:
         """남은 요청 수"""
         with self.lock:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             cutoff = now - timedelta(seconds=self.window_seconds)
             
             # 오래된 요청 제거

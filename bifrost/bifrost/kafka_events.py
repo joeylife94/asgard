@@ -1,10 +1,19 @@
-"""Kafka Event Schema - Heimdall과의 MSA 통신용 이벤트 모델"""
+"""Kafka Event Schema - Heimdall <-> Bifrost control-plane events.
 
-from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
+Kafka is the primary control plane:
+- analysis.request starts jobs
+- analysis.result completes jobs
+"""
+
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 
 
 class AnalysisPriority(str, Enum):
@@ -26,92 +35,78 @@ class SeverityLevel(str, Enum):
 
 
 class AnalysisRequestEvent(BaseModel):
-    """
-    Heimdall로부터 받는 분석 요청 이벤트
-    Topic: analysis.request
-    """
-    
-    request_id: str = Field(..., description="요청 고유 ID (UUID)")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    log_id: int = Field(..., description="Heimdall의 로그 ID")
-    log_content: str = Field(..., description="분석할 로그 내용")
-    service_name: str = Field(..., description="로그 출처 서비스명")
-    environment: str = Field(..., description="환경 (dev/staging/prod)")
-    analysis_type: str = Field(default="error", description="분석 유형")
-    priority: AnalysisPriority = Field(default=AnalysisPriority.NORMAL)
-    callback_topic: str = Field(default="analysis.result")
-    correlation_id: str = Field(..., description="추적용 Correlation ID")
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "request_id": "550e8400-e29b-41d4-a716-446655440000",
-                "timestamp": "2024-11-12T10:30:00Z",
-                "log_id": 12345,
-                "log_content": "ERROR: Connection timeout to database",
-                "service_name": "user-service",
-                "environment": "production",
-                "analysis_type": "error",
-                "priority": "HIGH",
-                "callback_topic": "analysis.result",
-                "correlation_id": "corr-123456"
-            }
-        }
+    """Heimdall -> Bifrost. Topic: analysis.request"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    schema_version: int = Field(default=1)
+    job_id: str = Field(..., description="Job UUID")
+    idempotency_key: str = Field(..., description="Deduplication key")
+    log_id: int = Field(..., description="Heimdall log id")
+    tenant_id: Optional[str] = None
+    priority: Optional[str] = None
+    timeout_ms: Optional[int] = None
+    model_policy: Optional[Dict[str, Any]] = None
+    trace_id: str = Field(..., description="Trace id (propagated)")
+
+    # Minimal backward compatibility
+    request_id: Optional[str] = Field(default=None, description="Legacy alias", repr=False)
+    correlation_id: Optional[str] = Field(default=None, description="Legacy alias", repr=False)
+
+    def normalized_job_id(self) -> str:
+        return self.job_id or self.request_id  # type: ignore[return-value]
+
+    def normalized_trace_id(self) -> str:
+        return self.trace_id or self.correlation_id  # type: ignore[return-value]
 
 
-class AnalysisResultData(BaseModel):
-    """AI 분석 결과 데이터"""
-    summary: str = Field(..., description="분석 요약")
-    root_cause: str = Field(..., description="근본 원인")
-    recommendation: str = Field(..., description="해결 권장사항")
-    severity: str = Field(..., description="심각도 (LOW/MEDIUM/HIGH/CRITICAL)")
-    confidence: Decimal = Field(..., ge=0, le=1, description="신뢰도 (0~1)")
+class TokenUsage(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
 
 
 class AnalysisResultEvent(BaseModel):
-    """
-    Heimdall로 보내는 분석 결과 이벤트
-    Topic: analysis.result
-    """
-    
-    request_id: str = Field(..., description="원본 요청 ID")
-    correlation_id: str = Field(..., description="Correlation ID")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    log_id: int = Field(..., description="Heimdall의 로그 ID")
-    analysis_result: AnalysisResultData
-    bifrost_analysis_id: int = Field(..., description="Bifrost 분석 ID")
-    model: str = Field(..., description="사용된 AI 모델")
-    duration_seconds: Decimal = Field(..., description="분석 소요 시간")
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "request_id": "550e8400-e29b-41d4-a716-446655440000",
-                "correlation_id": "corr-123456",
-                "timestamp": "2024-11-12T10:30:15Z",
-                "log_id": 12345,
-                "analysis_result": {
-                    "summary": "PostgreSQL 연결 타임아웃 발생",
-                    "root_cause": "Connection pool 고갈로 인한 연결 대기 시간 초과",
-                    "recommendation": "max_connections 설정 증가 및 connection pool 크기 조정 권장",
-                    "severity": "HIGH",
-                    "confidence": 0.95
-                },
-                "bifrost_analysis_id": 789,
-                "model": "mistral-7b",
-                "duration_seconds": 2.5
-            }
-        }
+    """Bifrost -> Heimdall. Topic: analysis.result"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    schema_version: int = Field(default=1)
+    job_id: str
+    status: str
+
+    summary: Optional[str] = None
+    root_cause: Optional[str] = None
+    recommendation: Optional[str] = None
+    severity: Optional[str] = None
+    confidence: Optional[Decimal] = None
+
+    model_used: Optional[str] = None
+    token_usage: Optional[TokenUsage] = None
+    latency_ms: Optional[int] = None
+
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    trace_id: str
+    log_id: Optional[int] = None
 
 
-class DLQMessage(BaseModel):
-    """Dead Letter Queue 메시지"""
-    
+class DlqFailedEvent(BaseModel):
+    """Bifrost -> Heimdall. Topic: dlq.failed (processing failure signal)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    schema_version: int = Field(default=1)
+    job_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
+    error_code: Optional[str] = None
+    error_message: str
+    trace_id: Optional[str] = None
+
     original_topic: str
     original_partition: int
     original_offset: int
-    error_message: str
-    error_timestamp: datetime = Field(default_factory=datetime.utcnow)
-    retry_count: int = 0
+    failed_at: datetime = Field(default_factory=datetime.utcnow)
     payload: Dict[str, Any]

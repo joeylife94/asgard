@@ -42,8 +42,8 @@ public class AnalysisResultListener {
             // 수동 커밋
             acknowledgment.acknowledge();
             
-            log.info("Successfully processed analysis result: requestId={}, logId={}", 
-                event.getRequestId(), event.getLogId());
+            log.info("Successfully processed analysis result: jobId={}, logId={}",
+                event.getJobId(), event.getLogId());
         } catch (Exception e) {
             log.error("Error processing analysis result message: key={}, offset={}", 
                 key, offset, e);

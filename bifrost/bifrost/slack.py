@@ -2,7 +2,7 @@
 
 import requests
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class SlackNotifier:
@@ -64,7 +64,7 @@ class SlackNotifier:
                     },
                     {
                         "type": "mrkdwn",
-                        "text": f"*시간:*\n{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+                        "text": f"*시간:*\n{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
                     },
                     {
                         "type": "mrkdwn",
@@ -121,7 +121,7 @@ class SlackNotifier:
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"*서비스:* {service_name or 'N/A'}\n*시간:* {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n\n```{error_message}```"
+                        "text": f"*서비스:* {service_name or 'N/A'}\n*시간:* {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n\n```{error_message}```"
                     }
                 }
             ]

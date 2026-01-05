@@ -3,7 +3,7 @@
 import hashlib
 import json
 from typing import Optional, Any, Dict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -33,7 +33,11 @@ class CacheManager:
             
             # TTL 확인
             cached_at = datetime.fromisoformat(data["cached_at"])
-            if datetime.utcnow() - cached_at > timedelta(hours=self.ttl_hours):
+            if cached_at.tzinfo is None:
+                cached_at = cached_at.replace(tzinfo=timezone.utc)
+
+            now = datetime.now(timezone.utc)
+            if now - cached_at > timedelta(hours=self.ttl_hours):
                 cache_file.unlink()  # 만료된 캐시 삭제
                 return None
             
@@ -47,7 +51,7 @@ class CacheManager:
         cache_file = self._get_cache_path(key)
         
         data = {
-            "cached_at": datetime.utcnow().isoformat(),
+            "cached_at": datetime.now(timezone.utc).isoformat(),
             "value": value,
         }
         
@@ -69,7 +73,11 @@ class CacheManager:
                     data = json.load(f)
                 
                 cached_at = datetime.fromisoformat(data["cached_at"])
-                if datetime.utcnow() - cached_at > timedelta(hours=self.ttl_hours):
+                if cached_at.tzinfo is None:
+                    cached_at = cached_at.replace(tzinfo=timezone.utc)
+
+                now = datetime.now(timezone.utc)
+                if now - cached_at > timedelta(hours=self.ttl_hours):
                     cache_file.unlink()
                     count += 1
             except:
