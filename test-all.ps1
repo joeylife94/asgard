@@ -3,7 +3,7 @@
 
 param(
     [switch]$Coverage,
-    [switch]$SkipIntegration,
+    [switch]$IncludeIntegration,
     [switch]$Verbose,
     [string]$Service = "all"  # Options: all, heimdall, bifrost, frontend
 )
@@ -71,9 +71,9 @@ if ($Service -eq "all" -or $Service -eq "heimdall") {
             Write-Host "   Code coverage enabled" -ForegroundColor Yellow
         }
         
-        if ($SkipIntegration) {
+        if (-not $IncludeIntegration) {
             $testArgs += "-Dtest.excludeTags=integration"
-            Write-Host "   Skipping integration tests" -ForegroundColor Yellow
+            Write-Host "   Skipping integration tests (default)" -ForegroundColor Yellow
         }
         
         if (-not $Verbose) {
@@ -194,9 +194,9 @@ if ($Service -eq "all" -or $Service -eq "bifrost") {
                 Write-Host "   Code coverage enabled" -ForegroundColor Yellow
             }
             
-            if ($SkipIntegration) {
+            if (-not $IncludeIntegration) {
                 $pytestArgs += "-m", "not integration"
-                Write-Host "   Skipping integration tests" -ForegroundColor Yellow
+                Write-Host "   Skipping integration tests (default)" -ForegroundColor Yellow
             }
             
             Write-Host "   Command: pytest $($pytestArgs -join ' ')" -ForegroundColor Gray
@@ -306,6 +306,6 @@ else {
     Write-Host "Quick tips:" -ForegroundColor Yellow
     Write-Host "   • Check test reports for details" -ForegroundColor White
     Write-Host "   • Run specific service: .\test-all.ps1 -Service heimdall" -ForegroundColor White
-    Write-Host "   • Skip integration tests: .\test-all.ps1 -SkipIntegration" -ForegroundColor White
+    Write-Host "   • Run integration tests: .\test-all.ps1 -IncludeIntegration" -ForegroundColor White
     exit 1
 }
