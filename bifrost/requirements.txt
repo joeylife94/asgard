@@ -24,7 +24,7 @@ aiofiles==23.2.1
 anyio>=4.7.0
 
 # Kafka (MSA Integration)
-aiokafka==0.10.0
+aiokafka==0.10.0; python_version < '3.13'
 kafka-python==2.0.2
 
 # Testing

@@ -84,15 +84,17 @@ class BifrostClientServiceTest {
         // Given
         Map<String, Object> logData = new HashMap<>();
         logData.put("log", "NullPointerException at line 42");
-        logData.put("level", "ERROR");
         
         Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("analysis", "Memory access violation detected");
-        expectedResponse.put("severity", "HIGH");
+        expectedResponse.put("id", 123);
+        expectedResponse.put("response", "Memory access violation detected");
+        expectedResponse.put("duration_seconds", 1.23);
+        expectedResponse.put("model", "llama3.1:8b");
+        expectedResponse.put("cached", false);
         
         when(restTemplate.postForObject(
-                eq(BIFROST_BASE_URL + "/api/v1/analyze"),
-                eq(logData),
+            eq(BIFROST_BASE_URL + "/analyze"),
+            any(Map.class),
                 eq(Map.class)))
                 .thenReturn(expectedResponse);
         
@@ -101,8 +103,7 @@ class BifrostClientServiceTest {
         
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.get("analysis")).isEqualTo("Memory access violation detected");
-        assertThat(result.get("severity")).isEqualTo("HIGH");
+        assertThat(result.get("response")).isEqualTo("Memory access violation detected");
     }
     
     @Test
@@ -125,29 +126,32 @@ class BifrostClientServiceTest {
     @Test
     void getAnalysisHistory_Success() {
         // Given
-        Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("total", 100);
-        expectedResponse.put("page", 0);
-        expectedResponse.put("size", 20);
-        
-        when(restTemplate.getForObject(
-                eq(BIFROST_BASE_URL + "/api/v1/history?page=0&size=20"),
-                eq(Map.class)))
-                .thenReturn(expectedResponse);
+        java.util.List<Map<String, Object>> expectedItems = new java.util.ArrayList<>();
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", 123);
+        item.put("model", "llama3.1:8b");
+        expectedItems.add(item);
+
+        when(restTemplate.postForObject(
+            eq(BIFROST_BASE_URL + "/history"),
+            any(Map.class),
+            eq(Object.class)))
+            .thenReturn(expectedItems);
         
         // When
         Map<String, Object> result = bifrostService.getAnalysisHistory(0, 20);
         
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.get("total")).isEqualTo(100);
+        assertThat(result.get("items")).isNotNull();
         assertThat(result.get("page")).isEqualTo(0);
+        assertThat(result.get("size")).isEqualTo(20);
     }
     
     @Test
     void getAnalysisHistory_ServiceError_ThrowsException() {
         // Given
-        when(restTemplate.getForObject(anyString(), eq(Map.class)))
+        when(restTemplate.postForObject(anyString(), any(), eq(Object.class)))
                 .thenThrow(new RestClientException("Database error"));
         
         // When & Then

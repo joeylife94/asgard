@@ -68,6 +68,10 @@ class Database:
         log_content: str,
         response: str,
         duration: float,
+        log_hash: Optional[str] = None,
+        log_size_bytes: Optional[int] = None,
+        log_lines: Optional[int] = None,
+        response_size_bytes: Optional[int] = None,
         config: Optional[Dict] = None,
         tags: Optional[List[str]] = None,
         service_name: Optional[str] = None,
@@ -78,18 +82,28 @@ class Database:
     ) -> int:
         """분석 결과 저장"""
         with self.get_session() as session:
-            # 로그 해시 생성
-            log_hash = hashlib.sha256(log_content.encode()).hexdigest()
+            # 기본값 계산 (필요 시 호출자가 override 가능)
+            computed_log_hash = hashlib.sha256(log_content.encode()).hexdigest()
+            computed_log_size_bytes = len(log_content.encode())
+            computed_log_lines = len(log_content.split('\n'))
+            computed_response_size_bytes = len(response.encode())
+
+            log_hash = log_hash or computed_log_hash
+            log_size_bytes = log_size_bytes if log_size_bytes is not None else computed_log_size_bytes
+            log_lines = log_lines if log_lines is not None else computed_log_lines
+            response_size_bytes = (
+                response_size_bytes if response_size_bytes is not None else computed_response_size_bytes
+            )
             
             result = AnalysisResult(
                 source=source,
                 model=model,
                 log_content=log_content,
                 log_hash=log_hash,
-                log_size_bytes=len(log_content.encode()),
-                log_lines=len(log_content.split('\n')),
+                log_size_bytes=log_size_bytes,
+                log_lines=log_lines,
                 response=response,
-                response_size_bytes=len(response.encode()),
+                response_size_bytes=response_size_bytes,
                 duration_seconds=duration,
                 tokens_used=tokens_used,
                 config=config or {},

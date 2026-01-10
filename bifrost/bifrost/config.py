@@ -28,6 +28,16 @@ DEFAULT_CONFIG = {
         "color": True,
         "verbose": False,
     },
+    "security": {
+        # 운영 오픈 시에는 true 권장 (X-API-Key 필수)
+        "require_api_key": False,
+    },
+    "storage": {
+        # 운영 오픈 시 원문 저장은 위험할 수 있어 기본 false 권장
+        "store_raw_log": True,
+        "store_raw_response": True,
+        "redacted_placeholder": "[REDACTED]",
+    },
     # Kafka 설정 (MSA Integration with Heimdall)
     "kafka": {
         "enabled": False,  # 기본적으로 비활성화 (CLI 모드)
@@ -133,6 +143,16 @@ class Config:
         # Heimdall 환경변수
         if heimdall_enabled := os.getenv("HEIMDALL_ENABLED"):
             config["heimdall"]["enabled"] = heimdall_enabled.lower() in ("true", "1", "yes")
+
+        # Security 환경변수
+        if require_api_key := os.getenv("BIFROST_REQUIRE_API_KEY"):
+            config["security"]["require_api_key"] = require_api_key.lower() in ("true", "1", "yes")
+
+        # Storage 환경변수
+        if store_raw_log := os.getenv("BIFROST_STORE_RAW_LOG"):
+            config["storage"]["store_raw_log"] = store_raw_log.lower() in ("true", "1", "yes")
+        if store_raw_response := os.getenv("BIFROST_STORE_RAW_RESPONSE"):
+            config["storage"]["store_raw_response"] = store_raw_response.lower() in ("true", "1", "yes")
         
         return config
     

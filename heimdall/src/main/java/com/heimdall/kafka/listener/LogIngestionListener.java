@@ -46,8 +46,8 @@ public class LogIngestionListener {
         } catch (Exception e) {
             log.error("Error processing log ingestion message: key={}, offset={}", 
                 key, offset, e);
-            // 에러 발생 시에도 acknowledge하여 재처리 방지 (DLQ로 보내기)
-            acknowledgment.acknowledge();
+            // Let the container error handler retry and eventually publish to DLT.
+            throw new RuntimeException(e);
         }
     }
 }

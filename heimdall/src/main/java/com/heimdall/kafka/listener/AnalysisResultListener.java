@@ -47,8 +47,8 @@ public class AnalysisResultListener {
         } catch (Exception e) {
             log.error("Error processing analysis result message: key={}, offset={}", 
                 key, offset, e);
-            // 에러 발생 시에도 acknowledge
-            acknowledgment.acknowledge();
+            // Let the container error handler retry and eventually publish to DLT.
+            throw new RuntimeException(e);
         }
     }
 }

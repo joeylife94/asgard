@@ -75,12 +75,17 @@ public class BifrostClientService {
     public CompletableFuture<Map<String, Object>> analyzeLogAsync(Map<String, Object> logData) {
         return CompletableFuture.supplyAsync(() -> {
             logger.debug("Sending log analysis request to Bifrost");
+
+            Map<String, Object> payload = new HashMap<>(logData);
+            if (!payload.containsKey("log_content") && payload.containsKey("log")) {
+                payload.put("log_content", payload.get("log"));
+            }
             
             try {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> response = restTemplate.postForObject(
-                        bifrostBaseUrl + "/api/v1/analyze",
-                        logData,
+                        bifrostBaseUrl + "/analyze",
+                        payload,
                         Map.class
                 );
                 
@@ -101,12 +106,17 @@ public class BifrostClientService {
     @Retry(name = CIRCUIT_BREAKER_NAME)
     public Map<String, Object> analyzeLog(Map<String, Object> logData) {
         logger.debug("Sending log analysis request to Bifrost (sync)");
+
+        Map<String, Object> payload = new HashMap<>(logData);
+        if (!payload.containsKey("log_content") && payload.containsKey("log")) {
+            payload.put("log_content", payload.get("log"));
+        }
         
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> response = restTemplate.postForObject(
-                    bifrostBaseUrl + "/api/v1/analyze",
-                    logData,
+                    bifrostBaseUrl + "/analyze",
+                    payload,
                     Map.class
             );
             
@@ -128,14 +138,20 @@ public class BifrostClientService {
         logger.debug("Fetching analysis history from Bifrost: page={}, size={}", page, size);
         
         try {
-            String url = String.format("%s/api/v1/history?page=%d&size=%d", 
-                    bifrostBaseUrl, page, size);
-            
+            Map<String, Object> query = new HashMap<>();
+            query.put("limit", size);
+            query.put("offset", page * size);
+
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Object response = restTemplate.postForObject(bifrostBaseUrl + "/history", query, Object.class);
+
+            Map<String, Object> wrapped = new HashMap<>();
+            wrapped.put("items", response);
+            wrapped.put("page", page);
+            wrapped.put("size", size);
             
             logger.info("Analysis history fetched successfully");
-            return response;
+            return wrapped;
             
         } catch (RestClientException e) {
             logger.error("Failed to fetch analysis history: {}", e.getMessage());

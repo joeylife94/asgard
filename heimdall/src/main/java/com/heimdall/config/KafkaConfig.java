@@ -2,6 +2,7 @@ package com.heimdall.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
@@ -56,7 +58,9 @@ public class KafkaConfig {
     }
     
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+        KafkaTemplate<String, String> kafkaTemplate
+    ) {
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
             new ConcurrentKafkaListenerContainerFactory<>();
         
@@ -65,11 +69,15 @@ public class KafkaConfig {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         
         // 에러 핸들링
-        factory.setCommonErrorHandler(
-            new DefaultErrorHandler(
-                new FixedBackOff(1000L, 3L) // 1초 간격으로 3번 재시도
-            )
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+            kafkaTemplate,
+            (record, ex) -> new TopicPartition(record.topic() + ".DLT", record.partition())
         );
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(
+            recoverer,
+            new FixedBackOff(1000L, 3L) // 1초 간격으로 3번 재시도
+        );
+        factory.setCommonErrorHandler(errorHandler);
         
         return factory;
     }
