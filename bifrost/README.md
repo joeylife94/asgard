@@ -89,7 +89,8 @@ Bifrost가 **Heimdall (Java/Spring Boot)** 과 **Apache Kafka**를 통해 마이
 
 ```text
           ┌──────────────────────────────┐
-          │      FastAPI (/ask)          │
+          │   FastAPI (/api/v1/ask)      │
+          │     (alias: /ask)            │
           │  - endpoint는 provider 호출 X │
           └─────────────┬────────────────┘
                         │
@@ -145,6 +146,13 @@ fallback 응답은 단순 에러가 아니라:
 - citations
 을 포함합니다.
 
+### Observability (명시)
+
+- 구조화 로그: `request_id`, `lane`, `provider`, `retrieved_chunk_ids`, `latency_ms`, `outcome`, `fallback_used`
+- Prometheus metrics (GET `/metrics`):
+  - `bifrost_ask_requests_total`
+  - `bifrost_ask_latency_ms`
+
 ### 로컬 실행(최소)
 
 ```powershell
@@ -198,7 +206,7 @@ curl -s -X POST http://localhost:8000/api/v1/ask \
 | `BIFROST_RAG_TOP_K` | `5` | on-device RAG retrieval top-k |
 | `BIFROST_RAG_MAX_CONTEXT_CHARS` | `6500` | on-device RAG prompt max char budget |
 | `BIFROST_LLM_TIMEOUT_SECONDS` | `12` | orchestrator LLM timeout (seconds) |
-| `BIFROST_LLM_MAX_RETRIES` | `1` | orchestrator retry count (0이면 retry 없음) |
+| `BIFROST_LLM_MAX_RETRIES` | `1` | orchestrator retry count (`0`이면 retry 없음) |
 | `ENABLE_CLOUD_LANE` | `false` | cloud lane 사용 허용 여부 |
 | `BIFROST_CLOUD_PROVIDER` | `bedrock` | cloud lane provider 이름 |
 | `BIFROST_ON_DEVICE_PROVIDER` | `ollama` | on-device provider 이름 |
