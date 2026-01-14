@@ -1,5 +1,6 @@
 """데이터베이스 연결 및 세션 관리"""
 
+import os
 import hashlib
 from contextlib import contextmanager
 from typing import Generator, Optional, List, Dict, Any
@@ -290,6 +291,8 @@ _db_instance: Optional[Database] = None
 def get_database(database_url: str = "sqlite:///bifrost.db") -> Database:
     """데이터베이스 인스턴스 가져오기"""
     global _db_instance
+    if database_url == "sqlite:///bifrost.db":
+        database_url = os.getenv("BIFROST_DATABASE_URL") or os.getenv("DATABASE_URL") or database_url
     if _db_instance is None:
         _db_instance = Database(database_url)
         _db_instance.init_db()

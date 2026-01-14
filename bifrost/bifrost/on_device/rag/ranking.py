@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Iterable, List, Tuple
 
 
-_WORD_RE = re.compile(r"[A-Za-z0-9_\-]+", re.UNICODE)
+_WORD_RE = re.compile(r"[0-9A-Za-z_\-]+|[가-힣]+", re.UNICODE)
 
 
 def normalize_query(q: str) -> List[str]:

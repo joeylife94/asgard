@@ -60,8 +60,8 @@ class OrchestratorService:
             else:
                 retrieved_ids = []
 
-            if _looks_low_confidence(attempt.answer) and decision.lane == "on_device_rag":
-                # deterministic fallback for low-confidence
+            if _looks_low_confidence(attempt.answer):
+                # deterministic fallback for low-confidence (always uses on-device RAG snippets)
                 fallback_used = True
                 outcome = "fallback"
                 attempt = self._fallback_from_rag(question=req.question)
@@ -70,18 +70,9 @@ class OrchestratorService:
         except Exception as e:
             fallback_used = True
             outcome = "error"
-            if decision.lane == "on_device_rag":
-                attempt = self._fallback_from_rag(question=req.question)
-                retrieved_ids = [c.chunk_id for c in attempt.citations]
-            else:
-                attempt = AnswerAttempt(
-                    answer="I can't confidently answer right now.",
-                    citations=[],
-                    provider=decision.provider,
-                    token_estimate=None,
-                    char_estimate=0,
-                )
-                retrieved_ids = []
+            # Deterministic fallback always uses on-device RAG snippets (RAG stays on-device lane)
+            attempt = self._fallback_from_rag(question=req.question)
+            retrieved_ids = [c.chunk_id for c in attempt.citations]
 
             logger.error(
                 "ask_error",
@@ -146,8 +137,8 @@ class OrchestratorService:
         built = self.on_device.builder.build(question, chunks)
         ids = [c.chunk_id for c in built.citations]
         answer = (
-            "I can't confidently answer based on available runbooks.\n\n"
-            "Closest runbook snippets:\n"
+            "현재 런북 근거만으로는 확신 있게 답변하기 어렵습니다.\n\n"
+            "가장 관련 있어 보이는 런북 스니펫:\n"
         )
         for c in built.citations:
             answer += f"- [chunk:{c.chunk_id} source:{c.source}] {c.preview}\n"

@@ -79,6 +79,96 @@ Bifrost가 **Heimdall (Java/Spring Boot)** 과 **Apache Kafka**를 통해 마이
 
 ## ✨ Features
 
+---
+
+## Interview Edition: Incident/Runbook Q&A (Plan A)
+
+이 섹션은 **면접 데모용**으로, "런북/운영 문서 기반 Q&A" 워크플로우를 **프로덕션스럽게(오케스트레이션/폴백/관측성 포함)** 보여주기 위한 기능입니다.
+
+### 아키텍처 개요 (Lane 분리)
+
+```text
+          ┌──────────────────────────────┐
+          │      FastAPI (/ask)          │
+          │  - endpoint는 provider 호출 X │
+          └─────────────┬────────────────┘
+                        │
+                        ▼
+          ┌──────────────────────────────┐
+          │     OrchestratorService      │
+          │  PolicyRouter + timeout/retry│
+          └─────────────┬────────────────┘
+                        │
+        ┌───────────────┴────────────────┐
+        │                                │
+        ▼                                ▼
+┌───────────────────────┐      ┌────────────────────────┐
+│ On-device lane (RAG)   │      │ Cloud lane (Direct)     │
+│ - ingest/retrieve/prompt│      │ - RAG 사용 금지         │
+│ - SQLite/Postgres 저장  │      │ - ENABLE_CLOUD_LANE 필요│
+└───────────┬───────────┘      └─────────────┬──────────┘
+            │                                  │
+            ▼                                  ▼
+     OllamaProvider (local)             BedrockProvider (cloud)
+```
+
+### 엔드포인트
+
+- `POST /api/v1/runbooks/ingest`
+  - request: `{ "source": "...", "tags": ["..."], "text": "..." }`
+  - response: `{ "chunks_ingested": 12 }`
+
+- `POST /ask`
+  - request: `AnswerRequest` (`question`, `tags?`, `source?`, `session_id?`)
+  - response: `AnswerResponse` (`answer`, `citations`, `route`, `telemetry`)
+
+### 로컬 실행(최소)
+
+```powershell
+cd bifrost
+pip install -r requirements.txt
+
+# Ollama 없이 데모하려면(선택)
+$env:BIFROST_ON_DEVICE_MODE = "stub"
+
+uvicorn bifrost.api:app --host 0.0.0.0 --port 8000
+```
+
+### 빠른 데모
+
+1) 런북 ingest (PowerShell 추천)
+
+```powershell
+$txt = Get-Content -Raw "examples/runbooks/runbook-postgres-connection-refused.md"
+$body = @{ source = "examples/runbooks/runbook-postgres-connection-refused.md"; tags = @("postgres","incident"); text = $txt } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/api/v1/runbooks/ingest" -ContentType "application/json" -Body $body
+```
+
+(curl 사용 시에는 `text`에 문서 내용을 그대로 넣어 전송하세요.)
+
+2) 질문(/ask)
+
+```bash
+curl -s -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -H "x-request-id: demo-001" \
+  -d '{"question": "postgres connection refused가 났을 때 5분 내에 무엇부터 확인해?"}'
+```
+
+### 데모용 예시 질문 3개
+
+- "postgres connection refused가 났을 때 5분 내에 무엇부터 확인해?"
+- "Kafka consumer lag이 급증할 때 가장 먼저 볼 지표/원인 후보는?"
+- "리밸런싱이 잦을 때 consumer 설정 중 어떤 걸 점검해야 해?"
+
+### 환경변수
+
+- `BIFROST_DATABASE_URL` 또는 `DATABASE_URL`: RAG chunk 저장 DB (기본: `sqlite:///bifrost.db`)
+- `ENABLE_CLOUD_LANE=true`: cloud lane 허용(기본 비활성)
+- `BIFROST_ON_DEVICE_MODE=stub`: Ollama 없이도 데모 가능한 스텁 모드
+- `BIFROST_ON_DEVICE_STUB_ANSWER`: 스텁 답변 문구
+
+
 
 
 ### 🚀 Core Capabilities## ✨ Features[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)

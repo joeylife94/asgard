@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Sequence
 
-from bifrost.database import get_database
+from bifrost.database import get_database, Database
 from bifrost.models import RunbookChunk
 
 
@@ -18,8 +18,8 @@ class StoredChunk:
 
 
 class RunbookChunkStore:
-    def __init__(self):
-        self.db = get_database()
+    def __init__(self, db: Optional[Database] = None):
+        self.db = db or get_database()
 
     def ingest(self, *, source: str, tags: Optional[List[str]], contents: Sequence[str]) -> int:
         if not contents:
