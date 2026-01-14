@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+
+jobs:
+  unit:
+    name: Unit tests (Heimdall + Bifrost)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Run Heimdall unit tests (exclude integration)
+        run: |
+          chmod +x gradlew
+          ./gradlew :heimdall:test -Dtest.excludeTags=integration --no-daemon --console=plain
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Bifrost deps
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r bifrost/requirements.txt || python -m pip install -r <(grep -v "^aiokafka" bifrost/requirements.txt) || true
+          python -m pip install -e bifrost
+
+      - name: Run Bifrost unit tests (skip integration)
+        working-directory: bifrost
+        run: |
+          python -m pytest -q -m "not integration"
+
+  integration:
+    name: Integration tests (manual/optional)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: asgard
+          POSTGRES_PASSWORD: asgard_password
+          POSTGRES_DB: heimdall
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U asgard" --health-interval 10s --health-timeout 5s --health-retries 5
+      zookeeper:
+        image: confluentinc/cp-zookeeper:7.0.1
+        env:
+          ZOOKEEPER_CLIENT_PORT: 2181
+        ports:
+          - 2181:2181
+      kafka:
+        image: confluentinc/cp-kafka:7.0.1
+        env:
+          KAFKA_BROKER_ID: 1
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        ports:
+          - 9092:9092
+        options: >-
+          --health-cmd "bash -c 'echo > /dev/tcp/localhost/9092 || exit 1'" --health-interval 10s --health-timeout 5s --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for Postgres and Kafka to become healthy..."
+          sleep 20
+
+      - name: Install Bifrost deps
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r bifrost/requirements.txt || python -m pip install -r <(grep -v "^aiokafka" bifrost/requirements.txt) || true
+          python -m pip install -e bifrost
+
+      - name: Run integration tests
+        working-directory: bifrost
+        run: |
+          python -m pytest -q -m integration

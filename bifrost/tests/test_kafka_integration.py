@@ -112,6 +112,18 @@ class TestKafkaConsumer:
     async def test_consume_analysis_request(self, sample_analysis_request):
         """분석 요청 소비 테스트"""
         from bifrost.kafka_consumer import AnalysisRequestConsumer
+
+        class _FakeKafkaConsumer:
+            def __init__(self, messages):
+                self._messages = messages
+                self.commit = AsyncMock()
+
+            def __aiter__(self):
+                async def _gen():
+                    for msg in self._messages:
+                        yield msg
+
+                return _gen()
         
         # Mock processor
         processor = AsyncMock()
@@ -125,13 +137,9 @@ class TestKafkaConsumer:
         mock_message.offset = 456
         mock_message.key = b"12345"
         mock_message.value = sample_analysis_request.model_dump()
-        
-        mock_kafka_consumer = AsyncMock()
-        mock_kafka_consumer.__aiter__ = lambda self: iter([mock_message])
-        mock_kafka_consumer.commit = AsyncMock()
-        
-        consumer.consumer = mock_kafka_consumer
-        consumer._running = False  # 1번만 실행
+
+        consumer.consumer = _FakeKafkaConsumer([mock_message])
+        consumer._running = True  # allow processing
         
         # 테스트
         await consumer.consume_messages(processor)
@@ -150,6 +158,7 @@ class TestHeimdallIntegration:
         """분석 요청 처리 테스트"""
         from bifrost.heimdall_integration import HeimdallIntegrationService
         from bifrost.kafka_producer import KafkaProducerManager
+        from bifrost.heimdall_store import HeimdallLogEntry
         
         # Mock config
         config = {
@@ -163,6 +172,18 @@ class TestHeimdallIntegration:
         
         # Service 생성
         service = HeimdallIntegrationService(config, producer_manager)
+
+        # Stub Heimdall DB access (avoid real Postgres connection)
+        service.heimdall_store.get_log_entry = MagicMock(
+            return_value=HeimdallLogEntry(
+                log_id=sample_analysis_request.log_id,
+                log_content="ERROR: connection timeout\nWARN: pool exhausted",
+                service_name="test-service",
+                environment="test",
+                severity="HIGH",
+                event_id="evt-123",
+            )
+        )
         
         # Mock AI 분석
         service._analyze_with_ai = AsyncMock(return_value={

@@ -68,14 +68,15 @@ public class DlqFailedListener {
                     key, partition, offset
                 );
             }
+
+            acknowledgment.acknowledge();
         } catch (Exception e) {
             log.error(
                 "Error processing dlq.failed message: key={}, partition={}, offset={}",
                 key, partition, offset, e
             );
-        } finally {
-            // Avoid poison-pill loops
-            acknowledgment.acknowledge();
+            // Let the container error handler retry and eventually publish to DLT.
+            throw new RuntimeException(e);
         }
     }
 }

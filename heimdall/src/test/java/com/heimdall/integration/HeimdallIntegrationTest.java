@@ -43,8 +43,8 @@ public class HeimdallIntegrationTest {
 
     private static final String TEST_API_KEY = "test-api-key";
 
-    private static final String TEST_USERNAME = "user";
-    private static final String TEST_PASSWORD = "user123";
+    private static final String TEST_USERNAME = "admin";
+    private static final String TEST_PASSWORD = "admin123";
 
     private static String bearerToken;
 
@@ -60,6 +60,7 @@ public class HeimdallIntegrationTest {
 
         String response = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
+            .header("X-API-Key", TEST_API_KEY)
                 .content(objectMapper.writeValueAsString(loginRequest)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token", notNullValue()))
@@ -80,6 +81,7 @@ public class HeimdallIntegrationTest {
 
         String response = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
+            .header("X-API-Key", TEST_API_KEY)
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token", notNullValue()))

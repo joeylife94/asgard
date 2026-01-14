@@ -262,15 +262,24 @@ class RunbookIngestResponse(BaseModel):
 
 # ==================== Dependencies ====================
 
-async def verify_api_key(x_api_key: Optional[str] = Header(None)) -> bool:
-    """API 키 검증"""
+async def verify_api_key(x_api_key: Optional[str] = Header(None)) -> Optional[str]:
+    """API 키 검증
+
+    - 개발/로컬: 키 없이도 통과 가능 (config.security.require_api_key=false)
+    - 운영/오픈: 키 필수 (BIFROST_REQUIRE_API_KEY=true)
+    """
+    from bifrost.config import Config
+    require_api_key = Config().get("security.require_api_key", False)
+
     if not x_api_key:
-        return True  # 개발 모드: API 키 선택
-    
+        if require_api_key:
+            raise HTTPException(status_code=401, detail="API key required")
+        return None
+
     db = get_database()
     if not db.validate_api_key(x_api_key):
         raise HTTPException(status_code=401, detail="Invalid API key")
-    return True
+    return x_api_key
 
 
 # ==================== Routes ====================
@@ -355,6 +364,11 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
     """
     start_time = time.time()
     db = get_database()
+    from bifrost.config import Config
+    cfg = Config()
+    store_raw_log = cfg.get("storage.store_raw_log", True)
+    store_raw_response = cfg.get("storage.store_raw_response", True)
+    redacted_placeholder = cfg.get("storage.redacted_placeholder", "[REDACTED]")
     
     # ===== Privacy Router: 자동 라우팅 =====
     privacy_router = get_router()
@@ -368,7 +382,12 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
     # 캐시 확인 (중복 분석 방지)
     import hashlib
     log_hash = hashlib.sha256(request.log_content.encode()).hexdigest()
-    cached_results = db.get_duplicate_analyses(log_hash, hours=24)
+    log_size_bytes = len(request.log_content.encode())
+    log_lines = len(request.log_content.split("\n"))
+    from starlette.concurrency import run_in_threadpool
+    from functools import partial
+
+    cached_results = await run_in_threadpool(db.get_duplicate_analyses, log_hash, 24)
     
     if cached_results and not request.stream:
         cached = cached_results[0]
@@ -393,29 +412,40 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
         # 분석 실행
         if request.source == "local":
             client = OllamaClient(model=request.model or "llama3.1:8b")  # 업데이트: Llama 3.1 8B
-            result = client.analyze(prompt, stream=False)  # API는 스트리밍 미지원
+            result = await run_in_threadpool(partial(client.analyze, prompt, stream=False))  # API는 스트리밍 미지원
         elif request.source == "cloud":
             if not is_bedrock_available():
                 raise HTTPException(status_code=400, detail="Bedrock not available (boto3 not installed)")
             client = BedrockClient(model_id=request.model or "anthropic.claude-3-sonnet-20240229-v1:0")
-            result = client.analyze(prompt)
+            result = await run_in_threadpool(partial(client.analyze, prompt))
         else:
             raise HTTPException(status_code=400, detail="Invalid source (local or cloud)")
         
         duration = time.time() - start_time
+
+        stored_log_content = request.log_content if store_raw_log else redacted_placeholder
+        stored_response = result["response"] if store_raw_response else redacted_placeholder
+        response_size_bytes = len(result["response"].encode())
         
         # DB 저장 (백그라운드) - Privacy Router 메타데이터 추가
-        analysis_id = db.save_analysis(
-            source=request.source,
-            model=result["metadata"]["model"],
-            log_content=request.log_content,
-            response=result["response"],
-            duration=duration,
-            tags=request.tags,
-            service_name=request.service_name,
-            environment=request.environment,
-            tokens_used=result["metadata"].get("usage", {}).get("total_tokens"),
-            status="completed",
+        analysis_id = await run_in_threadpool(
+            partial(
+                db.save_analysis,
+                source=request.source,
+                model=result["metadata"]["model"],
+                log_content=stored_log_content,
+                response=stored_response,
+                duration=duration,
+                log_hash=log_hash,
+                log_size_bytes=log_size_bytes,
+                log_lines=log_lines,
+                response_size_bytes=response_size_bytes,
+                tags=request.tags,
+                service_name=request.service_name,
+                environment=request.environment,
+                tokens_used=result["metadata"].get("usage", {}).get("total_tokens"),
+                status="completed",
+            )
         )
         
         # 메트릭 업데이트
@@ -439,18 +469,60 @@ async def analyze_log(request: AnalyzeRequest, background_tasks: BackgroundTasks
     
     except Exception as e:
         # 에러 저장
-        db.save_analysis(
-            source=request.source,
-            model=request.model or "unknown",
-            log_content=request.log_content,
-            response="",
-            duration=time.time() - start_time,
-            status="failed",
-            error_message=str(e),
+        stored_log_content = request.log_content if store_raw_log else redacted_placeholder
+        await run_in_threadpool(
+            partial(
+                db.save_analysis,
+                source=request.source,
+                model=request.model or "unknown",
+                log_content=stored_log_content,
+                response="",
+                duration=time.time() - start_time,
+                log_hash=log_hash,
+                log_size_bytes=log_size_bytes,
+                log_lines=log_lines,
+                response_size_bytes=0,
+                status="failed",
+                error_message=str(e),
+            )
         )
         
         metrics.increment_error_count(request.source)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+# ==================== Compatibility (v1) ====================
+
+@app.post("/api/v1/analyze", dependencies=[Depends(verify_api_key)])
+async def analyze_log_v1(payload: dict, background_tasks: BackgroundTasks):
+    """Compatibility endpoint for older clients.
+
+    Accepts either {log_content: ...} or {log: ...}.
+    """
+    log_content = payload.get("log_content") or payload.get("log")
+    if not log_content:
+        raise HTTPException(status_code=422, detail="log_content is required")
+
+    req = AnalyzeRequest(
+        log_content=log_content,
+        source=payload.get("source"),
+        model=payload.get("model"),
+        service_name=payload.get("service_name"),
+        environment=payload.get("environment"),
+        tags=payload.get("tags") or [],
+        stream=bool(payload.get("stream", False)),
+    )
+    return await analyze_log(req, background_tasks)
+
+
+@app.get("/api/v1/history", dependencies=[Depends(verify_api_key)])
+async def get_history_v1(page: int = 0, size: int = 20):
+    """Compatibility endpoint for older clients (pagination via query params)."""
+    if page < 0 or size < 1:
+        raise HTTPException(status_code=422, detail="Invalid pagination params")
+
+    query = HistoryQuery(limit=min(size, 500), offset=page * size)
+    return await get_history(query)
 
 
 @app.post("/history", response_model=List[dict])
@@ -486,7 +558,7 @@ async def get_metrics(hours: int = 24, _: bool = Depends(verify_api_key)):
 
 
 @app.get("/metrics/prometheus")
-async def get_prometheus_metrics():
+async def get_prometheus_metrics(_: Optional[str] = Depends(verify_api_key)):
     """Prometheus 메트릭 엔드포인트"""
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     from fastapi.responses import Response
@@ -497,6 +569,14 @@ async def get_prometheus_metrics():
 @app.websocket("/ws/analyze")
 async def websocket_analyze(websocket: WebSocket):
     """WebSocket 스트리밍 분석"""
+    from bifrost.config import Config
+    require_api_key = Config().get("security.require_api_key", False)
+    if require_api_key:
+        api_key = websocket.headers.get("x-api-key")
+        if not api_key or not get_database().validate_api_key(api_key):
+            await websocket.close(code=1008)
+            return
+
     await websocket.accept()
     
     try:
@@ -518,11 +598,14 @@ async def websocket_analyze(websocket: WebSocket):
             from bifrost.main import MASTER_PROMPT
             prompt = MASTER_PROMPT.format(log_content=log_content)
             
+            from starlette.concurrency import run_in_threadpool
+            from functools import partial
+
             # 스트리밍 분석
             if source == "local":
                 client = OllamaClient(model=model or "mistral")
                 # TODO: WebSocket용 스트리밍 구현
-                result = client.analyze(prompt, stream=False)
+                result = await run_in_threadpool(partial(client.analyze, prompt, stream=False))
                 await websocket.send_json({
                     "type": "complete",
                     "response": result["response"],
@@ -572,9 +655,16 @@ async def analyze_web(
     severity: str = Form(None),
     service_name: str = Form(None),
     environment: str = Form(None),
+    _: Optional[str] = Depends(verify_api_key),
 ):
     """웹 UI용 분석 엔드포인트 (Form 데이터)"""
     try:
+        start_time = time.time()
+        from bifrost.config import Config
+        cfg = Config()
+        store_raw_log = cfg.get("storage.store_raw_log", True)
+        store_raw_response = cfg.get("storage.store_raw_response", True)
+        redacted_placeholder = cfg.get("storage.redacted_placeholder", "[REDACTED]")
         # 심각도 필터링
         filtered_log = log_content
         if severity:
@@ -586,22 +676,45 @@ async def analyze_web(
         # 분석 실행
         preprocessor = LogPreprocessor()
         processed_log = preprocessor.process(filtered_log)
+
+        from bifrost.main import MASTER_PROMPT
+        prompt = MASTER_PROMPT.format(log_content=processed_log)
         
+        from starlette.concurrency import run_in_threadpool
+        from functools import partial
+
         if source == "local":
             client = OllamaClient()
+            result = await run_in_threadpool(partial(client.analyze, prompt, stream=False))
         else:
             client = BedrockClient()
-        
-        result = client.analyze(processed_log)
+            result = await run_in_threadpool(partial(client.analyze, prompt))
         
         # DB 저장
         db = get_database()
-        analysis_id = db.save_analysis(
-            log_content=log_content,
-            response=result.get("response", ""),
-            source=source,
-            service_name=service_name,
-            environment=environment,
+        duration = time.time() - start_time
+        stored_log_content = log_content if store_raw_log else redacted_placeholder
+        stored_response = result.get("response", "") if store_raw_response else redacted_placeholder
+        import hashlib
+        log_hash = hashlib.sha256(log_content.encode()).hexdigest()
+        analysis_id = await run_in_threadpool(
+            partial(
+                db.save_analysis,
+                source=source,
+                model=(result.get("metadata") or {}).get("model")
+                or (result.get("model") if isinstance(result, dict) else None)
+                or "unknown",
+                log_content=stored_log_content,
+                response=stored_response,
+                duration=duration,
+                log_hash=log_hash,
+                log_size_bytes=len(log_content.encode()),
+                log_lines=len(log_content.split("\n")),
+                response_size_bytes=len((result.get("response") or "").encode()) if isinstance(result, dict) else 0,
+                service_name=service_name,
+                environment=environment,
+                status="completed",
+            )
         )
         
         # HTML 응답
@@ -646,11 +759,11 @@ async def analyze_web(
 @app.get("/api/export/csv")
 async def export_csv(
     limit: int = 100,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """분석 결과를 CSV로 export"""
     db = get_database()
-    results = db.get_analysis_history(limit=limit)
+    results = db.list_analyses(limit=limit, offset=0)
     
     csv_content = DataExporter.to_csv(results)
     
@@ -667,11 +780,11 @@ async def export_csv(
 async def export_json(
     limit: int = 100,
     pretty: bool = True,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """분석 결과를 JSON으로 export"""
     db = get_database()
-    results = db.get_analysis_history(limit=limit)
+    results = db.list_analyses(limit=limit, offset=0)
     
     json_content = DataExporter.to_json(results, pretty=pretty)
     
@@ -687,7 +800,7 @@ async def export_json(
 @app.post("/api/filter/severity")
 async def filter_by_severity(
     request: FilterSeverityRequest,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """심각도로 필터링"""
     filtered = LogFilter.filter_by_severity(request.log_content, request.min_level)
@@ -702,7 +815,7 @@ async def filter_by_severity(
 @app.post("/api/filter/errors")
 async def filter_errors_only(
     request: FilterErrorsRequest,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """에러만 추출"""
     filtered = LogFilter.extract_errors_only(request.log_content)
@@ -716,7 +829,7 @@ async def filter_errors_only(
 @app.post("/api/slack/send")
 async def send_to_slack(
     request: SlackNotificationRequest,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """분석 결과를 Slack으로 전송"""
     slack = SlackNotifier(request.webhook_url)
@@ -731,7 +844,7 @@ async def send_to_slack(
 @app.get("/api/log/stats")
 async def get_log_statistics(
     log_content: str,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """로그 통계"""
     stats = LogFilter.get_log_statistics(log_content)
@@ -744,7 +857,7 @@ async def get_log_statistics(
 @app.post("/api/prompts")
 async def create_prompt(
     request: CreatePromptRequest,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """프롬프트 템플릿 생성"""
     from bifrost.prompt_editor import PromptEditor
@@ -768,7 +881,7 @@ async def list_prompts(
     tags: Optional[str] = None,
     search: Optional[str] = None,
     limit: int = 50,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """프롬프트 템플릿 리스트"""
     from bifrost.prompt_editor import PromptEditor
@@ -786,7 +899,7 @@ async def list_prompts(
 @app.get("/api/prompts/{prompt_id}")
 async def get_prompt(
     prompt_id: int,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """프롬프트 템플릿 조회"""
     from bifrost.prompt_editor import PromptEditor
@@ -806,7 +919,7 @@ async def update_prompt(
     content: Optional[str] = None,
     description: Optional[str] = None,
     tags: Optional[List[str]] = None,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """프롬프트 템플릿 업데이트"""
     from bifrost.prompt_editor import PromptEditor
@@ -828,7 +941,7 @@ async def update_prompt(
 @app.delete("/api/prompts/{prompt_id}")
 async def delete_prompt(
     prompt_id: int,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """프롬프트 템플릿 삭제"""
     from bifrost.prompt_editor import PromptEditor
@@ -846,7 +959,7 @@ async def delete_prompt(
 
 @app.get("/api/mlflow/experiments")
 async def get_mlflow_experiments(
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """MLflow 실험 정보 조회"""
     from bifrost.mlflow_tracker import MLflowTracker
@@ -866,7 +979,7 @@ async def get_mlflow_experiments(
 async def search_mlflow_runs(
     filter: Optional[str] = None,
     max_results: int = 100,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """MLflow Run 검색"""
     from bifrost.mlflow_tracker import MLflowTracker
@@ -889,7 +1002,7 @@ async def search_mlflow_runs(
 @app.get("/api/mlflow/runs/{run_id}")
 async def get_mlflow_run(
     run_id: str,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """MLflow Run 상세 조회"""
     from bifrost.mlflow_tracker import MLflowTracker
@@ -909,7 +1022,7 @@ async def get_mlflow_run(
 @app.post("/api/mlflow/runs/compare")
 async def compare_mlflow_runs(
     request: CompareMLflowRunsRequest,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """MLflow Run 비교"""
     from bifrost.mlflow_tracker import MLflowTracker
@@ -973,7 +1086,7 @@ async def ask(req: AnswerRequest, request: Request):
 @app.post("/api/router/classify")
 async def classify_sensitivity(
     request: dict,
-    api_key: str = Depends(verify_api_key)
+    api_key: Optional[str] = Depends(verify_api_key)
 ):
     """
     Privacy Router: 데이터 민감도 분류
