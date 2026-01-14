@@ -172,3 +172,20 @@ class APIKey(Base):
             "usage_count": self.usage_count,
             "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
         }
+
+
+class RunbookChunk(Base):
+    """Runbook/doc chunk for on-device RAG."""
+
+    __tablename__ = "runbook_chunks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    created_at = Column(DateTime, default=utcnow, nullable=False, index=True)
+
+    source = Column(String(255), nullable=False, index=True)
+    tags = Column(JSON, default=list)
+    content = Column(Text, nullable=False)
+
+    __table_args__ = (
+        Index('idx_runbook_source_created', 'source', 'created_at'),
+    )

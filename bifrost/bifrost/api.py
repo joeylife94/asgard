@@ -2,6 +2,7 @@
 
 import time
 import os
+import uuid
 from typing import Optional, List
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -25,6 +26,9 @@ from bifrost.filters import LogFilter, SeverityLevel
 from bifrost.export import DataExporter
 from bifrost.slack import SlackNotifier
 from bifrost.router import get_router  # Privacy Router 추가
+from bifrost.on_device.rag.ingest_service import RunbookIngestService
+from bifrost.orchestrator.orchestrator_service import OrchestratorService
+from bifrost.contracts.ask import AnswerRequest, AnswerResponse
 
 
 # Kafka 통합 관련 전역 변수
@@ -244,6 +248,16 @@ class CompareMLflowRunsRequest(BaseModel):
     """MLflow Run 비교 요청"""
     run_ids: List[str] = Field(..., description="비교할 Run ID 리스트")
     metric_names: Optional[List[str]] = Field(None, description="메트릭 이름 목록")
+
+
+class RunbookIngestRequest(BaseModel):
+    source: str = Field(..., min_length=1, description="문서 소스 식별자 (예: service/runbook.md)")
+    tags: Optional[List[str]] = Field(default=None, description="선택 태그")
+    text: str = Field(..., min_length=1, description="Plain text or markdown")
+
+
+class RunbookIngestResponse(BaseModel):
+    chunks_ingested: int
 
 
 # ==================== Dependencies ====================
@@ -907,6 +921,50 @@ async def compare_mlflow_runs(
     comparison = tracker.compare_runs(request.run_ids, request.metric_names)
     
     return comparison
+
+
+# ==================== Interview Edition: Incident/Runbook Q&A (Plan A) ====================
+
+
+@app.post("/api/v1/runbooks/ingest", response_model=RunbookIngestResponse, dependencies=[Depends(verify_api_key)])
+async def ingest_runbook(req: RunbookIngestRequest):
+    """Ingest runbook/docs into on-device RAG store."""
+    ingest = RunbookIngestService()
+    result = ingest.ingest(source=req.source, tags=req.tags, text=req.text)
+    return RunbookIngestResponse(chunks_ingested=result.chunks_ingested)
+
+
+@app.post("/ask", response_model=AnswerResponse, dependencies=[Depends(verify_api_key)])
+async def ask(req: AnswerRequest, request: Request):
+    """Incident / Runbook Q&A assistant.
+
+    IMPORTANT:
+    - API handler must NOT call providers directly.
+    - It delegates to OrchestratorService.
+    """
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    orchestrator = OrchestratorService()
+
+    start = time.time()
+    outcome = "ok"
+    response: Optional[AnswerResponse] = None
+
+    try:
+        response = await orchestrator.ask(req, request_id=request_id)
+        outcome = "fallback" if response.route.fallback_used else "ok"
+        return response
+    except Exception:
+        outcome = "error"
+        raise
+    finally:
+        latency_ms = int((time.time() - start) * 1000)
+        lane = response.route.lane if response else "unknown"
+        try:
+            metrics.increment_ask_requests(lane=lane, outcome=outcome)
+            metrics.observe_ask_latency_ms(lane=lane, latency_ms=latency_ms)
+        except Exception:
+            # metrics must never break the request
+            pass
 
 
 # ==================== Privacy Router API ====================

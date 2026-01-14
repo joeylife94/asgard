@@ -62,6 +62,19 @@ class PrometheusMetrics:
             'version': '0.2.0',
             'component': 'api',
         })
+
+        # Interview Edition: /ask metrics
+        self.ask_requests_total = Counter(
+            'bifrost_ask_requests_total',
+            'Total number of /ask requests',
+            ['lane', 'outcome']
+        )
+        self.ask_latency_ms = Histogram(
+            'bifrost_ask_latency_ms',
+            'Latency for /ask in milliseconds',
+            ['lane'],
+            buckets=[50, 100, 250, 500, 1000, 2000, 5000, 10000, 20000]
+        )
     
     def increment_analysis_count(self, source: str, status: str = "success"):
         """분석 카운트 증가"""
@@ -90,3 +103,11 @@ class PrometheusMetrics:
     def observe_response_size(self, size: int):
         """응답 크기 기록"""
         self.response_size.observe(size)
+
+    # ==================== Interview Edition: /ask ====================
+
+    def increment_ask_requests(self, lane: str, outcome: str):
+        self.ask_requests_total.labels(lane=lane, outcome=outcome).inc()
+
+    def observe_ask_latency_ms(self, lane: str, latency_ms: int):
+        self.ask_latency_ms.labels(lane=lane).observe(latency_ms)
