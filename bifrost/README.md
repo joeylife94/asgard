@@ -118,9 +118,32 @@ Bifrost가 **Heimdall (Java/Spring Boot)** 과 **Apache Kafka**를 통해 마이
   - request: `{ "source": "...", "tags": ["..."], "text": "..." }`
   - response: `{ "chunks_ingested": 12 }`
 
-- `POST /ask`
+- `POST /api/v1/ask` (권장)
+  - `POST /ask` (호환용 alias)
   - request: `AnswerRequest` (`question`, `tags?`, `source?`, `session_id?`)
   - response: `AnswerResponse` (`answer`, `citations`, `route`, `telemetry`)
+
+### Routing Policy (명시)
+
+- 기본 lane: `on_device_rag`
+- cloud lane 사용 조건:
+  - `ENABLE_CLOUD_LANE=true` 설정
+  - 그리고 요청에서 `source`를 `cloud` 또는 `cloud_direct`로 지정
+- cloud lane은 **Direct-only**이며 RAG 저장소/리트리버/컨텍스트 빌더를 사용하지 않습니다.
+
+### Low-Confidence & Fallback Policy (명시)
+
+아래 조건 중 하나라도 만족하면 **결정론적(deterministic) fallback**을 수행합니다.
+
+- 답변이 비어있거나 너무 짧음 (길이 < 60 chars)
+- 불확실성 표현 포함 (EN: "i don't know", "not sure" ... / KR: "모르", "확신", "알 수 없", "불확실" 등)
+- `on_device_rag` lane에서 citations가 비어있음 (런북 근거로 grounding 실패)
+
+fallback 응답은 단순 에러가 아니라:
+- 영어 1문장 + 한국어 설명
+- 상위 런북 스니펫 목록
+- citations
+을 포함합니다.
 
 ### 로컬 실행(최소)
 
@@ -149,7 +172,7 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:8000/api/v1/runbooks/inges
 2) 질문(/ask)
 
 ```bash
-curl -s -X POST http://localhost:8000/ask \
+curl -s -X POST http://localhost:8000/api/v1/ask \
   -H "Content-Type: application/json" \
   -H "x-request-id: demo-001" \
   -d '{"question": "postgres connection refused가 났을 때 5분 내에 무엇부터 확인해?"}'
@@ -167,6 +190,18 @@ curl -s -X POST http://localhost:8000/ask \
 - `ENABLE_CLOUD_LANE=true`: cloud lane 허용(기본 비활성)
 - `BIFROST_ON_DEVICE_MODE=stub`: Ollama 없이도 데모 가능한 스텁 모드
 - `BIFROST_ON_DEVICE_STUB_ANSWER`: 스텁 답변 문구
+
+### Configuration Knobs (ENV)
+
+| ENV | Default | Purpose |
+| --- | --- | --- |
+| `BIFROST_RAG_TOP_K` | `5` | on-device RAG retrieval top-k |
+| `BIFROST_RAG_MAX_CONTEXT_CHARS` | `6500` | on-device RAG prompt max char budget |
+| `BIFROST_LLM_TIMEOUT_SECONDS` | `12` | orchestrator LLM timeout (seconds) |
+| `BIFROST_LLM_MAX_RETRIES` | `1` | orchestrator retry count (0이면 retry 없음) |
+| `ENABLE_CLOUD_LANE` | `false` | cloud lane 사용 허용 여부 |
+| `BIFROST_CLOUD_PROVIDER` | `bedrock` | cloud lane provider 이름 |
+| `BIFROST_ON_DEVICE_PROVIDER` | `ollama` | on-device provider 이름 |
 
 
 

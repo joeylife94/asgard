@@ -934,6 +934,7 @@ async def ingest_runbook(req: RunbookIngestRequest):
     return RunbookIngestResponse(chunks_ingested=result.chunks_ingested)
 
 
+@app.post("/api/v1/ask", response_model=AnswerResponse, dependencies=[Depends(verify_api_key)])
 @app.post("/ask", response_model=AnswerResponse, dependencies=[Depends(verify_api_key)])
 async def ask(req: AnswerRequest, request: Request):
     """Incident / Runbook Q&A assistant.

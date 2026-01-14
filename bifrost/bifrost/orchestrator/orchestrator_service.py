@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import anyio
 
@@ -12,7 +13,9 @@ from bifrost.contracts.ask import AnswerRequest, AnswerResponse, RouteDecision, 
 from bifrost.logger import logger
 
 from .policy_router import PolicyRouter
-from .answerers import OnDeviceRagAnswerer, CloudDirectAnswerer, AnswerAttempt
+from .answerers.on_device import OnDeviceRagAnswerer
+from .answerers.cloud import CloudDirectAnswerer
+from .answerers.types import AnswerAttempt
 
 
 @dataclass(frozen=True)
@@ -20,20 +23,62 @@ class OrchestratorConfig:
     timeout_seconds: float = 12.0
     max_retries: int = 1
 
+    @classmethod
+    def from_env(cls) -> "OrchestratorConfig":
+        timeout_seconds = _get_float_env("BIFROST_LLM_TIMEOUT_SECONDS", 12.0)
+        max_retries = _get_int_env("BIFROST_LLM_MAX_RETRIES", 1)
+        return cls(timeout_seconds=timeout_seconds, max_retries=max_retries)
+
+
+def _get_int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+def _get_float_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
 
 def _looks_low_confidence(text: str) -> bool:
+    # Deterministic heuristic policy (interview-friendly):
+    # - Empty/very short answer => low confidence
+    # - Contains uncertainty markers (EN + KR) => low confidence
     t = (text or "").strip().lower()
     if not t:
         return True
     if len(t) < 60:
         return True
-    markers = ["i don't know", "not sure", "can't", "cannot", "unknown"]
+    markers = [
+        "i don't know",
+        "not sure",
+        "can't",
+        "cannot",
+        "unknown",
+        # Korean uncertainty markers (substring match)
+        "모르",
+        "확신",
+        "알 수 없",
+        "불확실",
+    ]
     return any(m in t for m in markers)
 
 
 class OrchestratorService:
     def __init__(self, config: Optional[OrchestratorConfig] = None):
-        self.config = config or OrchestratorConfig()
+        self.config = config or OrchestratorConfig.from_env()
         self.router = PolicyRouter()
         self.on_device = OnDeviceRagAnswerer()
         self.cloud = None  # lazy init
@@ -60,7 +105,12 @@ class OrchestratorService:
             else:
                 retrieved_ids = []
 
-            if _looks_low_confidence(attempt.answer):
+            low_confidence = _looks_low_confidence(attempt.answer)
+            # On-device RAG must produce citations; lack of citations implies we could not ground the answer.
+            if decision.lane == "on_device_rag" and not attempt.citations:
+                low_confidence = True
+
+            if low_confidence:
                 # deterministic fallback for low-confidence (always uses on-device RAG snippets)
                 fallback_used = True
                 outcome = "fallback"
@@ -133,10 +183,10 @@ class OrchestratorService:
 
     def _fallback_from_rag(self, question: str) -> AnswerAttempt:
         # Build a deterministic answer containing the best snippets
-        chunks = self.on_device.retriever.retrieve(question, top_k=5)
+        chunks = self.on_device.retriever.retrieve(question, top_k=self.on_device.top_k)
         built = self.on_device.builder.build(question, chunks)
-        ids = [c.chunk_id for c in built.citations]
         answer = (
+            "I can't confidently answer based on the runbook evidence.\n"
             "현재 런북 근거만으로는 확신 있게 답변하기 어렵습니다.\n\n"
             "가장 관련 있어 보이는 런북 스니펫:\n"
         )

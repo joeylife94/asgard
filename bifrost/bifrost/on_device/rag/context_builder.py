@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from bifrost.contracts.ask import Citation
 
@@ -34,7 +35,10 @@ def _preview(text: str, limit: int = 160) -> str:
 
 
 class ContextBuilder:
-    def __init__(self, max_chars: int = 6500):
+    def __init__(self, max_chars: Optional[int] = None):
+        # Keep deterministic defaults, but allow configuration via ENV.
+        if max_chars is None:
+            max_chars = _get_int_env("BIFROST_RAG_MAX_CONTEXT_CHARS", 6500)
         self.max_chars = max_chars
 
     def build(self, question: str, chunks: List[RetrievedChunk]) -> BuiltContext:
@@ -68,3 +72,14 @@ class ContextBuilder:
             prompt = head + "\n" + snippet_text[:tail_budget]
 
         return BuiltContext(prompt=prompt, citations=citations, char_estimate=len(prompt))
+
+
+def _get_int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
