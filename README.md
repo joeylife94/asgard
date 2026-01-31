@@ -41,6 +41,16 @@ Named after the mythological realm connecting all worlds, **Asgard** serves as a
 - ✅ 80%+ test coverage with integration & stress testing
 - ✅ Production-ready observability stack
 
+### 🚀 v0.3.0 새 기능 (2026-01-31)
+
+**Bifrost 확장 기능 (177개 테스트 통과):**
+- ✅ **Circuit Breaker** (28 tests) - LLM 호출 안정성 보장, CLOSED/OPEN/HALF_OPEN 상태 관리
+- ✅ **피드백 시스템** (25 tests) - 사용자 피드백 수집/분석/통계, 만족도 추적
+- ✅ **멀티 LLM 동적 라우팅** (30 tests) - 6가지 전략: ROUND_ROBIN, COST_OPTIMIZED, PERFORMANCE, CAPABILITY, HYBRID, FALLBACK
+- ✅ **품질 지표 시스템** (31 tests) - 10차원 품질 분석 (관련성, 완전성, 정확성, 명확성 등)
+- ✅ **A/B 테스팅 프레임워크** (34 tests) - 실험 생명주기 관리, 변형 할당, 통계 분석
+- ✅ **스마트 캐싱** (29 tests) - 시맨틱 유사성 기반 응답 캐싱, TTL/압축/제거 전략
+
 ## 🏗️ System Architecture
 
 ```mermaid
@@ -169,12 +179,19 @@ asgard/
 ├── heimdall/          # Spring Boot API Gateway & Core Services
 ├── bifrost/           # Hybrid AI Inference Engine (Python/FastAPI)
 │   ├── bifrost/       # Core AI router and LLM integration
+│   │   ├── resilience/    # Circuit Breaker ✨ NEW
+│   │   ├── feedback/      # 피드백 시스템 ✨ NEW  
+│   │   ├── routing/       # 멀티 LLM 라우팅 ✨ NEW
+│   │   ├── quality/       # 품질 지표 시스템 ✨ NEW
+│   │   ├── experiment/    # A/B 테스팅 ✨ NEW
+│   │   └── smart_cache/   # 스마트 캐싱 ✨ NEW
 │   ├── frontend/      # Management Dashboard (React/Vite)
-│   └── tests/         # Integration & unit tests
+│   └── tests/         # 177개 테스트 (확장 기능 포함)
 ├── docker-compose.yml # Local development infrastructure
 ├── monitoring/        # Prometheus & Grafana configurations
 ├── build.gradle       # Root Gradle configuration (Java 21)
 ├── settings.gradle    # Gradle multi-module settings
+├── IMPLEMENTATION_STATUS.md  # 구현 상태 상세 ✨ NEW
 └── UPGRADE_JAVA21.md  # Java 21 LTS migration report
 ```
 

@@ -292,8 +292,106 @@ git push origin feature/my-feature
 
 - Main README: `README.md`
 - Configuration Summary: `CONFIGURATION_SUMMARY.md`
+- Implementation Status: `IMPLEMENTATION_STATUS.md`
 - Heimdall Docs: `heimdall/docs/`
 - Bifrost Docs: `bifrost/docs/`
+
+---
+
+## 🔌 Bifrost API 엔드포인트 (v0.3.0)
+
+### 🔄 Circuit Breaker
+```bash
+# 모든 Circuit Breaker 상태 조회
+curl http://localhost:8000/api/v1/circuit-breakers
+
+# 특정 CB 조회
+curl http://localhost:8000/api/v1/circuit-breakers/{name}
+
+# CB 리셋
+curl -X POST http://localhost:8000/api/v1/circuit-breakers/{name}/reset
+```
+
+### 💬 피드백 시스템
+```bash
+# 피드백 제출
+curl -X POST http://localhost:8000/api/v1/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"request_id": "req-123", "feedback_type": "thumbs_up", "rating": 5}'
+
+# 빠른 피드백 (좋아요/싫어요)
+curl -X POST http://localhost:8000/api/v1/feedback/quick \
+  -d '{"request_id": "req-123", "is_positive": true}'
+
+# 피드백 통계
+curl http://localhost:8000/api/v1/feedback/stats
+```
+
+### 🔀 멀티 LLM 라우팅
+```bash
+# 라우팅 결정 요청
+curl -X POST http://localhost:8000/api/v1/routing/decide \
+  -H "Content-Type: application/json" \
+  -d '{"input_text": "What is the error?", "strategy": "cost_optimized"}'
+
+# 제공자 목록
+curl http://localhost:8000/api/v1/routing/providers
+
+# 라우팅 통계
+curl http://localhost:8000/api/v1/routing/metrics
+```
+
+### 📊 품질 지표 시스템
+```bash
+# 품질 분석 실행
+curl -X POST http://localhost:8000/api/v1/quality/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"request_id": "req-123", "query": "What is error?", "response": "The error is..."}'
+
+# 품질 통계
+curl http://localhost:8000/api/v1/quality/stats
+
+# 품질 트렌드
+curl http://localhost:8000/api/v1/quality/trends
+```
+
+### 🧪 A/B 테스팅
+```bash
+# 실험 생성
+curl -X POST http://localhost:8000/api/v1/experiments \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llm-compare", "variants": [{"name": "control", "type": "control"}, {"name": "treatment", "type": "treatment"}]}'
+
+# 실험 시작
+curl -X POST http://localhost:8000/api/v1/experiments/{id}/start
+
+# 변형 할당
+curl -X POST http://localhost:8000/api/v1/experiments/assign \
+  -d '{"experiment_id": "exp-123", "request_id": "req-456"}'
+
+# 결과 분석
+curl http://localhost:8000/api/v1/experiments/{id}/results
+```
+
+### 💾 스마트 캐싱
+```bash
+# 캐시에 저장
+curl -X POST http://localhost:8000/api/v1/cache/put \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is the error?", "response": "The error is a timeout."}'
+
+# 캐시 조회 (시맨틱 매칭 포함)
+curl -X POST http://localhost:8000/api/v1/cache/lookup \
+  -d '{"query": "What is the problem?", "use_semantic": true}'
+
+# 캐시 통계
+curl http://localhost:8000/api/v1/cache/stats
+
+# 만료 항목 정리
+curl -X POST http://localhost:8000/api/v1/cache/cleanup
+```
+
+---
 
 ## 💡 Tips
 
