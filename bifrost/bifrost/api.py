@@ -312,6 +312,10 @@ async def health():
     if kafka_consumer_manager or kafka_producer_manager:
         kafka_status = "enabled"
     
+    # Circuit Breaker 상태 확인
+    from bifrost.resilience import circuit_breaker_registry
+    cb_stats = circuit_breaker_registry.get_all_stats()
+    
     return {
         "status": "healthy",
         "components": {
@@ -321,6 +325,7 @@ async def health():
             "kafka": kafka_status,
             "heimdall_integration": "enabled" if kafka_consumer_manager else "disabled",
         },
+        "circuit_breakers": cb_stats,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -564,6 +569,1201 @@ async def get_prometheus_metrics(_: Optional[str] = Depends(verify_api_key)):
     from fastapi.responses import Response
     
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+# ==================== Circuit Breaker Management API ====================
+
+@app.get("/api/v1/circuit-breakers")
+async def get_circuit_breakers(_: bool = Depends(verify_api_key)):
+    """
+    모든 Circuit Breaker 상태 조회
+    
+    Returns:
+        각 Circuit Breaker의 상태, 통계, 설정 정보
+    """
+    from bifrost.resilience import circuit_breaker_registry
+    
+    stats = circuit_breaker_registry.get_all_stats()
+    
+    return {
+        "circuit_breakers": stats,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/v1/circuit-breakers/{name}")
+async def get_circuit_breaker_by_name(name: str, _: bool = Depends(verify_api_key)):
+    """
+    특정 Circuit Breaker 상태 조회
+    
+    Args:
+        name: Circuit Breaker 이름 (on_device_rag, cloud_direct 등)
+    """
+    from bifrost.resilience import circuit_breaker_registry
+    
+    stats = circuit_breaker_registry.get_all_stats()
+    
+    if name not in stats:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Circuit breaker '{name}' not found"
+        )
+    
+    return {
+        "name": name,
+        **stats[name],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.post("/api/v1/circuit-breakers/{name}/reset")
+async def reset_circuit_breaker(name: str, _: bool = Depends(verify_api_key)):
+    """
+    특정 Circuit Breaker 수동 리셋
+    
+    운영자가 Circuit이 OPEN 상태일 때 수동으로 CLOSED로 복구할 수 있습니다.
+    주의: 실제 서비스가 복구되지 않은 상태에서 리셋하면 다시 OPEN될 수 있습니다.
+    """
+    from bifrost.resilience import circuit_breaker_registry
+    
+    stats = circuit_breaker_registry.get_all_stats()
+    
+    if name not in stats:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Circuit breaker '{name}' not found"
+        )
+    
+    cb = circuit_breaker_registry.get(name)
+    previous_state = cb.state.value
+    cb.reset()
+    
+    logger.info(
+        "circuit_breaker_manual_reset",
+        name=name,
+        previous_state=previous_state,
+    )
+    
+    return {
+        "name": name,
+        "previous_state": previous_state,
+        "current_state": cb.state.value,
+        "message": f"Circuit breaker '{name}' has been reset",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.post("/api/v1/circuit-breakers/reset-all")
+async def reset_all_circuit_breakers(_: bool = Depends(verify_api_key)):
+    """
+    모든 Circuit Breaker 수동 리셋
+    
+    주의: 실제 서비스가 복구되지 않은 상태에서 리셋하면 다시 OPEN될 수 있습니다.
+    """
+    from bifrost.resilience import circuit_breaker_registry
+    
+    stats_before = circuit_breaker_registry.get_all_stats()
+    circuit_breaker_registry.reset_all()
+    stats_after = circuit_breaker_registry.get_all_stats()
+    
+    logger.info("circuit_breaker_reset_all")
+    
+    return {
+        "message": "All circuit breakers have been reset",
+        "before": stats_before,
+        "after": stats_after,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# ==================== End Circuit Breaker API ====================
+
+
+# ==================== Feedback System API ====================
+
+class FeedbackRequest(BaseModel):
+    """Feedback submission request."""
+    request_id: str = Field(..., description="Analysis request ID")
+    feedback_type: str = Field(..., description="Type of feedback")
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Star rating 1-5")
+    comment: Optional[str] = Field(None, max_length=2000, description="User comment")
+    tags: Optional[List[str]] = Field(None, description="Categorization tags")
+    job_id: Optional[str] = Field(None, description="Heimdall job ID")
+    session_id: Optional[str] = Field(None, description="Browser session ID")
+    metadata: Optional[dict] = Field(None, description="Additional context")
+
+
+class QuickFeedbackRequest(BaseModel):
+    """Quick thumbs up/down feedback."""
+    request_id: str = Field(..., description="Analysis request ID")
+    is_positive: bool = Field(..., description="True for thumbs up, False for thumbs down")
+    job_id: Optional[str] = Field(None, description="Heimdall job ID")
+    session_id: Optional[str] = Field(None, description="Browser session ID")
+    metadata: Optional[dict] = Field(None, description="Additional context")
+
+
+@app.post("/api/v1/feedback")
+async def submit_feedback(
+    request: FeedbackRequest,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Submit detailed feedback for an AI analysis response.
+    
+    Feedback types:
+    - thumbs_up, thumbs_down: Quick reactions
+    - rating: Star rating (1-5)
+    - inaccurate, incomplete, irrelevant, too_slow: Issue types
+    - helpful, accurate, well_formatted: Positive feedback
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    feedback = service.submit_feedback(
+        request_id=request.request_id,
+        feedback_type=request.feedback_type,
+        rating=request.rating,
+        comment=request.comment,
+        tags=request.tags,
+        job_id=request.job_id,
+        session_id=request.session_id,
+        metadata=request.metadata,
+    )
+    
+    return {
+        "success": True,
+        "feedback_id": str(feedback.id),
+        "is_positive": feedback.is_positive(),
+        "timestamp": feedback.created_at.isoformat(),
+    }
+
+
+@app.post("/api/v1/feedback/quick")
+async def submit_quick_feedback(
+    request: QuickFeedbackRequest,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Submit quick thumbs up/down feedback.
+    
+    Simplified endpoint for binary feedback collection.
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    feedback = service.submit_quick_feedback(
+        request_id=request.request_id,
+        is_positive=request.is_positive,
+        job_id=request.job_id,
+        session_id=request.session_id,
+        metadata=request.metadata,
+    )
+    
+    return {
+        "success": True,
+        "feedback_id": str(feedback.id),
+        "feedback_type": feedback.feedback_type.value,
+        "timestamp": feedback.created_at.isoformat(),
+    }
+
+
+@app.get("/api/v1/feedback/stats")
+async def get_feedback_stats(
+    hours: int = 24,
+    provider: Optional[str] = None,
+    lane: Optional[str] = None,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get aggregated feedback statistics.
+    
+    Args:
+        hours: Time period for statistics (default: 24)
+        provider: Filter by AI provider (ollama, bedrock, etc.)
+        lane: Filter by routing lane (on_device_rag, cloud_direct)
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    stats = service.get_stats(hours=hours, provider=provider, lane=lane)
+    
+    return stats.to_dict()
+
+
+@app.get("/api/v1/feedback/satisfaction")
+async def get_satisfaction_score(
+    hours: int = 24,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get overall satisfaction score with breakdown by provider/lane.
+    
+    Returns NPS-like score and satisfaction rates.
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    return service.get_satisfaction_score(hours=hours)
+
+
+@app.get("/api/v1/feedback/trends")
+async def get_feedback_trends(
+    days: int = 7,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get daily feedback trends for the specified period.
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    trends = service.get_trends(days=days)
+    
+    return trends.to_dict()
+
+
+@app.get("/api/v1/feedback/recent")
+async def get_recent_feedback(
+    hours: int = 24,
+    limit: int = 100,
+    feedback_type: Optional[str] = None,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get recent feedback entries.
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    feedbacks = service.get_recent_feedback(
+        hours=hours,
+        limit=limit,
+        feedback_type=feedback_type,
+    )
+    
+    return {
+        "count": len(feedbacks),
+        "feedbacks": [f.to_dict() for f in feedbacks],
+    }
+
+
+@app.get("/api/v1/feedback/negative")
+async def get_negative_feedback(
+    hours: int = 24,
+    limit: int = 50,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get recent negative feedback for review and improvement.
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    feedbacks = service.get_negative_feedback(hours=hours, limit=limit)
+    
+    return {
+        "count": len(feedbacks),
+        "feedbacks": [f.to_dict() for f in feedbacks],
+    }
+
+
+@app.get("/api/v1/feedback/request/{request_id}")
+async def get_feedback_for_request(
+    request_id: str,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get all feedback for a specific analysis request.
+    """
+    from bifrost.feedback import FeedbackService
+    
+    service = FeedbackService()
+    feedbacks = service.get_feedback_for_request(request_id)
+    
+    return {
+        "request_id": request_id,
+        "count": len(feedbacks),
+        "feedbacks": [f.to_dict() for f in feedbacks],
+    }
+
+
+# ==================== End Feedback System API ====================
+
+
+# ==================== Multi-LLM Routing API ====================
+
+class RouteRequest(BaseModel):
+    """Request for routing decision."""
+    input_text: str = Field(..., description="Input text/prompt for routing decision")
+    strategy: Optional[str] = Field(None, description="Routing strategy")
+    required_capabilities: Optional[List[str]] = Field(None, description="Required capabilities")
+    exclude_providers: Optional[List[str]] = Field(None, description="Providers to exclude")
+
+
+@app.post("/api/v1/routing/decide")
+async def get_routing_decision(
+    request: RouteRequest,
+    request_id: str = Header(None, alias="X-Request-ID"),
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get routing decision for an LLM request.
+    
+    Returns the best provider based on the specified strategy
+    and current provider availability.
+    
+    Strategies:
+    - cost_optimized: Minimize cost
+    - latency_optimized: Minimize latency
+    - quality_optimized: Best model quality
+    - balanced: Balance cost/latency/quality
+    - failover: Primary with fallback chain
+    - round_robin: Distribute evenly
+    """
+    from bifrost.routing import DynamicRouter, RoutingStrategy
+    
+    router = DynamicRouter()
+    
+    strategy = None
+    if request.strategy:
+        try:
+            strategy = RoutingStrategy(request.strategy)
+        except ValueError:
+            raise HTTPException(400, f"Invalid strategy: {request.strategy}")
+    
+    decision = router.route(
+        input_text=request.input_text,
+        strategy=strategy,
+        required_capabilities=request.required_capabilities,
+        exclude_providers=request.exclude_providers,
+        request_id=request_id,
+    )
+    
+    return decision.to_dict()
+
+
+@app.get("/api/v1/routing/providers")
+async def list_providers(_: bool = Depends(verify_api_key)):
+    """
+    List all registered LLM providers with their configurations.
+    """
+    from bifrost.routing import DynamicRouter
+    
+    router = DynamicRouter()
+    providers = router.list_providers()
+    
+    return {
+        "providers": [p.to_dict() for p in providers],
+        "count": len(providers),
+    }
+
+
+@app.get("/api/v1/routing/providers/{name}")
+async def get_provider(name: str, _: bool = Depends(verify_api_key)):
+    """
+    Get configuration for a specific provider.
+    """
+    from bifrost.routing import DynamicRouter
+    
+    router = DynamicRouter()
+    provider = router.get_provider(name)
+    
+    if not provider:
+        raise HTTPException(404, f"Provider '{name}' not found")
+    
+    return provider.to_dict()
+
+
+@app.get("/api/v1/routing/health")
+async def get_providers_health(_: bool = Depends(verify_api_key)):
+    """
+    Get health status of all providers including circuit breaker state.
+    """
+    from bifrost.routing import DynamicRouter
+    
+    router = DynamicRouter()
+    health = router.get_provider_health()
+    
+    return {
+        "providers": [h.to_dict() for h in health],
+        "healthy_count": sum(1 for h in health if h.is_healthy),
+        "total_count": len(health),
+    }
+
+
+@app.get("/api/v1/routing/metrics")
+async def get_routing_metrics(_: bool = Depends(verify_api_key)):
+    """
+    Get routing metrics and statistics.
+    """
+    from bifrost.routing import DynamicRouter
+    
+    router = DynamicRouter()
+    metrics = router.get_metrics()
+    
+    return metrics.to_dict()
+
+
+@app.get("/api/v1/routing/cost")
+async def get_routing_cost(hours: int = 24, _: bool = Depends(verify_api_key)):
+    """
+    Get cost summary for LLM usage.
+    """
+    from bifrost.routing import DynamicRouter
+    
+    router = DynamicRouter()
+    return router.get_cost_summary(hours=hours)
+
+
+@app.put("/api/v1/routing/strategy")
+async def set_routing_strategy(strategy: str, _: bool = Depends(verify_api_key)):
+    """
+    Set the default routing strategy.
+    """
+    from bifrost.routing import DynamicRouter, RoutingStrategy
+    
+    try:
+        strategy_enum = RoutingStrategy(strategy)
+    except ValueError:
+        raise HTTPException(400, f"Invalid strategy: {strategy}")
+    
+    router = DynamicRouter()
+    router.set_default_strategy(strategy_enum)
+    
+    return {
+        "success": True,
+        "strategy": strategy,
+        "message": f"Default routing strategy set to '{strategy}'",
+    }
+
+
+# ==================== End Multi-LLM Routing API ====================
+
+
+# ==================== Quality Metrics API ====================
+
+class QualityAnalyzeRequest(BaseModel):
+    """Request model for quality analysis."""
+    request_id: str = Field(..., description="Analysis request ID")
+    job_id: Optional[str] = Field(None, description="Job ID")
+    query: str = Field(..., description="Original query/prompt")
+    response: str = Field(..., description="AI response to analyze")
+    expected_keywords: Optional[List[str]] = Field(None, description="Expected keywords in response")
+    expected_sections: Optional[List[str]] = Field(None, description="Expected sections/headings")
+    provider: Optional[str] = Field(None, description="LLM provider used")
+    lane: Optional[str] = Field(None, description="Inference lane (on_device/cloud)")
+    model: Optional[str] = Field(None, description="Model name")
+    latency_ms: Optional[int] = Field(None, description="Response latency in ms")
+    token_count: Optional[int] = Field(None, description="Total tokens used")
+    save: bool = Field(True, description="Whether to save the report")
+
+
+@app.post("/api/v1/quality/analyze")
+async def analyze_quality(request: QualityAnalyzeRequest, _: bool = Depends(verify_api_key)):
+    """
+    Analyze the quality of an AI response.
+    
+    Evaluates:
+    - Relevance to query
+    - Completeness of information
+    - Clarity and structure
+    - Conciseness
+    - Confidence level
+    - Token efficiency
+    """
+    from bifrost.quality import QualityAnalyzer, get_quality_tracker
+    
+    analyzer = QualityAnalyzer()
+    
+    report = analyzer.analyze(
+        request_id=request.request_id,
+        job_id=request.job_id,
+        query=request.query,
+        response=request.response,
+        expected_keywords=request.expected_keywords,
+        expected_sections=request.expected_sections,
+        provider=request.provider,
+        lane=request.lane,
+        model=request.model,
+        latency_ms=request.latency_ms,
+        token_count=request.token_count,
+    )
+    
+    if request.save:
+        tracker = get_quality_tracker()
+        tracker.save_report(report)
+    
+    return {
+        "report_id": str(report.id),
+        "request_id": report.request_id,
+        "overall_score": report.overall_score,
+        "overall_grade": report.overall_grade,
+        "scores": [
+            {
+                "dimension": s.dimension.value,
+                "score": s.score,
+                "weight": s.weight,
+                "details": s.details,
+            }
+            for s in report.scores
+        ],
+        "recommendations": report.recommendations,
+        "metadata": report.metadata,
+        "analyzed_at": report.analyzed_at.isoformat(),
+    }
+
+
+@app.get("/api/v1/quality/stats")
+async def get_quality_stats(
+    hours: int = 24,
+    provider: Optional[str] = None,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get aggregated quality statistics.
+    """
+    from bifrost.quality import get_quality_tracker
+    
+    tracker = get_quality_tracker()
+    return tracker.get_stats(hours=hours, provider=provider)
+
+
+@app.get("/api/v1/quality/dimensions")
+async def get_dimension_stats(
+    hours: int = 24,
+    dimension: Optional[str] = None,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get quality statistics by dimension.
+    """
+    from bifrost.quality import get_quality_tracker, QualityDimension
+    
+    tracker = get_quality_tracker()
+    dim = QualityDimension(dimension) if dimension else None
+    return tracker.get_dimension_stats(hours=hours, dimension=dim)
+
+
+@app.get("/api/v1/quality/trends")
+async def get_quality_trends(days: int = 7, _: bool = Depends(verify_api_key)):
+    """
+    Get daily quality trends.
+    """
+    from bifrost.quality import get_quality_tracker
+    
+    tracker = get_quality_tracker()
+    trend = tracker.get_trends(days=days)
+    
+    return {
+        "period": trend.period,
+        "data_points": trend.data_points,
+    }
+
+
+@app.get("/api/v1/quality/reports")
+async def get_quality_reports(
+    hours: int = 24,
+    limit: int = 50,
+    provider: Optional[str] = None,
+    min_grade: Optional[str] = None,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get recent quality reports.
+    """
+    from bifrost.quality import get_quality_tracker
+    
+    tracker = get_quality_tracker()
+    reports = tracker.get_recent_reports(
+        hours=hours,
+        limit=limit,
+        provider=provider,
+        min_grade=min_grade,
+    )
+    
+    return {
+        "count": len(reports),
+        "reports": [
+            {
+                "report_id": str(r.id),
+                "request_id": r.request_id,
+                "overall_score": r.overall_score,
+                "overall_grade": r.overall_grade,
+                "provider": r.provider,
+                "analyzed_at": r.analyzed_at.isoformat(),
+            }
+            for r in reports
+        ],
+    }
+
+
+@app.get("/api/v1/quality/reports/{report_id}")
+async def get_quality_report(report_id: str, _: bool = Depends(verify_api_key)):
+    """
+    Get a specific quality report.
+    """
+    from uuid import UUID
+    from bifrost.quality import get_quality_tracker
+    
+    try:
+        rid = UUID(report_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid report ID format")
+    
+    tracker = get_quality_tracker()
+    report = tracker.get_report(rid)
+    
+    if not report:
+        raise HTTPException(404, "Report not found")
+    
+    return {
+        "report_id": str(report.id),
+        "request_id": report.request_id,
+        "job_id": report.job_id,
+        "overall_score": report.overall_score,
+        "overall_grade": report.overall_grade,
+        "provider": report.provider,
+        "lane": report.lane,
+        "model": report.model,
+        "latency_ms": report.latency_ms,
+        "token_count": report.token_count,
+        "scores": [
+            {
+                "dimension": s.dimension.value,
+                "score": s.score,
+                "weight": s.weight,
+                "details": s.details,
+                "factors": s.factors,
+            }
+            for s in report.scores
+        ],
+        "recommendations": report.recommendations,
+        "metadata": report.metadata,
+        "analyzed_at": report.analyzed_at.isoformat(),
+    }
+
+
+@app.get("/api/v1/quality/low-quality")
+async def get_low_quality_reports(
+    hours: int = 24,
+    threshold: float = 0.6,
+    limit: int = 50,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Get reports with quality below threshold.
+    """
+    from bifrost.quality import get_quality_tracker
+    
+    tracker = get_quality_tracker()
+    reports = tracker.get_low_quality_reports(
+        hours=hours,
+        threshold=threshold,
+        limit=limit,
+    )
+    
+    return {
+        "threshold": threshold,
+        "count": len(reports),
+        "reports": [
+            {
+                "report_id": str(r.id),
+                "request_id": r.request_id,
+                "overall_score": r.overall_score,
+                "overall_grade": r.overall_grade,
+                "provider": r.provider,
+                "recommendations": r.recommendations,
+                "analyzed_at": r.analyzed_at.isoformat(),
+            }
+            for r in reports
+        ],
+    }
+
+
+# ==================== End Quality Metrics API ====================
+
+
+# ==================== A/B Testing API ====================
+
+class ExperimentCreateRequest(BaseModel):
+    """Request model for creating an experiment."""
+    name: str = Field(..., description="Experiment name")
+    description: Optional[str] = Field(None, description="Experiment description")
+    variants: List[Dict[str, Any]] = Field(..., description="List of variants")
+    allocation: Optional[Dict[str, Any]] = Field(None, description="Traffic allocation")
+    config: Optional[Dict[str, Any]] = Field(None, description="Experiment configuration")
+    tags: Optional[List[str]] = Field(None, description="Tags for categorization")
+
+
+@app.post("/api/v1/experiments")
+async def create_experiment(request: ExperimentCreateRequest, _: bool = Depends(verify_api_key)):
+    """
+    Create a new A/B test experiment.
+    """
+    from bifrost.experiment import (
+        get_experiment_manager,
+        Experiment,
+        Variant,
+        VariantType,
+        TrafficAllocation,
+        ExperimentConfig,
+    )
+    
+    try:
+        # Parse variants
+        variants = []
+        for v_data in request.variants:
+            variant = Variant(
+                name=v_data["name"],
+                variant_type=VariantType(v_data.get("variant_type", "treatment")),
+                weight=v_data.get("weight", 50.0),
+                provider=v_data.get("provider"),
+                model=v_data.get("model"),
+                lane=v_data.get("lane"),
+                temperature=v_data.get("temperature"),
+                max_tokens=v_data.get("max_tokens"),
+                config=v_data.get("config", {}),
+            )
+            variants.append(variant)
+        
+        # Create experiment
+        experiment = Experiment(
+            name=request.name,
+            description=request.description or "",
+            variants=variants,
+            tags=request.tags or [],
+        )
+        
+        manager = get_experiment_manager()
+        created = manager.create_experiment(experiment)
+        
+        return {
+            "success": True,
+            "experiment_id": str(created.id),
+            "name": created.name,
+            "status": created.status.value,
+        }
+    
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/v1/experiments")
+async def list_experiments(
+    status: Optional[str] = None,
+    limit: int = 50,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    List all experiments.
+    """
+    from bifrost.experiment import get_experiment_manager, ExperimentStatus
+    
+    manager = get_experiment_manager()
+    
+    status_filter = ExperimentStatus(status) if status else None
+    experiments = manager.list_experiments(status=status_filter, limit=limit)
+    
+    return {
+        "count": len(experiments),
+        "experiments": [
+            {
+                "id": str(e.id),
+                "name": e.name,
+                "status": e.status.value,
+                "variants_count": len(e.variants),
+                "created_at": e.created_at.isoformat(),
+            }
+            for e in experiments
+        ],
+    }
+
+
+@app.get("/api/v1/experiments/{experiment_id}")
+async def get_experiment(experiment_id: str, _: bool = Depends(verify_api_key)):
+    """
+    Get experiment details.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    experiment = manager.get_experiment(eid)
+    
+    if not experiment:
+        raise HTTPException(404, "Experiment not found")
+    
+    return experiment.to_dict()
+
+
+@app.post("/api/v1/experiments/{experiment_id}/start")
+async def start_experiment(experiment_id: str, _: bool = Depends(verify_api_key)):
+    """
+    Start an experiment.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    
+    try:
+        experiment = manager.start_experiment(eid)
+        return {
+            "success": True,
+            "experiment_id": str(experiment.id),
+            "status": experiment.status.value,
+            "started_at": experiment.started_at.isoformat() if experiment.started_at else None,
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/v1/experiments/{experiment_id}/pause")
+async def pause_experiment(experiment_id: str, _: bool = Depends(verify_api_key)):
+    """
+    Pause a running experiment.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    
+    try:
+        experiment = manager.pause_experiment(eid)
+        return {
+            "success": True,
+            "experiment_id": str(experiment.id),
+            "status": experiment.status.value,
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/v1/experiments/{experiment_id}/stop")
+async def stop_experiment(
+    experiment_id: str,
+    reason: Optional[str] = None,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Stop an experiment.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    
+    try:
+        experiment = manager.stop_experiment(eid, reason or "")
+        return {
+            "success": True,
+            "experiment_id": str(experiment.id),
+            "status": experiment.status.value,
+            "ended_at": experiment.ended_at.isoformat() if experiment.ended_at else None,
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/v1/experiments/{experiment_id}")
+async def delete_experiment(experiment_id: str, _: bool = Depends(verify_api_key)):
+    """
+    Delete an experiment.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    deleted = manager.delete_experiment(eid)
+    
+    if not deleted:
+        raise HTTPException(404, "Experiment not found")
+    
+    return {"success": True, "message": "Experiment deleted"}
+
+
+@app.get("/api/v1/experiments/{experiment_id}/results")
+async def get_experiment_results(experiment_id: str, _: bool = Depends(verify_api_key)):
+    """
+    Get experiment results and analysis.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    
+    try:
+        results = manager.get_results(eid)
+        return results.to_dict()
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+class AssignVariantRequest(BaseModel):
+    """Request model for variant assignment."""
+    experiment_id: str = Field(..., description="Experiment ID")
+    request_id: str = Field(..., description="Request ID for assignment")
+    user_id: Optional[str] = Field(None, description="User ID")
+    session_id: Optional[str] = Field(None, description="Session ID")
+    query: Optional[str] = Field(None, description="Query for eligibility check")
+
+
+@app.post("/api/v1/experiments/assign")
+async def assign_variant(request: AssignVariantRequest, _: bool = Depends(verify_api_key)):
+    """
+    Assign a request to an experiment variant.
+    """
+    from uuid import UUID
+    from bifrost.experiment import get_experiment_manager
+    
+    try:
+        eid = UUID(request.experiment_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid experiment ID")
+    
+    manager = get_experiment_manager()
+    
+    variant = manager.assign_variant(
+        experiment_id=eid,
+        request_id=request.request_id,
+        user_id=request.user_id,
+        session_id=request.session_id,
+        query=request.query,
+    )
+    
+    if not variant:
+        return {
+            "assigned": False,
+            "reason": "Not eligible or experiment not active",
+        }
+    
+    return {
+        "assigned": True,
+        "experiment_id": str(eid),
+        "variant": variant.to_dict(),
+    }
+
+
+class RecordResultRequest(BaseModel):
+    """Request model for recording experiment results."""
+    request_id: str = Field(..., description="Request ID")
+    quality_score: Optional[float] = Field(None, description="Quality score (0-1)")
+    latency_ms: Optional[int] = Field(None, description="Latency in ms")
+    satisfaction_score: Optional[float] = Field(None, description="Satisfaction score")
+    error_occurred: bool = Field(False, description="Whether an error occurred")
+    token_count: Optional[int] = Field(None, description="Token count")
+
+
+@app.post("/api/v1/experiments/record")
+async def record_experiment_result(
+    request: RecordResultRequest,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Record the result of an experiment assignment.
+    """
+    from bifrost.experiment import get_experiment_manager
+    
+    manager = get_experiment_manager()
+    
+    success = manager.record_result(
+        request_id=request.request_id,
+        quality_score=request.quality_score,
+        latency_ms=request.latency_ms,
+        satisfaction_score=request.satisfaction_score,
+        error_occurred=request.error_occurred,
+        token_count=request.token_count,
+    )
+    
+    return {
+        "success": success,
+        "request_id": request.request_id,
+    }
+
+
+# ==================== End A/B Testing API ====================
+
+
+# ==================== Smart Cache API ====================
+
+class CachePutRequest(BaseModel):
+    """Request model for adding cache entry."""
+    query: str = Field(..., description="Query to cache")
+    response: str = Field(..., description="Response to cache")
+    ttl_seconds: Optional[int] = Field(None, description="TTL in seconds")
+    provider: Optional[str] = Field(None, description="Provider name")
+    model: Optional[str] = Field(None, description="Model name")
+    lane: Optional[str] = Field(None, description="Inference lane")
+    quality_score: Optional[float] = Field(None, description="Quality score")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+@app.post("/api/v1/cache/put")
+async def cache_put(request: CachePutRequest, _: bool = Depends(verify_api_key)):
+    """
+    Add an entry to the smart cache.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    
+    entry = manager.put(
+        query=request.query,
+        response=request.response,
+        ttl_seconds=request.ttl_seconds,
+        provider=request.provider,
+        model=request.model,
+        lane=request.lane,
+        quality_score=request.quality_score,
+        metadata=request.metadata,
+    )
+    
+    return {
+        "success": True,
+        "entry_id": str(entry.id),
+        "query_hash": entry.query_hash,
+        "ttl_remaining": entry.ttl_remaining,
+    }
+
+
+class CacheLookupRequest(BaseModel):
+    """Request model for cache lookup."""
+    query: str = Field(..., description="Query to look up")
+    use_semantic: Optional[bool] = Field(None, description="Use semantic matching")
+
+
+@app.post("/api/v1/cache/lookup")
+async def cache_lookup(request: CacheLookupRequest, _: bool = Depends(verify_api_key)):
+    """
+    Look up a query in the cache.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    
+    result = manager.get(
+        query=request.query,
+        use_semantic=request.use_semantic,
+    )
+    
+    return result.to_dict()
+
+
+@app.get("/api/v1/cache/stats")
+async def get_cache_stats(_: bool = Depends(verify_api_key)):
+    """
+    Get cache statistics.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    stats = manager.get_stats()
+    
+    return stats.to_dict()
+
+
+@app.get("/api/v1/cache/entries")
+async def list_cache_entries(
+    limit: int = 50,
+    include_expired: bool = False,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    List cache entries.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    entries = manager.get_entries(limit=limit, include_expired=include_expired)
+    
+    return {
+        "count": len(entries),
+        "entries": [e.to_dict() for e in entries],
+    }
+
+
+@app.delete("/api/v1/cache/invalidate")
+async def invalidate_cache_entry(
+    query: str,
+    _: bool = Depends(verify_api_key),
+):
+    """
+    Invalidate a cache entry by query.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    success = manager.invalidate(query)
+    
+    return {
+        "success": success,
+        "message": "Entry invalidated" if success else "Entry not found",
+    }
+
+
+@app.delete("/api/v1/cache/clear")
+async def clear_cache(_: bool = Depends(verify_api_key)):
+    """
+    Clear all cache entries.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    count = manager.clear()
+    
+    return {
+        "success": True,
+        "cleared_count": count,
+    }
+
+
+@app.post("/api/v1/cache/cleanup")
+async def cleanup_expired_cache(_: bool = Depends(verify_api_key)):
+    """
+    Remove expired cache entries.
+    """
+    from bifrost.smart_cache import get_cache_manager
+    
+    manager = get_cache_manager()
+    count = manager.cleanup_expired()
+    
+    return {
+        "success": True,
+        "cleaned_count": count,
+    }
+
+
+# ==================== End Smart Cache API ====================
 
 
 @app.websocket("/ws/analyze")

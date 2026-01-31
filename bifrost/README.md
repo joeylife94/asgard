@@ -4,16 +4,41 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-009688.svg)](https://fastapi.tiangolo.com)
+[![Tests](https://img.shields.io/badge/tests-177%20passed-brightgreen.svg)]()
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🎉 Verified Working - MSA Integration
+## 🎉 Verified Working - MSA Integration + Extension Features
 
-- ✅ **Tested on:** 2024-11-17
+- ✅ **Tested on:** 2026-01-31
 - ✅ **Full MSA Stack:** Working with Heimdall via Kafka
+- ✅ **Test Coverage:** **177개 테스트 통과** (확장 기능 포함)
 - ✅ **E2E Tests:** Available in `../tests/e2e/`
 - ✅ **Docker Compose:** `../docker-compose.msa.yml` ready
 - ✅ **Quick Start:** See [MSA_QUICKSTART.md](../MSA_QUICKSTART.md)
+
+---
+
+## 🚀 v0.3.0 새 기능 (2026-01-31)
+
+### ⚡ 6개 확장 기능 완료!
+
+| 기능 | 설명 | 테스트 |
+|------|------|--------|
+| **Circuit Breaker** | LLM 호출 안정성 보장 (CLOSED/OPEN/HALF_OPEN) | 28개 ✅ |
+| **피드백 시스템** | 사용자 피드백 수집/분석/통계 | 25개 ✅ |
+| **멀티 LLM 라우팅** | 6가지 전략 (비용/성능/품질 최적화) | 30개 ✅ |
+| **품질 지표 시스템** | 10차원 품질 분석 및 추적 | 31개 ✅ |
+| **A/B 테스팅** | 과학적 모델 비교 프레임워크 | 34개 ✅ |
+| **스마트 캐싱** | 시맨틱 유사성 기반 응답 캐싱 | 29개 ✅ |
+
+### 🛡️ 운영 Hardening
+- ✅ DLQ Redrive 권한/감사 시스템
+- ✅ 메시지 스키마 버전 관리 문서화
+- ✅ 중복 결과 수신 방어 (Result Idempotency)
+- ✅ Grafana 대시보드 템플릿
+
+---
 
 
 
