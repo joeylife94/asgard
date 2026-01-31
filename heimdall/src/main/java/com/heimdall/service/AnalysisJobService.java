@@ -150,6 +150,11 @@ public class AnalysisJobService {
     }
 
     @Transactional(readOnly = true)
+    public Optional<AnalysisJob> findById(UUID jobId) {
+        return analysisJobRepository.findById(jobId);
+    }
+
+    @Transactional(readOnly = true)
     public Optional<AnalysisJob> findByIdempotencyKey(String idempotencyKey) {
         return analysisJobRepository.findByIdempotencyKey(idempotencyKey);
     }

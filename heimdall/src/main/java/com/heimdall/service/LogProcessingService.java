@@ -1,5 +1,6 @@
 package com.heimdall.service;
 
+import com.heimdall.entity.AnalysisJob;
 import com.heimdall.entity.AnalysisResult;
 import com.heimdall.entity.LogEntry;
 import com.heimdall.kafka.event.AnalysisResultEvent;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -25,6 +27,10 @@ public class LogProcessingService {
     private final NotificationService notificationService;
     private final MeterRegistry meterRegistry;
     
+    /**
+     * Process analysis result with idempotency protection.
+     * Handles at-least-once delivery by checking job status before processing.
+     */
     @Transactional
     public void processAnalysisResult(AnalysisResultEvent event) {
         log.info("Processing analysis result: jobId={}, logId={}, status={}",
@@ -39,9 +45,50 @@ public class LogProcessingService {
             throw new IllegalArgumentException("Missing status in analysis result event");
         }
 
+        // ====== IDEMPOTENCY CHECK ======
+        // Check if this result has already been processed (duplicate message)
+        Optional<AnalysisJob> existingJob = analysisJobService.findById(jobId);
+        if (existingJob.isPresent()) {
+            AnalysisJob job = existingJob.get();
+            
+            // If job is already in terminal state, this is a duplicate message
+            if (job.getStatus() == AnalysisJob.Status.SUCCEEDED) {
+                log.warn("Duplicate result received for already succeeded job: jobId={}, ignoring", jobId);
+                meterRegistry.counter("ai_job_duplicate_result_total", "status", "succeeded").increment();
+                return;
+            }
+            
+            // For failed jobs receiving success result, allow processing (retry scenario)
+            // But if failed job receives another failed result, skip
+            if (job.getStatus() == AnalysisJob.Status.FAILED && "FAILED".equalsIgnoreCase(event.getStatus())) {
+                log.warn("Duplicate failed result for already failed job: jobId={}, ignoring", jobId);
+                meterRegistry.counter("ai_job_duplicate_result_total", "status", "failed").increment();
+                return;
+            }
+        }
+        // ====== END IDEMPOTENCY CHECK ======
+
         if ("FAILED".equalsIgnoreCase(event.getStatus())) {
             analysisJobService.markFailed(jobId, event.getErrorCode(), event.getErrorMessage(), event.getTraceId());
             meterRegistry.counter("ai_job_failed_total").increment();
+            return;
+        }
+        
+        // Check if analysis result already exists for this request (another layer of idempotency)
+        Optional<AnalysisResult> existingResult = analysisResultRepository.findByRequestId(jobId.toString());
+        if (existingResult.isPresent()) {
+            log.warn("Duplicate result: analysis result already exists for jobId={}, resultId={}", 
+                jobId, existingResult.get().getId());
+            meterRegistry.counter("ai_job_duplicate_result_total", "status", "result_exists").increment();
+            
+            // Still mark job as succeeded if not already
+            analysisJobService.markSucceeded(
+                jobId,
+                existingResult.get().getId(),
+                existingResult.get().getSummary(),
+                null,
+                event.getTraceId()
+            );
             return;
         }
         
