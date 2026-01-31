@@ -101,3 +101,25 @@ CREATE TABLE IF NOT EXISTS notifications (
 -- Indexes for notifications
 CREATE INDEX IF NOT EXISTS idx_notifications_sent_at ON notifications(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications(status);
+
+-- Redrive Audit Logs Table (for DLQ operation auditing)
+CREATE TABLE IF NOT EXISTS redrive_audit_logs (
+    id BIGSERIAL PRIMARY KEY,
+    job_id UUID NOT NULL,
+    idempotency_key VARCHAR(200),
+    previous_status VARCHAR(20),
+    previous_attempt_count INTEGER,
+    performed_by VARCHAR(200) NOT NULL,
+    performed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    source_ip VARCHAR(50),
+    user_agent VARCHAR(500),
+    trace_id VARCHAR(128),
+    reason VARCHAR(500),
+    outcome VARCHAR(20) NOT NULL,
+    error_message TEXT
+);
+
+-- Indexes for redrive_audit_logs
+CREATE INDEX IF NOT EXISTS idx_redrive_audit_job_id ON redrive_audit_logs(job_id);
+CREATE INDEX IF NOT EXISTS idx_redrive_audit_performed_at ON redrive_audit_logs(performed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_redrive_audit_performed_by ON redrive_audit_logs(performed_by);
