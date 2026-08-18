@@ -14,7 +14,7 @@
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Observed main before this checkpoint update**: `c1980da0f00526f1f0e97aa87a68ca2c80613ee2`
+- **Observed main before this checkpoint update**: `e9047928d063d1239e63596980b73b83b7299a61`
 - **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
@@ -78,19 +78,19 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Area | Level | Judgment |
 |---|---:|---|
 | Architecture | 8/10 | Strong |
-| Spring Backend | 8/10 | Strong |
-| Kafka Control Plane | 8/10 | Strong |
+| Spring Backend | 8/10 | Strong; runtime proof pending |
+| Kafka Control Plane | 8/10 | Strong; runtime proof pending |
 | AI Routing | 6~7/10 | Runtime proof 필요 |
 | DLQ / Redrive | 7~8/10 | Demo proof 필요 |
 | Docker Infra | 7/10 | Repro check 필요 |
 | Observability | 6~7/10 | Startup Grafana URL corrected; live evidence 필요 |
-| Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
+| Frontend | 3/10 | **BROKEN STATICALLY**: tracked Vite entry/source tree absent |
 | CI/CD | 5.5/10 | Java 21 정렬 완료; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4.5/10 | Grafana README drift 3곳 mutation blocked by safe-edit limitation |
+| Documentation Truth | 4.5/10 | Grafana README drift + frontend docs/source drift |
 | Wishket Proof | 5~6/10 | NOT READY |
 
-**Current Summary:** 기능은 충분하지만 실제 사용 흐름과 runtime Evidence가 닫히지 않았다.
+**Current Summary:** Backend/Kafka feature depth는 충분하지만, runtime Evidence와 실제 Frontend build contract가 닫히지 않았다.
 
 > **Feature Development → Proof Hardening**
 
@@ -151,7 +151,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [ ] Clean build — **BLOCKED**
 - [ ] Heimdall tests — **BLOCKED**
 - [ ] Bifrost tests — **BLOCKED**
-- [ ] Frontend build — **BLOCKED**
+- [ ] Frontend build — **BROKEN STATICALLY; runtime confirmation pending**
 - [ ] Compose startup — **BLOCKED**
 - [ ] Current E2E smoke — **BLOCKED**
 - [ ] Local / Cloud AI runtime path — **BLOCKED**
@@ -164,6 +164,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] Current commit status-check lookup — **no statuses attached; NOT CI PASS evidence**
 - [x] README mutation tool-safety check — **whole-file replacement only; no partial patch available**
 - [x] Current commit workflow-run lookup limitation recorded — **PR-triggered runs only; empty result is not push-CI evidence**
+- [x] Frontend tracked-tree audit — **no `index.html`, `src/`, `public/`, or package lock under `bifrost/frontend/`**
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -176,7 +177,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-001 | Clean Build | PENDING | runtime blocked |
 | E-002 | Heimdall Tests | PENDING | runtime blocked |
 | E-003 | Bifrost Tests | PENDING | runtime blocked |
-| E-004 | Frontend Build | PENDING | runtime blocked |
+| E-004 | Frontend Build | **BROKEN STATICALLY** | `npm run build` points to Vite, but tracked frontend root has no standard entrypoint/source tree; runtime confirmation pending |
 | E-005 | Real Local AI E2E | PENDING | runtime blocked |
 | E-006 | Local vs Cloud Routing | PENDING | runtime blocked |
 | E-007 | DLQ → Redrive → Success | PENDING | runtime blocked |
@@ -199,8 +200,9 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-024 | README infra port audit | VERIFIED STATICALLY | Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; Grafana only mismatch |
 | E-025 | Current commit combined status lookup | VERIFIED | no attached combined statuses; absence of evidence, not green CI |
 | E-026 | Fresh clone blocker reproduction | VERIFIED | `git clone` / `git ls-remote` failed with `Could not resolve host: github.com` in execution environment |
-| E-027 | README mutation safety check | VERIFIED | available repository editor replaces whole file only; no partial-line patch path available, so 3-line README edit was not risked |
-| E-028 | Commit workflow-run lookup limitation | VERIFIED | connector returns PR-triggered runs only; current commit returned none, which does not prove push CI absence or success |
+| E-027 | README mutation safety check | VERIFIED | available repository editor replaces whole file only; prior run did not risk partial edit |
+| E-028 | Commit workflow-run lookup limitation | VERIFIED | connector returns PR-triggered runs only; empty result does not prove push CI absence or success |
+| E-029 | Frontend tracked-tree contract | VERIFIED STATICALLY | `bifrost/frontend/` contains only `README.md`, `package.json`, `vite.config.js`; code search found no React `createRoot`/`ReactDOM` entry |
 
 ---
 
@@ -211,14 +213,30 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 2. Primary CI uses JDK 21 and Bifrost dependency install is fail-fast.
 3. Secondary CI Java setup steps use JDK 21.
 4. Unified frontend test runner no longer converts `No tests` / `Skipped` into `Passed`.
-5. Frontend has a production build script but no actual `test` script.
-6. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
-7. README infra ports match Compose except Grafana.
-8. Current commit combined-status lookup returned no statuses; CI remains unverified.
-9. Commit workflow-run lookup is PR-only in the available connector and cannot prove push-run success/absence.
-10. README mutation cannot be performed safely through the current connector without reconstructing and replacing the entire file.
+5. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
+6. README infra ports match Compose except Grafana.
+7. Current commit combined-status lookup returned no statuses; CI remains unverified.
+8. Commit workflow-run lookup is PR-only in the available connector and cannot prove push-run success/absence.
+9. README mutation requires whole-file replacement through the current connector; edit only when reconstruction is safe.
+10. Frontend `package.json` exposes `build: vite build` but no `test` script.
+11. `bifrost/frontend/` tracked directory currently contains only `README.md`, `package.json`, `vite.config.js`.
+12. `vite.config.js` does not define a custom build input; standard Vite root entry (`index.html`) is absent.
+13. Frontend README claims `public/`, `src/`, components and `npm test`, but those tracked paths/scripts are absent.
 
 **Important:** static correction ≠ runtime/CI PASS.
+
+## FRONTEND BUILD CONTRACT — BROKEN STATICALLY
+Evidence indicates the current tracked frontend cannot satisfy the documented Vite build contract as-is:
+
+- `package.json`: `build = vite build`
+- `vite.config.js`: no custom `build.rollupOptions.input`
+- tracked frontend root: no `index.html`
+- tracked frontend root: no `src/` or `public/`
+- frontend README documents those missing paths and `npm test`, but package.json has no `test` script
+
+**Classification:** `BROKEN STATICALLY`, with actual command failure still requiring runtime confirmation.
+
+This is a Core-scope issue, but **implementation is deferred until Phase 0 baseline is closed or the next active batch explicitly authorizes the fix**.
 
 ## README ↔ COMPOSE GRAFANA DRIFT
 `docker-compose.yml` publishes Grafana as `3001:3000`; host-facing docs must use `3001`.
@@ -234,10 +252,12 @@ Expected host-facing value: `3001`.
 `start-all.ps1` prints `ASGARD STARTUP COMPLETE` after launching background processes but does not prove Heimdall/Bifrost/Frontend health. UC-01 remains runtime-unverified.
 
 ## STILL BROKEN / INCONSISTENT
-1. README Grafana 3-entry mutation pending.
+1. Frontend tracked source/entry tree absent.
 2. Frontend actual test suite absent.
-3. README build/coverage badges are static claims, not live Evidence.
-4. Startup completion banner is not health-check proof.
+3. Frontend README describes files/scripts that are not tracked.
+4. README Grafana 3-entry mutation pending.
+5. README build/coverage badges are static claims, not live Evidence.
+6. Startup completion banner is not health-check proof.
 
 ## UNVERIFIED CLAIMS
 - `production-ready`
@@ -275,16 +295,17 @@ Expected host-facing value: `3001`.
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
 | R-002 | CI runtime truth unverified | execute workflow/build when runner available |
-| R-003 | Frontend test coverage absent | keep status truthful; add later only if scoped |
+| R-003 | Frontend source/entrypoint absent | classify truthfully now; repair in an explicitly authorized Core batch |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
 | R-007 | Docs/config drift | Evidence-backed docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
-| R-009 | Connector whole-file replacement only | do not mutate large files until full-file safe reconstruction or patch-capable editor exists |
+| R-009 | Connector whole-file replacement only | mutate large files only after complete safe reconstruction |
 | R-010 | Startup banner can overstate readiness | require actual health evidence before UC-01 PASS |
 | R-011 | No status checks attached to current commit | never interpret missing statuses as successful CI |
 | R-012 | Commit workflow lookup is PR-only | do not use empty PR-run result as push-CI evidence |
+| R-013 | Frontend README describes non-existent tracked tree | align docs only after source direction is decided |
 
 ---
 
@@ -320,46 +341,54 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. GitHub-side CI 조회를 추가했지만 current commit의 combined status는 비어 있고, available workflow-run lookup은 PR-triggered run만 반환하므로 push CI PASS를 증명할 수 없다. README Grafana drift 3곳도 아직 남아 있다.
+**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. 다만 Frontend는 더 이상 단순 runtime-unverified가 아니라 **tracked repository contract 기준 BROKEN STATICALLY**로 분류한다.
 
 ## What Changed
 - `ASGARD_MASTER.md`
-  - observed `main`을 `c1980da0f00526f1f0e97aa87a68ca2c80613ee2`로 최신화
-  - E-028 commit workflow-run lookup limitation 추가
-  - combined-status empty result와 PR-only workflow lookup의 의미를 구분
-  - risk / checkpoint / next 최신화
-- README / application / experimental code 변경 없음
+  - observed `main`을 `e9047928d063d1239e63596980b73b83b7299a61`로 최신화
+  - Frontend 상태를 `BROKEN STATICALLY`로 재분류
+  - E-029 Frontend tracked-tree evidence 추가
+  - Phase 0 Frontend build criterion / risks / static findings 최신화
+- Application / experimental code 변경 없음
+- Frontend 구현은 Phase 0 범위를 넘으므로 생성하지 않음
 
 ## What Was Executed
 - MASTER first-read
-- remote `main` inspection → `c1980da0f00526f1f0e97aa87a68ca2c80613ee2`
-- `.github/workflows/ci.yml` first section 재확인 → push(main/master), PR(main/master), manual dispatch; JDK 21
-- current commit combined-status lookup → statuses `[]`
-- current commit workflow-run lookup → PR-triggered runs `[]`; connector scope limitation 확인
-- local `git ls-remote https://github.com/joeylife94/asgard.git HEAD` 1회 실행 → `Could not resolve host: github.com`
-- 동일 DNS blocker 반복은 중단
+- remote `main` inspection → `e9047928d063d1239e63596980b73b83b7299a61`
+- `bifrost/frontend/` GitHub contents inspection
+  - tracked entries: `README.md`, `package.json`, `vite.config.js` only
+- `bifrost/frontend/package.json` inspection
+  - `build: vite build`
+  - `test` script absent
+- `bifrost/frontend/vite.config.js` inspection
+  - no custom build input
+- repository code search
+  - `ReactDOM` → no result
+  - `createRoot` → no result
+- frontend README inspection
+  - documents `public/`, `src/`, components, `npm test`, which do not match tracked tree/package scripts
+- repeated local DNS clone attempt intentionally skipped under blocker-loop rule
 
 ## What Was Not Verified
-- push-triggered GitHub Actions run 존재/결과
-- README 세 Grafana 표현 actual mutation / drift 0건
+- actual `npm run build` failure output
 - Fresh clone / local working tree / local↔remote sync
-- 실제 Java/Python/Node/Docker versions
-- Clean build / Heimdall tests / Bifrost tests / Frontend build
+- actual Java/Python/Node/Docker versions
+- Clean build / Heimdall tests / Bifrost tests
 - Compose/E2E
 - GitHub Actions green result
 - Real AI calls / Grafana live metrics
+- README Grafana 3-entry mutation
 
 ## Remaining Risks
 - GitHub-accessible runtime runner 없이는 P0-B1 PASS 불가.
-- current commit에 combined statuses가 없어 CI green 증거가 없음.
-- available workflow-run lookup은 PR-only라 push CI truth를 닫지 못함.
-- README Grafana drift 3곳이 실제 문서에 남아 있음.
-- 현재 editor로 README 전체를 재구성 없이 수정하면 문서 손상 위험이 있음.
+- Frontend source/entrypoint가 tracked tree에 없어 UC-01/Frontend build가 현재 blocker다.
+- README는 존재하지 않는 frontend tree/scripts를 문서화한다.
+- README Grafana drift 3곳이 남아 있다.
 - README performance/compliance claims는 unsupported.
 
 ## Next — single task
-**P0-B1 Runtime Preflight:** GitHub-accessible checkout runner가 확보되면 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → clean build readiness를 실행한다. 동일 runtime blocker가 계속되면 다음 GitHub-side iteration은 push-triggered workflow run을 직접 조회할 수 있는 안전한 Actions path가 생겼는지 확인하고, 없으면 README safe-patch capability 확보 전까지 추가 문서 mutation을 만들지 않는다.
+**P0-B1 Runtime Preflight remains first priority:** GitHub-accessible checkout runner가 확보되면 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → clean build readiness를 실행하고, `npm run build`로 Frontend static-broken 판정을 runtime-confirm한다.
+
+**If the environmental blocker still persists:** 다음 non-redundant GitHub-side step은 `build-all.ps1` / startup scripts가 현재 누락된 Frontend tree를 어떻게 취급하는지 정적 추적하여, P0-B1 clean-build/startup contract의 실제 failure boundary를 확정한다.
 
 **Concrete external prerequisite:** `github.com` DNS/HTTPS가 가능한 checkout runner.
-
----
