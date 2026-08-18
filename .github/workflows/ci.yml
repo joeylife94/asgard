@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Run Heimdall unit tests (exclude integration)
         run: |
@@ -34,7 +34,7 @@ jobs:
       - name: Install Bifrost deps
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -r bifrost/requirements.txt || python -m pip install -r <(grep -v "^aiokafka" bifrost/requirements.txt) || true
+          python -m pip install -r bifrost/requirements.txt
           python -m pip install -e bifrost
 
       - name: Run Bifrost unit tests (skip integration)
@@ -92,7 +92,7 @@ jobs:
       - name: Install Bifrost deps
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -r bifrost/requirements.txt || python -m pip install -r <(grep -v "^aiokafka" bifrost/requirements.txt) || true
+          python -m pip install -r bifrost/requirements.txt
           python -m pip install -e bifrost
 
       - name: Run integration tests
