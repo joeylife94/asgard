@@ -14,6 +14,7 @@
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
+- **Observed main before this checkpoint update**: `c169b4f191dbe3edf64265a652089b994f5d4865`
 - **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
@@ -28,11 +29,7 @@ Input → Heimdall → Analysis Job → Kafka → Bifrost
       → Routing ─┬→ Local AI
                  └→ Cloud AI
       → Result / DB → Dashboard / Operator
-```
 
-Failure path:
-
-```text
 FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 ```
 
@@ -90,7 +87,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
 | CI/CD | 5.5/10 | Java 21 정렬 완료; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4.5/10 | README infra host-port audit complete; Grafana 3-entry mutation pending |
+| Documentation Truth | 4.5/10 | Grafana README drift 3곳 mutation pending |
 | Wishket Proof | 5~6/10 | NOT READY |
 
 **Current Summary:** 기능은 충분하지만 실제 사용 흐름과 runtime Evidence가 닫히지 않았다.
@@ -164,6 +161,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] README Grafana port drift exact-location audit
 - [x] Startup script Grafana host-port correction
 - [x] README infrastructure host-port contract audit
+- [x] Current commit status-check lookup — **no statuses attached; NOT CI PASS evidence**
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -181,64 +179,59 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-006 | Local vs Cloud Routing | PENDING | runtime blocked |
 | E-007 | DLQ → Redrive → Success | PENDING | runtime blocked |
 | E-008 | Grafana Metrics | PENDING | runtime blocked |
-| E-009 | GitHub Actions Green | PENDING | execution evidence not obtained |
+| E-009 | GitHub Actions Green | PENDING | no green run/status evidence obtained |
 | E-010 | Actual Benchmark | PENDING | published numbers unsupported until rerun |
 | E-011 | Final Demo | PENDING | |
 | E-012 | HP AI Server Run | PENDING | |
-| E-013 | Remote branch state | VERIFIED | `main` inspected; no required status checks |
+| E-013 | Remote branch state | VERIFIED | `main` inspected; branch unprotected, no required status checks |
 | E-014 | Runtime declarations | VERIFIED | Java 21 toolchain, Gradle 8.5, Python >=3.8 |
 | E-015 | Primary CI correction | VERIFIED STATICALLY | `.github/workflows/ci.yml`: JDK 21; Bifrost dependency install fail-fast |
 | E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
 | E-017 | README claim risk | VERIFIED | build/coverage/production/GDPR claims lack current runtime evidence |
-| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose publishes `3001:3000`; README still exposes host 3000 |
+| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose `3001:3000`; README still exposes host 3000 |
 | E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
 | E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Java setup steps use JDK 21 |
 | E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `No tests`/`Skipped` preserved; no false all-pass summary |
-| E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | three README corrections required: Access Services URL, Monitoring Stack port table, Access URLs URL |
-| E-023 | Startup Grafana host-port correction | VERIFIED STATICALLY | `start-all.ps1` now prints `http://localhost:3001`, matching Compose `3001:3000` |
-| E-024 | README infrastructure host-port contract audit | VERIFIED STATICALLY | README Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; only Grafana host-port drift remains in the audited infra list |
+| E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | exactly three README host-facing corrections required |
+| E-023 | Startup Grafana correction | VERIFIED STATICALLY | `start-all.ps1` prints `localhost:3001`, matching Compose |
+| E-024 | README infra port audit | VERIFIED STATICALLY | Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; Grafana only mismatch |
+| E-025 | Current commit status lookup | VERIFIED | `c169b4f...` has no attached combined statuses; this is absence of evidence, not green CI |
+| E-026 | Fresh clone blocker reproduction | VERIFIED | `git clone` failed with `Could not resolve host: github.com` in execution environment |
 
 ---
 
 # 8. Static Baseline Findings
 
-## VERIFIED / CORRECTED TO DATE
+## VERIFIED / CORRECTED
 1. Project declares Java 21 toolchain; Gradle wrapper 8.5; Python package `>=3.8`.
-2. Primary CI aligned to JDK 21 and Python dependency install is fail-fast.
-3. Secondary CI Java setup steps aligned to JDK 21.
+2. Primary CI uses JDK 21 and Bifrost dependency install is fail-fast.
+3. Secondary CI Java setup steps use JDK 21.
 4. Unified frontend test runner no longer converts `No tests` / `Skipped` into `Passed`.
-5. Frontend has a Vite production build script but no actual `test` script.
-6. `start-all.ps1` Grafana host URL now matches Compose host mapping: `http://localhost:3001`.
-7. README infrastructure URLs/ports were compared against Compose. Kafka UI `8090`, Redis Commander `8081`, Prometheus `9090`, and Zipkin `9411` match; the remaining audited host-port mismatch is Grafana only.
+5. Frontend has a production build script but no actual `test` script.
+6. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
+7. README infra ports match Compose except Grafana.
+8. Current `main` commit status lookup returned no statuses; CI remains unverified.
 
 **Important:** static correction ≠ runtime/CI PASS.
 
-## README ↔ COMPOSE GRAFANA DRIFT — EXACT AUDIT
-`docker-compose.yml` publishes Grafana as:
+## README ↔ COMPOSE GRAFANA DRIFT
+`docker-compose.yml` publishes Grafana as `3001:3000`; host-facing docs must use `3001`.
 
-```text
-3001:3000
-```
+Current README has three known drifted entries:
+1. `Infrastructure Services` → `Grafana: http://localhost:3000 (admin/admin)`
+2. `Monitoring Stack` table → Grafana port `3000`
+3. `Access URLs` → `Grafana: http://localhost:3000`
 
-Therefore the host-facing documentation must use port `3001`.
+Expected host-facing value: `3001`.
 
-README has exactly these three drifted entries in the inspected current file:
-1. `Infrastructure Services` → `Grafana: http://localhost:3000 (admin/admin)` → must be `http://localhost:3001`.
-2. `Monitoring Stack` table → Grafana port `3000` → must be host port `3001`.
-3. `Access URLs` → `Grafana: http://localhost:3000` → must be `http://localhost:3001`.
-
-No runtime claim is made from this static audit.
-
-## STARTUP CONTRACT FINDING
-`start-all.ps1` previously printed Grafana `localhost:3000` despite Compose publishing `3001:3000`. This was corrected to `localhost:3001` in commit `deb4168e7adfa6e99c545df3125437e34cb277ca`.
-
-Additional runtime caveat: the script prints `ASGARD STARTUP COMPLETE` after launching background processes but does not prove Heimdall/Bifrost/Frontend health. UC-01 remains runtime-unverified.
+## STARTUP CONTRACT CAVEAT
+`start-all.ps1` prints `ASGARD STARTUP COMPLETE` after launching background processes but does not prove Heimdall/Bifrost/Frontend health. UC-01 remains runtime-unverified.
 
 ## STILL BROKEN / INCONSISTENT
-1. README Grafana port drift is **identified but not yet mutated**.
-2. Frontend actual test suite remains absent.
-3. README build/coverage badges are static claims rather than live Evidence.
-4. Startup script completion banner is not a health-check proof.
+1. README Grafana 3-entry mutation pending.
+2. Frontend actual test suite absent.
+3. README build/coverage badges are static claims, not live Evidence.
+4. Startup completion banner is not health-check proof.
 
 ## UNVERIFIED CLAIMS
 - `production-ready`
@@ -275,15 +268,16 @@ Additional runtime caveat: the script prints `ASGARD STARTUP COMPLETE` after lau
 | ID | Risk | Mitigation |
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
-| R-002 | CI runtime truth unverified | execute workflows / fresh build when runner available |
+| R-002 | CI runtime truth unverified | execute workflow/build when runner available |
 | R-003 | Frontend test coverage absent | keep status truthful; add later only if scoped |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
-| R-007 | Docs/config drift | Evidence-backed runtime docs |
+| R-007 | Docs/config drift | Evidence-backed docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
-| R-009 | Current GitHub connector exposes whole-file replacement, not line patching | apply README three-line correction from a checkout/patch-capable editor or reconstruct only when safe |
+| R-009 | Connector whole-file replacement only | mutate large files only after full-file safe read/reconstruction |
 | R-010 | Startup banner can overstate readiness | require actual health evidence before UC-01 PASS |
+| R-011 | No status checks attached to current commit | never interpret missing statuses as successful CI |
 
 ---
 
@@ -319,24 +313,23 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. 동일 DNS blocker는 한 번만 재확인했고, 이후 README의 Compose-backed infrastructure host-port 계약을 전체 대조하여 남은 mismatch 범위를 Grafana 3개 표현으로 좁혔다.
+**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. GitHub-side static baseline은 계속 축소되고 있으나 실행 Evidence는 확보되지 않았다.
 
 ## What Changed
 - `ASGARD_MASTER.md`
-  - E-024 추가
-  - README infrastructure host-port audit 결과 반영
-  - Documentation Truth 상태 갱신
-- Application/experimental code 변경 없음
-- README actual mutation 없음
+  - E-025 current commit status lookup 추가
+  - E-026 clone blocker reproduction 추가
+  - Current checkpoint / risks 최신화
+  - 기존 Evidence와 scope를 유지하면서 문서를 압축 정리
+- README / application / experimental code 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- fresh clone 1회 시도 → `Could not resolve host: github.com` 재현
-- current README line-range inspection
-- current `docker-compose.yml` inspection
-- README Infrastructure Services / Monitoring Stack / Access URLs를 Compose host mappings와 대조
-- Kafka UI `8090`, Redis Commander `8081`, Prometheus `9090`, Zipkin `9411` 정합 확인
-- Grafana만 README `3000` vs Compose host `3001` mismatch임을 재확인
+- remote `main` inspection → observed `c169b4f191dbe3edf64265a652089b994f5d4865`
+- current README full read; 세 Grafana drift 위치 재확인
+- `.github/workflows/ci.yml` read → push `main/master` + PR + workflow_dispatch trigger, JDK 21, fail-fast deps 확인
+- current commit combined-status lookup → status entries 없음
+- local `git clone https://github.com/joeylife94/asgard.git` 1회 → `Could not resolve host: github.com`
 
 ## What Was Not Verified
 - README 세 Grafana 표현 actual mutation
@@ -348,14 +341,14 @@ Rules:
 - Real AI calls / Grafana live metrics
 
 ## Remaining Risks
-- Execution runner가 없으면 P0-B1을 PASS할 수 없음.
-- README Grafana drift는 정확히 3개 표현으로 좁혀졌지만 실제 수정은 아직 필요함.
-- `start-all.ps1` 완료 banner는 application health proof가 아님.
-- 두 CI workflow 수정은 static evidence만 있고 execution PASS는 없음.
-- README의 강한 performance/compliance claims가 남아 있음.
+- GitHub-accessible runtime runner 없이는 P0-B1 PASS 불가.
+- README Grafana drift 3곳이 실제 문서에 남아 있음.
+- 두 CI workflow 수정은 static evidence만 있고 execution PASS 없음.
+- Current commit에 status entries가 없으므로 CI badge/green claim을 증명할 수 없음.
+- README performance/compliance claims는 여전히 unsupported.
 
 ## Next — single task
-**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 사용 가능해지는 즉시 README의 세 Grafana host-port 표현을 `3001`로 수정하고 재검색하여 drift 0건을 확인한다. Runtime runner가 먼저 사용 가능해지면 fresh clone/build preflight를 최우선으로 수행한다.
+**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 확보되면 README의 세 Grafana host-facing 표현을 `3001`로 수정하고 재검색하여 drift 0건을 확인한다. Runtime runner가 먼저 복구되면 fresh clone/build preflight를 최우선 수행한다.
 
 **Concrete external prerequisite if still blocked:** `github.com` DNS/HTTPS가 가능한 checkout runner 또는 partial-line patch를 지원하는 repository editor.
 
