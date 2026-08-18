@@ -13,9 +13,8 @@
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Observed HEAD after this iteration's frontend test truth correction**: `970c97b78082249d130149158928dffb3a2f98f0`
-- **Original code baseline before MASTER-only/checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Updated**: 2026-08-18
+- **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
+- **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
 ---
@@ -89,9 +88,9 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Docker Infra | 7/10 | Repro check 필요 |
 | Observability | 6~7/10 | Real evidence 필요 |
 | Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
-| CI/CD | 5.5/10 | both CI workflows aligned to Java 21; execution evidence pending |
+| CI/CD | 5.5/10 | Java 21 정렬 완료; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4/10 | Cleanup 필요 |
+| Documentation Truth | 4.5/10 | Grafana drift exact locations identified; cleanup pending |
 | Wishket Proof | 5~6/10 | NOT READY |
 
 **Current Summary:** 기능은 충분하지만 실제 사용 흐름과 runtime Evidence가 닫히지 않았다.
@@ -162,6 +161,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] CI static audit
 - [x] README/config static audit
 - [x] Unified test status truth static correction
+- [x] README Grafana port drift exact-location audit
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -179,7 +179,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-006 | Local vs Cloud Routing | PENDING | runtime blocked |
 | E-007 | DLQ → Redrive → Success | PENDING | runtime blocked |
 | E-008 | Grafana Metrics | PENDING | runtime blocked |
-| E-009 | GitHub Actions Green | PENDING | workflow execution evidence not yet obtained |
+| E-009 | GitHub Actions Green | PENDING | execution evidence not obtained |
 | E-010 | Actual Benchmark | PENDING | published numbers unsupported until rerun |
 | E-011 | Final Demo | PENDING | |
 | E-012 | HP AI Server Run | PENDING | |
@@ -187,43 +187,45 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-014 | Runtime declarations | VERIFIED | Java 21 toolchain, Gradle 8.5, Python >=3.8 |
 | E-015 | Primary CI correction | VERIFIED STATICALLY | `.github/workflows/ci.yml`: JDK 21; Bifrost dependency install fail-fast |
 | E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
-| E-017 | README claim risk | VERIFIED | static build/coverage/production/GDPR claims lack current runtime evidence |
-| E-018 | README ↔ Compose Grafana drift | VERIFIED | README 3000 vs Compose host 3001 |
+| E-017 | README claim risk | VERIFIED | build/coverage/production/GDPR claims lack current runtime evidence |
+| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose publishes `3001:3000`; README still exposes host 3000 |
 | E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
-| E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Heimdall, code-quality, dependency-check all use JDK 21 |
-| E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `test-all.ps1` preserves `No tests`/`Skipped` state and no longer prints all-pass when any requested suite is non-pass |
+| E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Java setup steps use JDK 21 |
+| E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `No tests`/`Skipped` preserved; no false all-pass summary |
+| E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | three README corrections required: Access Services URL, Monitoring Stack port table, Access URLs URL |
 
 ---
 
 # 8. Static Baseline Findings
 
-## VERIFIED
-- Project declares Java 21 toolchain.
-- Gradle wrapper is 8.5.
-- Python package declares `>=3.8`.
-- Frontend has a Vite production build script.
-- Remote `main` is unprotected and has no required status checks.
-- Kafka control-plane, DLQ/redrive, observability and frontend assets exist.
+## VERIFIED / CORRECTED TO DATE
+1. Project declares Java 21 toolchain; Gradle wrapper 8.5; Python package `>=3.8`.
+2. Primary CI aligned to JDK 21 and Python dependency install is fail-fast.
+3. Secondary CI Java setup steps aligned to JDK 21.
+4. Unified frontend test runner no longer converts `No tests` / `Skipped` into `Passed`.
+5. Frontend has a Vite production build script but no actual `test` script.
 
-## CORRECTED TO DATE
-1. **Primary CI Java mismatch**
-   - Before: `.github/workflows/ci.yml` used JDK 17.
-   - Now: JDK 21, aligned with project toolchain.
-2. **Primary CI Python fail-open**
-   - Before: requirements install fallback ended with `|| true`.
-   - Now: requirements install is strict; dependency failure fails the job.
-3. **Secondary CI Java mismatch**
-   - Before: `.github/workflows/ci-cd.yml` used JDK 17 in Heimdall build, code-quality, dependency-check.
-   - Now: all three Java setup steps use JDK 21.
-4. **Unified frontend test false-pass**
-   - Before: frontend could set `No tests`, then `Invoke-TestSuite` overwrote it to `Passed`; final summary could say all tests passed.
-   - Now: non-Pending terminal states are preserved, and skipped/no-test suites produce a qualified summary instead of all-pass wording.
+**Important:** static correction ≠ runtime/CI PASS.
 
-**Important:** static correction ≠ runtime/CI PASS. Actual execution is still required.
+## README ↔ COMPOSE GRAFANA DRIFT — EXACT AUDIT
+`docker-compose.yml` publishes Grafana as:
+
+```text
+3001:3000
+```
+
+Therefore the host-facing documentation must use port `3001`.
+
+README has exactly these three drifted entries in the inspected current file:
+1. `Infrastructure Services` → `Grafana: http://localhost:3000 (admin/admin)` → must be `http://localhost:3001`.
+2. `Monitoring Stack` table → Grafana port `3000` → must be host port `3001`.
+3. `Access URLs` → `Grafana: http://localhost:3000` → must be `http://localhost:3001`.
+
+No runtime claim is made from this static audit.
 
 ## STILL BROKEN / INCONSISTENT
-1. Frontend still has no actual `test` script/test suite; test truth is fixed, test coverage itself is not added in P0-B1.
-2. README documents Grafana at `localhost:3000`; Compose publishes host `3001`.
+1. README Grafana port drift is **identified but not yet mutated**.
+2. Frontend actual test suite remains absent.
 3. README build/coverage badges are static claims rather than live Evidence.
 
 ## UNVERIFIED CLAIMS
@@ -261,13 +263,14 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | ID | Risk | Mitigation |
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
-| R-002 | CI runtime truth unverified | execute both workflows / fresh build when runner available |
-| R-003 | Frontend test coverage absent | keep status truthful now; add tests only in scoped later batch if required |
+| R-002 | CI runtime truth unverified | execute workflows / fresh build when runner available |
+| R-003 | Frontend test coverage absent | keep status truthful; add later only if scoped |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
 | R-007 | Docs/config drift | Evidence-backed runtime docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
+| R-009 | Current GitHub connector exposes whole-file replacement, not line patching | apply README three-line correction from a checkout/patch-capable editor or reconstruct only when safe |
 
 ---
 
@@ -303,44 +306,42 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. GitHub-side static baseline/test truth는 계속 개선 중.
+**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. 이번 iteration에서는 blocker 반복 대신 README↔Compose drift를 정확히 닫을 수 있는 범위까지 정적 검증했다.
 
 ## What Changed
-- `test-all.ps1`
-  - `Invoke-TestSuite`가 suite 자체의 `No tests` / `Skipped` 상태를 `Passed`로 덮어쓰지 않도록 수정
-  - frontend에 test script가 없으면 명시적으로 `No tests` 유지
-  - requested suite 중 non-pass가 있으면 `All requested test suites passed` 대신 qualified summary 출력
 - `ASGARD_MASTER.md`
-  - E-021, static correction, risks, checkpoint 반영
-- Experimental feature 변경 없음
+  - E-022 추가
+  - README Grafana drift의 정확한 세 위치와 기대값(`3001`) 기록
+  - 현재 connector write limitation을 risk로 기록
+- README/application/experimental code 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- `test-all.ps1` current logic static inspection
-- False-pass path 확인
-- GitHub-side test runner update
-- Post-update re-read로 helper status preservation과 final summary 분기 정적 확인
+- current README full-range static inspection
+- `docker-compose.yml` Grafana mapping 확인: `3001:3000`
+- README의 Grafana host-port 표현을 전 범위 대조
+- 세 개의 drift 위치 확정
+- MASTER 업데이트
 
 ## What Was Not Verified
-- PowerShell에서 `test-all.ps1` 실제 실행
-- Fresh clone / local working tree
-- Local↔remote sync
+- README 세 줄 실제 mutation (현재 connector는 whole-file replacement만 제공하고, 안전한 checkout은 runtime DNS blocker로 불가)
+- Fresh clone / local working tree / local↔remote sync
 - 실제 Java/Python/Node/Docker versions
-- Clean build
-- Heimdall/Bifrost tests
-- Frontend build
+- Clean build / Heimdall tests / Bifrost tests / Frontend build
 - Compose/E2E
 - GitHub Actions green result
 - Real AI calls / Grafana live metrics
 
 ## Remaining Risks
 - Execution runner가 없으면 P0-B1을 PASS할 수 없음.
-- Test truth는 고쳤지만 frontend 실제 test suite는 여전히 없음.
+- README Grafana drift는 위치까지 확정했지만 실제 파일 수정이 아직 필요함.
 - 두 CI workflow 수정은 static evidence만 있고 execution PASS는 없음.
-- README Grafana port drift와 강한 claims가 남아 있음.
+- README의 강한 performance/compliance claims가 남아 있음.
 
 ## Next — single task
-**P0-B1 README Grafana Truth Cleanup:** README의 Grafana access URL을 actual Compose host mapping(`localhost:3001`)과 일치시키고, 동일 `3000` drift가 README 내 다른 위치에도 남아 있는지 정적 검증한다. Runtime runner가 사용 가능해지면 그 즉시 fresh clone/build preflight가 우선한다.
+**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 사용 가능해지는 즉시 README의 세 Grafana host-port 표현을 `3001`로 수정하고 재검색하여 `localhost:3000`/Grafana table `3000` drift가 0건인지 확인한다. Runtime runner가 사용 가능해지면 fresh clone/build preflight를 최우선으로 수행한다.
+
+**Concrete external prerequisite if still blocked:** GitHub checkout이 가능한 runner 또는 partial-line patch를 지원하는 repository editor.
 
 ---
 
