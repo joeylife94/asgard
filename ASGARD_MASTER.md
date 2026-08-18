@@ -86,11 +86,11 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | AI Routing | 6~7/10 | Runtime proof 필요 |
 | DLQ / Redrive | 7~8/10 | Demo proof 필요 |
 | Docker Infra | 7/10 | Repro check 필요 |
-| Observability | 6~7/10 | Real evidence 필요 |
+| Observability | 6~7/10 | Startup Grafana URL corrected; live evidence 필요 |
 | Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
 | CI/CD | 5.5/10 | Java 21 정렬 완료; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4.5/10 | Grafana drift exact locations identified; cleanup pending |
+| Documentation Truth | 4.5/10 | README Grafana drift exact locations identified; cleanup pending |
 | Wishket Proof | 5~6/10 | NOT READY |
 
 **Current Summary:** 기능은 충분하지만 실제 사용 흐름과 runtime Evidence가 닫히지 않았다.
@@ -162,6 +162,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] README/config static audit
 - [x] Unified test status truth static correction
 - [x] README Grafana port drift exact-location audit
+- [x] Startup script Grafana host-port correction
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -193,6 +194,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Java setup steps use JDK 21 |
 | E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `No tests`/`Skipped` preserved; no false all-pass summary |
 | E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | three README corrections required: Access Services URL, Monitoring Stack port table, Access URLs URL |
+| E-023 | Startup Grafana host-port correction | VERIFIED STATICALLY | `start-all.ps1` now prints `http://localhost:3001`, matching Compose `3001:3000` |
 
 ---
 
@@ -204,6 +206,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 3. Secondary CI Java setup steps aligned to JDK 21.
 4. Unified frontend test runner no longer converts `No tests` / `Skipped` into `Passed`.
 5. Frontend has a Vite production build script but no actual `test` script.
+6. `start-all.ps1` Grafana host URL now matches Compose host mapping: `http://localhost:3001`.
 
 **Important:** static correction ≠ runtime/CI PASS.
 
@@ -223,10 +226,16 @@ README has exactly these three drifted entries in the inspected current file:
 
 No runtime claim is made from this static audit.
 
+## STARTUP CONTRACT FINDING
+`start-all.ps1` previously printed Grafana `localhost:3000` despite Compose publishing `3001:3000`. This was corrected to `localhost:3001` in commit `deb4168e7adfa6e99c545df3125437e34cb277ca`.
+
+Additional runtime caveat: the script prints `ASGARD STARTUP COMPLETE` after launching background processes but does not prove Heimdall/Bifrost/Frontend health. UC-01 remains runtime-unverified.
+
 ## STILL BROKEN / INCONSISTENT
 1. README Grafana port drift is **identified but not yet mutated**.
 2. Frontend actual test suite remains absent.
 3. README build/coverage badges are static claims rather than live Evidence.
+4. Startup script completion banner is not a health-check proof.
 
 ## UNVERIFIED CLAIMS
 - `production-ready`
@@ -271,6 +280,7 @@ No runtime claim is made from this static audit.
 | R-007 | Docs/config drift | Evidence-backed runtime docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
 | R-009 | Current GitHub connector exposes whole-file replacement, not line patching | apply README three-line correction from a checkout/patch-capable editor or reconstruct only when safe |
+| R-010 | Startup banner can overstate readiness | require actual health evidence before UC-01 PASS |
 
 ---
 
@@ -306,25 +316,29 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. 이번 iteration에서는 blocker 반복 대신 README↔Compose drift를 정확히 닫을 수 있는 범위까지 정적 검증했다.
+**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. 이번 iteration에서는 blocker 반복 대신 startup contract의 Grafana host-port 불일치를 정적으로 수정했다.
 
 ## What Changed
+- `start-all.ps1`
+  - Grafana startup URL `http://localhost:3000` → `http://localhost:3001`
+  - Compose `3001:3000` mapping과 정렬
 - `ASGARD_MASTER.md`
-  - E-022 추가
-  - README Grafana drift의 정확한 세 위치와 기대값(`3001`) 기록
-  - 현재 connector write limitation을 risk로 기록
+  - E-023 추가
+  - startup banner가 health proof가 아니라는 caveat 기록
 - README/application/experimental code 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- current README full-range static inspection
-- `docker-compose.yml` Grafana mapping 확인: `3001:3000`
-- README의 Grafana host-port 표현을 전 범위 대조
-- 세 개의 drift 위치 확정
-- MASTER 업데이트
+- `start-all.ps1` static inspection
+- `build-all.ps1` static inspection
+- Compose/README의 기존 Grafana port evidence와 startup output 대조
+- `start-all.ps1` host-port correction commit
+- corrected startup script static re-read 기준으로 MASTER 갱신
 
 ## What Was Not Verified
-- README 세 줄 실제 mutation (현재 connector는 whole-file replacement만 제공하고, 안전한 checkout은 runtime DNS blocker로 불가)
+- `start-all.ps1` 실제 PowerShell 실행
+- Startup 후 Heimdall/Bifrost/Frontend 실제 health
+- README 세 줄 actual mutation
 - Fresh clone / local working tree / local↔remote sync
 - 실제 Java/Python/Node/Docker versions
 - Clean build / Heimdall tests / Bifrost tests / Frontend build
@@ -335,11 +349,12 @@ Rules:
 ## Remaining Risks
 - Execution runner가 없으면 P0-B1을 PASS할 수 없음.
 - README Grafana drift는 위치까지 확정했지만 실제 파일 수정이 아직 필요함.
+- `start-all.ps1`은 background process를 시작한 뒤 실제 application health를 검증하지 않고 완료 banner를 출력함.
 - 두 CI workflow 수정은 static evidence만 있고 execution PASS는 없음.
 - README의 강한 performance/compliance claims가 남아 있음.
 
 ## Next — single task
-**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 사용 가능해지는 즉시 README의 세 Grafana host-port 표현을 `3001`로 수정하고 재검색하여 `localhost:3000`/Grafana table `3000` drift가 0건인지 확인한다. Runtime runner가 사용 가능해지면 fresh clone/build preflight를 최우선으로 수행한다.
+**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 사용 가능해지는 즉시 README의 세 Grafana host-port 표현을 `3001`로 수정하고 재검색하여 Grafana host-port drift가 0건인지 확인한다. Runtime runner가 사용 가능해지면 fresh clone/build preflight를 최우선으로 수행한다.
 
 **Concrete external prerequisite if still blocked:** GitHub checkout이 가능한 runner 또는 partial-line patch를 지원하는 repository editor.
 
