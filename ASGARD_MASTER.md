@@ -8,11 +8,11 @@
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
-- **Current Batch**: P0-B1 예정
+- **Current Batch**: P0-B1 — Repository Preflight (BLOCKED: local execution unavailable)
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Authoritative Commit**: `TBD`
+- **Authoritative Commit**: `bca6567919cbcac3f9039268c09526b25179f370` (baseline target)
 - **Updated**: 2026-08-18
 - **Final Gate**: Human Review Required
 
@@ -529,12 +529,15 @@ Feature-rich Engineering Project
 ```
 
 - **Phase**: Phase 0
-- **State**: NOT YET BASELINED
-- **Reason**: repository 구조 확인은 완료. Fresh execution 기반 authoritative baseline은 아직 없음.
+- **State**: PARTIAL BASELINE — P0-B1 BLOCKED
+- **Baseline Commit**: `bca6567919cbcac3f9039268c09526b25179f370`
+- **Verified Remotely**: main HEAD, complete tracked tree, tracked large-file risk, secret-risk manifest content, declared Java/Python/frontend prerequisites
+- **Blocked**: automation execution environment cannot resolve `github.com`, so fresh clone, local working-tree status, installed runtime versions, and build readiness cannot be executed yet.
+- **Rule Applied**: 미실행 항목은 PASS 처리하지 않음.
 
 ---
 
-# 17. NEXT — P0-B1 Repository Preflight
+# 17. P0-B1 — Repository Preflight
 
 ## Goal
 코드 변경 없이 현재 Git / 환경 / 실행 준비 상태를 확정.
@@ -555,16 +558,54 @@ Feature-rich Engineering Project
 - refactor
 
 ## Acceptance Criteria
-- [ ] Working tree 상태
-- [ ] Authoritative HEAD
-- [ ] Remote sync
-- [ ] Secret-risk
-- [ ] Large-file risk
-- [ ] Runtime prerequisites
-- [ ] Build baseline 진행 가능 여부
+- [ ] Working tree 상태 — **BLOCKED**: fresh clone 불가
+- [x] Authoritative HEAD — `bca6567919cbcac3f9039268c09526b25179f370`
+- [ ] Remote sync — **PARTIAL**: remote `main` HEAD 확인, local comparison 불가
+- [x] Secret-risk — tracked `heimdall/k8s/secret.yaml` 확인; password는 `CHANGE_ME_IN_PRODUCTION`, 실제 credential 미발견. `.env`는 `.gitignore` 대상
+- [x] Large-file risk — recursive Git tree 전체 반환(`truncated:false`); tracked blob 중 50MB 초과 없음
+- [ ] Runtime prerequisites — **PARTIAL**: 선언은 확인(Java 21 toolchain, Python >=3.8, frontend build config), 실제 설치 버전/Docker daemon은 미검증
+- [ ] Build baseline 진행 가능 여부 — **BLOCKED**: 실행 환경의 GitHub DNS resolution 실패
 
-## Closure
-**현재 repository가 안전하게 테스트 가능한 상태인지 `PASS / STOP` 판정.**
+## Evidence
+- Remote main baseline: `bca6567919cbcac3f9039268c09526b25179f370`
+- Tree: `e49e1299316634dc892edc47232b3fb432e35f49`, recursive tree complete
+- Secret-risk: `heimdall/k8s/secret.yaml` uses placeholder password
+- Environment ignore: root `.gitignore` excludes `.env`, `.env.local`, `.env.*.local`
+- Java declaration: Gradle toolchain 21
+- Python declaration: `python_requires=">=3.8"`
+- Frontend: React/Vite package with `build` script; no `test` script
+
+## Result
+**BLOCKED** — remote static preflight는 부분 완료했으나 fresh execution evidence 부족으로 PASS 불가.
+
+## What Changed
+- 코드 변경 없음.
+- `ASGARD_MASTER.md`에 P0-B1 실제 evidence와 blocked 상태만 반영.
+
+## What Was Executed
+- GitHub `main` branch HEAD 조회
+- Recursive tracked tree 조회
+- `heimdall/k8s/secret.yaml` 내용 검사
+- `.gitignore` 환경 파일 정책 검사
+- `build.gradle` Java toolchain 검사
+- `bifrost/setup.py` Python requirement 검사
+- `bifrost/frontend/package.json` frontend build/test script 검사
+- Fresh clone 시도 → `Could not resolve host: github.com`
+
+## What Was Not Verified
+- Local working tree clean/dirty
+- Local branch vs `origin/main` sync
+- 실제 Java/Python/Node 설치 버전
+- Docker / Compose daemon
+- Clean build / unit test / frontend build
+
+## Remaining Risks
+- Fresh execution environment가 확보되기 전까지 Build Baseline으로 진행할 수 없음.
+- Frontend에 test script가 없는 기존 false-pass risk 유지.
+- GitHub Actions Java 17 vs Gradle Java 21 mismatch는 Phase 0 후속 CI audit에서 해결 필요.
+
+## Next
+**P0-B1 Retry — fresh clone + local preflight 실행.** 실행 환경에서 GitHub checkout이 가능해지는 즉시 남은 4개 acceptance criteria를 실제 command evidence로 닫고 PASS/STOP 판정한다.
 
 ---
 
