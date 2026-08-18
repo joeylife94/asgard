@@ -13,7 +13,7 @@
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Observed HEAD after this iteration's secondary CI correction**: `5925b0fbacef6f6e13f025b8f4c5b9e38c448c0b`
+- **Observed HEAD after this iteration's frontend test truth correction**: `970c97b78082249d130149158928dffb3a2f98f0`
 - **Original code baseline before MASTER-only/checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
 - **Updated**: 2026-08-18
 - **Final Gate**: Human Review Required
@@ -88,7 +88,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | DLQ / Redrive | 7~8/10 | Demo proof 필요 |
 | Docker Infra | 7/10 | Repro check 필요 |
 | Observability | 6~7/10 | Real evidence 필요 |
-| Frontend | 4~5/10 | Golden Path 부족 |
+| Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
 | CI/CD | 5.5/10 | both CI workflows aligned to Java 21; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
 | Documentation Truth | 4/10 | Cleanup 필요 |
@@ -161,6 +161,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [ ] Local / Cloud AI runtime path — **BLOCKED**
 - [x] CI static audit
 - [x] README/config static audit
+- [x] Unified test status truth static correction
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -190,6 +191,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-018 | README ↔ Compose Grafana drift | VERIFIED | README 3000 vs Compose host 3001 |
 | E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
 | E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Heimdall, code-quality, dependency-check all use JDK 21 |
+| E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `test-all.ps1` preserves `No tests`/`Skipped` state and no longer prints all-pass when any requested suite is non-pass |
 
 ---
 
@@ -213,11 +215,14 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 3. **Secondary CI Java mismatch**
    - Before: `.github/workflows/ci-cd.yml` used JDK 17 in Heimdall build, code-quality, dependency-check.
    - Now: all three Java setup steps use JDK 21.
+4. **Unified frontend test false-pass**
+   - Before: frontend could set `No tests`, then `Invoke-TestSuite` overwrote it to `Passed`; final summary could say all tests passed.
+   - Now: non-Pending terminal states are preserved, and skipped/no-test suites produce a qualified summary instead of all-pass wording.
 
-**Important:** static correction ≠ CI PASS. Actual workflow execution is still required.
+**Important:** static correction ≠ runtime/CI PASS. Actual execution is still required.
 
 ## STILL BROKEN / INCONSISTENT
-1. Frontend has no `test` script while unified test language can imply all-service testing.
+1. Frontend still has no actual `test` script/test suite; test truth is fixed, test coverage itself is not added in P0-B1.
 2. README documents Grafana at `localhost:3000`; Compose publishes host `3001`.
 3. README build/coverage badges are static claims rather than live Evidence.
 
@@ -257,7 +262,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
 | R-002 | CI runtime truth unverified | execute both workflows / fresh build when runner available |
-| R-003 | False green / test truth | frontend test contract cleanup |
+| R-003 | Frontend test coverage absent | keep status truthful now; add tests only in scoped later batch if required |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
@@ -298,25 +303,26 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. 다만 GitHub-side static baseline과 CI 계약은 계속 개선 중.
+**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. GitHub-side static baseline/test truth는 계속 개선 중.
 
 ## What Changed
-- `.github/workflows/ci-cd.yml`
-  - Heimdall build: JDK 17 → **JDK 21**
-  - code-quality: JDK 17 → **JDK 21**
-  - dependency-check: JDK 17 → **JDK 21**
+- `test-all.ps1`
+  - `Invoke-TestSuite`가 suite 자체의 `No tests` / `Skipped` 상태를 `Passed`로 덮어쓰지 않도록 수정
+  - frontend에 test script가 없으면 명시적으로 `No tests` 유지
+  - requested suite 중 non-pass가 있으면 `All requested test suites passed` 대신 qualified summary 출력
 - `ASGARD_MASTER.md`
-  - secondary CI correction, Evidence, risks, checkpoint 반영
-- Application code / experimental feature 변경 없음
+  - E-021, static correction, risks, checkpoint 반영
+- Experimental feature 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- Secondary CI workflow static inspection
-- Three Java setup locations identified
-- GitHub-side workflow update
-- Post-update workflow re-read confirming all three use Java 21
+- `test-all.ps1` current logic static inspection
+- False-pass path 확인
+- GitHub-side test runner update
+- Post-update re-read로 helper status preservation과 final summary 분기 정적 확인
 
 ## What Was Not Verified
+- PowerShell에서 `test-all.ps1` 실제 실행
 - Fresh clone / local working tree
 - Local↔remote sync
 - 실제 Java/Python/Node/Docker versions
@@ -329,12 +335,12 @@ Rules:
 
 ## Remaining Risks
 - Execution runner가 없으면 P0-B1을 PASS할 수 없음.
-- 두 workflow의 Java contract는 정렬됐지만 실제 execution PASS는 아직 없음.
-- Frontend test contract가 실제보다 강한 성공 인상을 줄 수 있음.
-- README/config drift와 강한 claims가 남아 있음.
+- Test truth는 고쳤지만 frontend 실제 test suite는 여전히 없음.
+- 두 CI workflow 수정은 static evidence만 있고 execution PASS는 없음.
+- README Grafana port drift와 강한 claims가 남아 있음.
 
 ## Next — single task
-**P0-B1 Frontend Test Truth Cleanup:** `test-all.ps1`에서 frontend `test` script가 없을 때 결과가 최종적으로 `Passed`로 덮어써지지 않도록 상태 처리를 수정하고, 정적 검증한다. Runtime runner가 사용 가능해지면 그 즉시 fresh clone/build preflight가 우선한다.
+**P0-B1 README Grafana Truth Cleanup:** README의 Grafana access URL을 actual Compose host mapping(`localhost:3001`)과 일치시키고, 동일 `3000` drift가 README 내 다른 위치에도 남아 있는지 정적 검증한다. Runtime runner가 사용 가능해지면 그 즉시 fresh clone/build preflight가 우선한다.
 
 ---
 
