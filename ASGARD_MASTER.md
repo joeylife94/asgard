@@ -1,18 +1,20 @@
 # ASGARD MASTER
 
 > **Authoritative checkpoint**
-> Asgard의 현재 상태, v1.0 종료선, Evidence, 다음 작업을 관리하는 단일 기준 문서.
+> Asgard의 현재 상태, v1.0 종료선, Evidence, 다음 작업을 관리하는 단일 실행 계약.
 > README보다 본 문서의 상태 판정을 우선한다.
 
 ## 0. Control
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
-- **Current Batch**: P0-B1 — Repository Preflight (BLOCKED: local execution unavailable)
+- **Current Batch**: P0-B1 — Repository Preflight
+- **Batch Result**: BLOCKED
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Authoritative Commit**: `230265640e9591e9f47364283806aedc41f68e93` (current repository HEAD; code baseline parent `bca6567919cbcac3f9039268c09526b25179f370`)
+- **Observed Remote HEAD before this checkpoint update**: `f5fbe44d1598a7009ac3c389a28f97a24d5f78d7`
+- **Original code baseline before MASTER-only commits**: `bca6567919cbcac3f9039268c09526b25179f370`
 - **Updated**: 2026-08-18
 - **Final Gate**: Human Review Required
 
@@ -23,26 +25,13 @@
 **Asgard는 기업 로그/운영 데이터를 Local LLM 또는 Cloud LLM으로 선택적으로 분석하고, Kafka 기반 비동기 Job과 장애 복구·관측 기능을 제공하는 Hybrid AI Operations Platform이다.**
 
 ```text
-Input
-  ↓
-Heimdall
-  ↓
-Analysis Job
-  ↓
-Kafka
-  ↓
-Bifrost
-  ↓
-Routing
-├─ Local AI
-└─ Cloud AI
-  ↓
-Result / DB
-  ↓
-Dashboard / Operator
+Input → Heimdall → Analysis Job → Kafka → Bifrost
+      → Routing ─┬→ Local AI
+                 └→ Cloud AI
+      → Result / DB → Dashboard / Operator
 ```
 
-Failure:
+Failure path:
 
 ```text
 FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
@@ -74,13 +63,13 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - README ↔ Evidence 일치
 - 2~3분 Demo
 
-## Non-Goals
+## Explicit Non-Goals
 - Multi-tenancy 완성
 - HA / Multi-region
 - Kubernetes production
 - Autoscaling
 - Full RBAC / Enterprise Secret Manager
-- SLA/SLO 운영
+- 실제 SLA/SLO 운영
 - Security certification
 - 법률적 GDPR 인증
 - 대형 Admin UI
@@ -101,55 +90,19 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Observability | 6~7/10 | Real evidence 필요 |
 | Frontend | 4~5/10 | Golden Path 부족 |
 | CI/CD | 4/10 | Fix 필요 |
-| E2E Repro | 5~6/10 | Real model run 필요 |
+| E2E Reproducibility | 5~6/10 | Real model run 필요 |
 | Documentation Truth | 4/10 | Cleanup 필요 |
 | Wishket Proof | 5~6/10 | NOT READY |
 
-**Current Summary:** 기능은 충분하지만, 사용 흐름과 Evidence가 닫히지 않음.
+**Current Summary:** 기능과 설계는 충분하지만 실제 사용 흐름과 Evidence가 닫히지 않았다.
 
 > **Feature Development → Proof Hardening**
 
 ---
 
-# 4. Baseline Classification
+# 4. Frozen v1.0 Scope
 
-## Repository에서 확인된 것
-- Heimdall / Spring Boot
-- Bifrost / FastAPI
-- React/Vite Frontend
-- Kafka `analysis.request → analysis.result`
-- Job persistence / idempotency
-- DLQ / Redrive / Redrive Audit
-- Circuit Breaker / Dynamic Routing
-- Feedback / Quality / Experiment / Smart Cache
-- Prometheus / Grafana
-- Docker Compose
-- E2E smoke script
-- Java 21 Gradle toolchain
-
-## 아직 실제 실행 검증이 필요한 것
-- Fresh clone build
-- One-command startup
-- Real Local LLM E2E
-- Real Cloud LLM E2E
-- Frontend Golden Path
-- Grafana real metrics
-- Failure → DLQ → Redrive → Success
-- Current CI green
-- README benchmark / coverage / cost claims
-- HP AI Server reference deployment
-
-## Known Problems
-1. **Gradle Java 21 vs GitHub Actions JDK 17**
-2. **Python dependency install 실패가 masking될 수 있음**
-3. **Frontend test script 부재 + unified runner false-pass 가능성**
-4. **README overclaim / stale info / version-date drift**
-
----
-
-# 5. Frozen Scope
-
-## CORE — v1.0 Must Pass
+## CORE — Must Pass
 - Heimdall / Bifrost
 - PostgreSQL / Kafka
 - Local AI Provider
@@ -175,60 +128,30 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - Additional Providers
 - Interview-specific features
 
-**Rule:** Experimental 개선은 Core PASS 이후.
+**Rule:** Experimental 개선은 Core PASS 이후에만 허용.
 
 ---
 
-# 6. Required Use Cases
+# 5. Required Use Cases
 
 | UC | Goal | PASS 기준 |
 |---|---|---|
-| UC-01 Startup | 제3자 실행 | clone → config → all core services healthy |
+| UC-01 Startup | 제3자 실행 | clone → config → core services healthy |
 | UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED |
 | UC-05 Observability | 운영 가시성 | jobs/latency/routes/DLQ/redrive/health 확인 |
 
-## UC-01 Evidence
-- terminal
-- `docker compose ps`
-- health endpoints
-- screenshot
-
-## UC-02 Evidence
-- request
-- Job ID
-- Kafka event
-- AI result
-- DB/result state
-- route/provider/latency
-
-## UC-03 Evidence
-- Local input/output
-- Cloud input/output
-- route decision
-- provider
-- Cloud key 없음/장애 시 Local-only 생존
-
-## UC-04 Evidence
-- FAILED state
-- DLQ event
-- Redrive
-- Audit
-- final SUCCEEDED
-- duplicate-safe result
-
-## UC-05 Required Metrics
-- Jobs Requested / Succeeded / Failed
-- Success Rate
-- Processing Latency
-- Local / Cloud Requests
-- DLQ / Redrive Count
-- Service Health
+## Required Evidence
+- UC-01: terminal, compose status, health endpoints, screenshot
+- UC-02: request, Job ID, Kafka event, AI result, DB/result state, route/provider/latency
+- UC-03: Local/Cloud inputs and outputs, route/provider evidence, Local-only survival
+- UC-04: FAILED state, DLQ, Redrive, Audit, final SUCCEEDED, duplicate safety
+- UC-05: Jobs Requested/Succeeded/Failed, success rate, latency, Local/Cloud requests, DLQ/Redrive count, service health
 
 ---
 
-# 7. Minimal Frontend
+# 6. Minimal Frontend
 
 | Screen | Required |
 |---|---|
@@ -241,25 +164,27 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 8. Phase Plan
+# 7. Phase Plan
 
 ## Phase 0 — BASELINE TRUTH
 **Goal:** 현재 실제 상태 확정.
 
-- [ ] git status / branch / HEAD / remote
-- [ ] secret-risk / large-file scan
-- [ ] runtime prerequisites
+- [ ] git status / local branch / local↔remote sync
+- [x] remote HEAD / branch state
+- [x] secret-risk / large-file static scan
+- [ ] installed runtime prerequisites
 - [ ] clean build
 - [ ] Heimdall tests
 - [ ] Bifrost tests
 - [ ] Frontend build
 - [ ] Compose startup
 - [ ] current E2E smoke
-- [ ] Local / Cloud AI path
-- [ ] CI audit
-- [ ] README claim audit
+- [ ] Local / Cloud AI runtime path
+- [x] CI static audit
+- [x] README/config claim static audit — partial baseline completed
 
-**Output:** `VERIFIED / BROKEN / UNVERIFIED / REMOVE`  
+**Output:** `VERIFIED / BROKEN / UNVERIFIED / REMOVE`
+
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
 ## Phase 1 — GOLDEN PATH
@@ -324,7 +249,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 9. Definition of Done
+# 8. Definition of Done
 
 ## Functional
 - [ ] UC-01 PASS
@@ -349,46 +274,47 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [ ] E2E PASS
 - [ ] Frontend build PASS
 
-## Evidence
-- [ ] Test
-- [ ] E2E
-- [ ] CI
-- [ ] Grafana
-- [ ] Runtime screenshots
-- [ ] Demo
-- [ ] Published number별 benchmark evidence
-
-## Documentation
+## Documentation / Proof
 - [ ] README current
 - [ ] stale info 제거
 - [ ] unsupported compliance/performance claims 제거
 - [ ] version/date consistent
 - [ ] run instructions verified
+- [ ] Grafana / Runtime screenshots
+- [ ] Demo
+- [ ] Published number별 benchmark evidence
 
 **Final:** Human Review → `ASGARD v1.0 — PROOF PASS`
 
 ---
 
-# 10. Evidence Registry
+# 9. Evidence Registry
 
-| ID | Evidence | Status | Location |
+| ID | Evidence | Status | Location / Note |
 |---|---|---|---|
-| E-001 | Clean Build | PENDING | |
-| E-002 | Heimdall Tests | PENDING | |
-| E-003 | Bifrost Tests | PENDING | |
-| E-004 | Frontend Build | PENDING | |
-| E-005 | Real Local AI E2E | PENDING | |
-| E-006 | Local vs Cloud Routing | PENDING | |
-| E-007 | DLQ → Redrive → Success | PENDING | |
-| E-008 | Grafana Metrics | PENDING | |
-| E-009 | GitHub Actions Green | PENDING | |
-| E-010 | Actual Benchmark | PENDING | |
+| E-001 | Clean Build | PENDING | runtime blocked |
+| E-002 | Heimdall Tests | PENDING | runtime blocked |
+| E-003 | Bifrost Tests | PENDING | runtime blocked |
+| E-004 | Frontend Build | PENDING | runtime blocked |
+| E-005 | Real Local AI E2E | PENDING | runtime blocked |
+| E-006 | Local vs Cloud Routing | PENDING | runtime blocked |
+| E-007 | DLQ → Redrive → Success | PENDING | runtime blocked |
+| E-008 | Grafana Metrics | PENDING | runtime blocked |
+| E-009 | GitHub Actions Green | PENDING | current HEAD has no green status evidence |
+| E-010 | Actual Benchmark | PENDING | published numbers unsupported until rerun |
 | E-011 | Final Demo | PENDING | |
 | E-012 | HP AI Server Run | PENDING | |
+| E-013 | Remote main / branch state | VERIFIED | remote branch inspected; no required status checks |
+| E-014 | Static runtime declarations | VERIFIED | Java 21 toolchain, Gradle 8.5 wrapper, Python >=3.8 declaration |
+| E-015 | CI static mismatch | VERIFIED | Actions JDK 17 vs project Java 21; Python install fail-open pattern |
+| E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
+| E-017 | README claim risk | VERIFIED | static badge/production-ready/GDPR/coverage claims lack current execution evidence |
+| E-018 | README ↔ Compose Grafana port drift | VERIFIED | README says 3000; Compose maps host 3001→container 3000 |
+| E-019 | gRPC claim configuration caveat | VERIFIED | gRPC starter dependency exists; protobuf plugin/source generation blocks are commented out |
 
 ---
 
-# 11. Claim Policy
+# 10. Claim Policy
 
 **Evidence 없는 숫자/품질 주장은 공개 문서에 넣지 않는다.**
 
@@ -400,10 +326,42 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - 60% cost reduction
 - 70% MTTR reduction
 - 80% local workload
+- CI/CD time `40-60% reduction`
 
 Preferred:
 - `GDPR-compliant` → `Designed to support privacy-sensitive local inference and data-residency requirements.`
 - `Production-ready` → `Production-oriented architecture with reproducible E2E and failure-recovery evidence.`
+
+---
+
+# 11. Static Baseline Findings
+
+## VERIFIED
+- Project declares Java 21 toolchain.
+- Gradle wrapper is 8.5.
+- Python package declares `>=3.8`.
+- Frontend has a Vite production build script.
+- Remote `main` is not protected and has no required status checks.
+- Repository contains Kafka control-plane, DLQ/redrive, observability and frontend implementation assets.
+
+## BROKEN / INCONSISTENT FROM STATIC CONFIG
+1. **CI Java version mismatch** — Actions uses JDK 17 while project toolchain is Java 21.
+2. **CI Python fail-open** — dependency install path ends with `|| true`, permitting masked install failure.
+3. **Frontend test truth risk** — frontend has no `test` script while unified testing language can imply all-service testing.
+4. **Grafana URL drift** — README documents `localhost:3000`; `docker-compose.yml` publishes Grafana on host port `3001`.
+5. **README status claims are not live evidence** — build/coverage badges are static claim badges rather than current workflow/coverage evidence.
+
+## UNVERIFIED CLAIMS
+- `production-ready`
+- `GDPR-compliant`
+- `80%+ test coverage`
+- `10,000+ req/s`
+- `50K+ Kafka msg/s`
+- `70% MTTR reduction`
+- `60% cost reduction`
+- `40-60% CI/CD reduction`
+- Real Local/Cloud routing behavior
+- Runtime gRPC flow; starter exists but protobuf generation config is currently commented out
 
 ---
 
@@ -439,23 +397,23 @@ Required:
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
+| R-007 | Docs/config drift | Runtime URLs/config를 evidence-backed single source로 정리 |
 
 ---
 
 # 14. Work Rules
 
 매 작업 세션:
-1. `ASGARD_MASTER.md`
-2. `git status / branch / HEAD`
-3. Current Phase / Batch
+1. `ASGARD_MASTER.md` first-read
+2. `git status / branch / HEAD` 가능한 범위 확인
+3. Current Phase / Batch 확인
 4. Batch Scope 고정
-5. 구현
-6. 실제 실행
-7. 테스트
-8. Evidence
-9. PASS / FAIL
-10. MASTER 갱신
-11. Next 하나 지정
+5. 구현 또는 검증
+6. 실제 실행 가능한 것은 실행
+7. 테스트 / Evidence 수집
+8. PASS / FAIL / BLOCKED 판정
+9. MASTER 갱신
+10. Next 하나 지정
 
 모든 agent 종료 보고:
 - **What Changed**
@@ -469,157 +427,80 @@ Rules:
 - 한 Batch = 한 목표
 - README보다 MASTER 우선
 - Human Review가 최종 Gate
+- 같은 environmental blocker만 반복하지 않는다.
 
 ---
 
-# 15. Batch Template
-
-```markdown
-## P{PHASE}-B{NUMBER} — Title
-
-### Goal
--
-
-### In Scope
--
-
-### Out of Scope
--
-
-### Acceptance Criteria
-- [ ]
-
-### Execution
--
-
-### Evidence
--
-
-### Result
-PASS / FAIL / BLOCKED
-
-### What Changed
--
-
-### What Was Executed
--
-
-### What Was Not Verified
--
-
-### Remaining Risks
--
-
-### Next
--
-```
-
----
-
-# 16. Current Checkpoint
-
-```text
-Feature-rich Engineering Project
-              ↓
-        Proof Hardening
-              ↓
-   Usable Production-like PoC
-              ↓
-         Wishket Proof
-```
-
-- **Phase**: Phase 0
-- **State**: PARTIAL BASELINE — P0-B1 BLOCKED
-- **Current Remote HEAD**: `230265640e9591e9f47364283806aedc41f68e93`
-- **Code Baseline Parent**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Verified Remotely**: main HEAD, tracked tree/large-file risk, secret-risk manifest, declared runtime prerequisites, Gradle wrapper, CI workflow mismatch/fail-open pattern, branch protection/status-check state
-- **Blocked**: execution environment still cannot resolve `github.com`; fresh clone, local working-tree state, installed runtimes, Docker daemon, build/tests remain unverified.
-- **Rule Applied**: 동일 blocker 반복만 하지 않고 GitHub-side static preflight를 추가 수행. 미실행 항목은 PASS 처리하지 않음.
-
----
-
-# 17. P0-B1 — Repository Preflight
+# 15. Current Checkpoint — P0-B1 Repository Preflight
 
 ## Goal
-코드 변경 없이 현재 Git / 환경 / 실행 준비 상태를 확정.
+코드 변경 없이 현재 Git / 환경 / 실행 준비 상태를 확정한다.
 
 ## In Scope
-- git status
-- branch / HEAD / remote
-- large files
-- secret-risk
+- git status / branch / HEAD / remote
+- large files / secret-risk
 - repo structure
-- Java / Python / Node / Docker prerequisites
+- runtime prerequisites
+- CI / README / config static preflight
 
 ## Out of Scope
-- 코드 수정
-- README 수정
-- dependency upgrade
+- application code 수정
 - feature 구현
-- refactor
+- experimental scope
+- dependency upgrade
+- Phase 1 implementation
 
 ## Acceptance Criteria
-- [ ] Working tree 상태 — **BLOCKED**: fresh clone 불가
-- [x] Authoritative remote HEAD — `230265640e9591e9f47364283806aedc41f68e93`
-- [ ] Remote sync — **PARTIAL**: remote `main` HEAD 확인, local comparison 불가
-- [x] Secret-risk — tracked secret manifest는 placeholder credential; `.env*` ignore 정책 확인
-- [x] Large-file risk — tracked tree에서 50MB 초과 blob 없음
-- [ ] Runtime prerequisites — **PARTIAL**: Java 21 toolchain, Gradle 8.5 wrapper, Python >=3.8, frontend build config 선언 확인; 실제 설치 버전/Docker daemon 미검증
-- [ ] Build baseline 진행 가능 여부 — **BLOCKED**: execution environment DNS failure
-
-## Evidence
-- Remote `main`: `230265640e9591e9f47364283806aedc41f68e93`; parent `bca6567919cbcac3f9039268c09526b25179f370`
-- Branch protection: `main` unprotected; required status checks 없음
-- Current commit combined statuses: empty — CI green evidence 없음
-- Gradle wrapper: `gradle-8.5-all.zip`
-- Java project declaration: Gradle toolchain 21
-- Python declaration: `python_requires=">=3.8"`
-- Frontend: React/Vite `build` script 존재, `test` script 없음
-- CI static audit: `.github/workflows/ci.yml` uses JDK 17 while project toolchain is 21
-- CI static audit: Bifrost dependency install ends with `|| true`, so dependency failure masking 가능
-- Blocker reproduction: `git clone --depth 1 https://github.com/joeylife94/asgard.git` → `Could not resolve host: github.com`
+- [ ] Local working tree 상태 — **BLOCKED**
+- [x] Authoritative remote HEAD / branch state — observed before this checkpoint update: `f5fbe44d1598a7009ac3c389a28f97a24d5f78d7`
+- [ ] Local↔remote sync — **PARTIAL**: remote known, local comparison unavailable
+- [x] Secret-risk static check
+- [x] Large-file risk static check
+- [ ] Runtime prerequisites — **PARTIAL**: declarations known; installed versions/Docker daemon unverified
+- [ ] Build baseline readiness — **BLOCKED** by execution environment
+- [x] CI static preflight
+- [x] README/config static preflight — known claim/port/config drift captured
 
 ## Result
-**BLOCKED** — GitHub-side static preflight는 추가 진전했지만 fresh execution evidence 부족으로 PASS 불가.
+**BLOCKED** — static uncertainty was reduced, but fresh execution evidence is still required to close P0-B1.
 
 ## What Changed
 - Application code 변경 없음.
-- `ASGARD_MASTER.md`의 remote HEAD를 현재 상태로 갱신.
-- P0-B1에 Gradle wrapper / branch protection / CI static evidence 추가.
-- 반복 blocker만 기록하지 않고 정적 사전검증 범위를 확장.
+- `ASGARD_MASTER.md`를 현재 remote state와 정적 baseline findings 기준으로 정리.
+- 새 Evidence 추가: Grafana README↔Compose port drift, README claim risk, gRPC configuration caveat.
+- README 자체는 P0-B1 Out of Scope이므로 수정하지 않음.
 
 ## What Was Executed
-- `ASGARD_MASTER.md` first-read
-- GitHub `main` branch 조회
-- Current HEAD/parent 확인
-- Current commit combined status 조회
-- `.github/workflows/ci.yml` 정적 검사
-- `gradle/wrapper/gradle-wrapper.properties` 정적 검사
-- `bifrost/setup.py` Python requirement 재확인
-- Fresh clone 1회 재현 → DNS blocker 지속
+- Root `ASGARD_MASTER.md` first-read.
+- Remote `main` branch/HEAD inspection.
+- README static claim and service URL audit.
+- `docker-compose.yml` Grafana port mapping verification.
+- `heimdall/build.gradle` gRPC dependency/plugin configuration verification.
+- Existing CI/runtime declaration evidence reconciliation.
 
 ## What Was Not Verified
 - Local working tree clean/dirty
-- Local branch vs `origin/main` sync
+- Local branch vs `origin/main`
 - 실제 Java/Python/Node 설치 버전
 - Docker / Compose daemon
 - Clean build
 - Heimdall/Bifrost tests
 - Frontend production build
-- Runtime E2E
+- Runtime E2E / actual Local or Cloud AI calls
+- Live Grafana metrics
 
 ## Remaining Risks
-- 실행 환경이 `github.com`을 resolve하지 못하는 한 P0-B1 종료 불가.
-- `main`에 required status checks가 없어 현재는 CI 통과가 merge/write gate가 아님.
-- CI JDK 17 vs project Java 21 mismatch 유지.
-- Python dependency install fail-open 및 frontend no-test false-pass risk 유지.
+- Execution runner에서 fresh checkout/build/test가 불가능하면 Gate 0 종료 불가.
+- README의 여러 강한 claim은 runtime/benchmark evidence 없이 공개 상태.
+- CI mismatch/fail-open은 확인됐지만 P0-B1에서는 수정하지 않음.
+- Grafana URL drift는 실제 사용자의 startup 검증을 방해할 수 있음.
 
-## Next
-**External prerequisite: outbound DNS/HTTPS access to `github.com`이 가능한 execution runner 확보.** 다음 iteration에서는 동일 clone 재시도만 하지 말고, runner가 열리면 즉시 fresh clone → `git status`/HEAD sync → Java/Python/Node/Docker versions → clean build readiness 순으로 남은 P0-B1 criteria를 닫는다. Runner가 여전히 막히면 Phase 0 범위 안에서 README/CI claim audit의 정적 Evidence를 추가하되 runtime PASS는 금지한다.
+## Next — single task
+**P0-B1 Runtime Preflight Closure:** outbound DNS/HTTPS로 `github.com`에 접근 가능한 execution runner에서 fresh clone 후 `git status`/HEAD sync → Java/Python/Node/Docker versions → clean build readiness를 한 번에 확인한다. 동일 runtime blocker가 또 지속되면 clone 재시도에 iteration을 소비하지 말고, P0-B1을 BLOCKED로 유지한 채 external prerequisite를 `GitHub-accessible build runner` 하나로 고정한다.
 
 ---
 
-# 18. Final Target
+# 16. Final Target
 
 ```text
 Clone → Configure → Start
