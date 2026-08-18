@@ -179,7 +179,7 @@ Write-Host ""
 
 Write-Host "📈 Monitoring Stack:" -ForegroundColor Cyan
 Write-Host "  • Prometheus:                  http://localhost:9090" -ForegroundColor White
-Write-Host "  • Grafana:                     http://localhost:3000 (admin/admin)" -ForegroundColor White
+Write-Host "  • Grafana:                     http://localhost:3001 (admin/admin)" -ForegroundColor White
 Write-Host "  • Zipkin:                      http://localhost:9411" -ForegroundColor White
 Write-Host ""
 
