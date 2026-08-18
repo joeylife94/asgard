@@ -14,7 +14,7 @@
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Observed main before this checkpoint update**: `c169b4f191dbe3edf64265a652089b994f5d4865`
+- **Observed main before this checkpoint update**: `4c740a6b04d1e7643a938f90bfdb9b6df581c21a`
 - **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
@@ -87,7 +87,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
 | CI/CD | 5.5/10 | Java 21 정렬 완료; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4.5/10 | Grafana README drift 3곳 mutation pending |
+| Documentation Truth | 4.5/10 | Grafana README drift 3곳 mutation blocked by safe-edit limitation |
 | Wishket Proof | 5~6/10 | NOT READY |
 
 **Current Summary:** 기능은 충분하지만 실제 사용 흐름과 runtime Evidence가 닫히지 않았다.
@@ -162,6 +162,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] Startup script Grafana host-port correction
 - [x] README infrastructure host-port contract audit
 - [x] Current commit status-check lookup — **no statuses attached; NOT CI PASS evidence**
+- [x] README mutation tool-safety check — **whole-file replacement only; no partial patch available**
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -188,15 +189,16 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-015 | Primary CI correction | VERIFIED STATICALLY | `.github/workflows/ci.yml`: JDK 21; Bifrost dependency install fail-fast |
 | E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
 | E-017 | README claim risk | VERIFIED | build/coverage/production/GDPR claims lack current runtime evidence |
-| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose `3001:3000`; README still exposes host 3000 |
+| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose `3001:3000`; README exposes host 3000 |
 | E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
 | E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Java setup steps use JDK 21 |
 | E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `No tests`/`Skipped` preserved; no false all-pass summary |
 | E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | exactly three README host-facing corrections required |
 | E-023 | Startup Grafana correction | VERIFIED STATICALLY | `start-all.ps1` prints `localhost:3001`, matching Compose |
 | E-024 | README infra port audit | VERIFIED STATICALLY | Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; Grafana only mismatch |
-| E-025 | Current commit status lookup | VERIFIED | `c169b4f...` has no attached combined statuses; this is absence of evidence, not green CI |
+| E-025 | Current commit status lookup | VERIFIED | no attached combined statuses; absence of evidence, not green CI |
 | E-026 | Fresh clone blocker reproduction | VERIFIED | `git clone` failed with `Could not resolve host: github.com` in execution environment |
+| E-027 | README mutation safety check | VERIFIED | available repository editor replaces whole file only; no partial-line patch path available, so 3-line README edit was not risked |
 
 ---
 
@@ -210,14 +212,15 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 5. Frontend has a production build script but no actual `test` script.
 6. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
 7. README infra ports match Compose except Grafana.
-8. Current `main` commit status lookup returned no statuses; CI remains unverified.
+8. Current commit status lookup returned no statuses; CI remains unverified.
+9. README mutation cannot be performed safely through the current connector without reconstructing and replacing the entire file.
 
 **Important:** static correction ≠ runtime/CI PASS.
 
 ## README ↔ COMPOSE GRAFANA DRIFT
 `docker-compose.yml` publishes Grafana as `3001:3000`; host-facing docs must use `3001`.
 
-Current README has three known drifted entries:
+README has three known drifted entries:
 1. `Infrastructure Services` → `Grafana: http://localhost:3000 (admin/admin)`
 2. `Monitoring Stack` table → Grafana port `3000`
 3. `Access URLs` → `Grafana: http://localhost:3000`
@@ -275,7 +278,7 @@ Expected host-facing value: `3001`.
 | R-006 | Infra overbuild | Single-node PoC 종료 |
 | R-007 | Docs/config drift | Evidence-backed docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
-| R-009 | Connector whole-file replacement only | mutate large files only after full-file safe read/reconstruction |
+| R-009 | Connector whole-file replacement only | do not mutate large files until full-file safe reconstruction or patch-capable editor exists |
 | R-010 | Startup banner can overstate readiness | require actual health evidence before UC-01 PASS |
 | R-011 | No status checks attached to current commit | never interpret missing statuses as successful CI |
 
@@ -313,26 +316,26 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. GitHub-side static baseline은 계속 축소되고 있으나 실행 Evidence는 확보되지 않았다.
+**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. README Grafana drift는 정확히 식별됐지만 현재 repository editor가 partial patch를 지원하지 않아 안전한 3-line mutation도 보류했다.
 
 ## What Changed
 - `ASGARD_MASTER.md`
-  - E-025 current commit status lookup 추가
-  - E-026 clone blocker reproduction 추가
-  - Current checkpoint / risks 최신화
-  - 기존 Evidence와 scope를 유지하면서 문서를 압축 정리
+  - observed `main`을 `4c740a6b04d1e7643a938f90bfdb9b6df581c21a`로 최신화
+  - E-027 README mutation safety check 추가
+  - connector whole-file replacement risk 명시
+  - checkpoint / risk / next 최신화
 - README / application / experimental code 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- remote `main` inspection → observed `c169b4f191dbe3edf64265a652089b994f5d4865`
-- current README full read; 세 Grafana drift 위치 재확인
-- `.github/workflows/ci.yml` read → push `main/master` + PR + workflow_dispatch trigger, JDK 21, fail-fast deps 확인
-- current commit combined-status lookup → status entries 없음
-- local `git clone https://github.com/joeylife94/asgard.git` 1회 → `Could not resolve host: github.com`
+- remote `main` inspection → `4c740a6b04d1e7643a938f90bfdb9b6df581c21a`
+- README current blob 확인 → `63756f3b63431cd4593deeb139752e54def289dd`
+- README Grafana drift search → known 3-entry mismatch 유지 확인
+- GitHub repository write capability inspection → existing-file mutation은 complete UTF-8 replacement만 지원, partial-line patch 없음
+- unsafe whole-file README replacement는 실행하지 않음
 
 ## What Was Not Verified
-- README 세 Grafana 표현 actual mutation
+- README 세 Grafana 표현 actual mutation / drift 0건
 - Fresh clone / local working tree / local↔remote sync
 - 실제 Java/Python/Node/Docker versions
 - Clean build / Heimdall tests / Bifrost tests / Frontend build
@@ -343,14 +346,16 @@ Rules:
 ## Remaining Risks
 - GitHub-accessible runtime runner 없이는 P0-B1 PASS 불가.
 - README Grafana drift 3곳이 실제 문서에 남아 있음.
-- 두 CI workflow 수정은 static evidence만 있고 execution PASS 없음.
-- Current commit에 status entries가 없으므로 CI badge/green claim을 증명할 수 없음.
-- README performance/compliance claims는 여전히 unsupported.
+- 현재 editor로 README 전체를 재구성 없이 수정하면 문서 손상 위험이 있음.
+- CI workflow 수정은 static evidence만 있고 execution PASS 없음.
+- README performance/compliance claims는 unsupported.
 
 ## Next — single task
-**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 확보되면 README의 세 Grafana host-facing 표현을 `3001`로 수정하고 재검색하여 drift 0건을 확인한다. Runtime runner가 먼저 복구되면 fresh clone/build preflight를 최우선 수행한다.
+**P0-B1 Runtime Preflight OR Safe README Patch, whichever becomes executable first:**
+1. `github.com` DNS/HTTPS가 가능한 checkout runner 확보 시 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → clean build readiness를 실행한다.
+2. patch-capable repository editor가 먼저 확보되면 README의 Grafana 3곳만 `3001`로 수정하고 재검색하여 drift 0건을 확인한다.
 
-**Concrete external prerequisite if still blocked:** `github.com` DNS/HTTPS가 가능한 checkout runner 또는 partial-line patch를 지원하는 repository editor.
+**Concrete external prerequisite:** GitHub-accessible checkout runner 또는 partial-line patch를 지원하는 repository editor.
 
 ---
 
