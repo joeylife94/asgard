@@ -90,7 +90,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Frontend | 5/10 | test truth fixed; Golden Path/runtime proof 부족 |
 | CI/CD | 5.5/10 | Java 21 정렬 완료; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4.5/10 | README Grafana drift exact locations identified; cleanup pending |
+| Documentation Truth | 4.5/10 | README infra host-port audit complete; Grafana 3-entry mutation pending |
 | Wishket Proof | 5~6/10 | NOT READY |
 
 **Current Summary:** 기능은 충분하지만 실제 사용 흐름과 runtime Evidence가 닫히지 않았다.
@@ -163,6 +163,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] Unified test status truth static correction
 - [x] README Grafana port drift exact-location audit
 - [x] Startup script Grafana host-port correction
+- [x] README infrastructure host-port contract audit
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -195,6 +196,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `No tests`/`Skipped` preserved; no false all-pass summary |
 | E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | three README corrections required: Access Services URL, Monitoring Stack port table, Access URLs URL |
 | E-023 | Startup Grafana host-port correction | VERIFIED STATICALLY | `start-all.ps1` now prints `http://localhost:3001`, matching Compose `3001:3000` |
+| E-024 | README infrastructure host-port contract audit | VERIFIED STATICALLY | README Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; only Grafana host-port drift remains in the audited infra list |
 
 ---
 
@@ -207,6 +209,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 4. Unified frontend test runner no longer converts `No tests` / `Skipped` into `Passed`.
 5. Frontend has a Vite production build script but no actual `test` script.
 6. `start-all.ps1` Grafana host URL now matches Compose host mapping: `http://localhost:3001`.
+7. README infrastructure URLs/ports were compared against Compose. Kafka UI `8090`, Redis Commander `8081`, Prometheus `9090`, and Zipkin `9411` match; the remaining audited host-port mismatch is Grafana only.
 
 **Important:** static correction ≠ runtime/CI PASS.
 
@@ -316,29 +319,27 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. 이번 iteration에서는 blocker 반복 대신 startup contract의 Grafana host-port 불일치를 정적으로 수정했다.
+**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. 동일 DNS blocker는 한 번만 재확인했고, 이후 README의 Compose-backed infrastructure host-port 계약을 전체 대조하여 남은 mismatch 범위를 Grafana 3개 표현으로 좁혔다.
 
 ## What Changed
-- `start-all.ps1`
-  - Grafana startup URL `http://localhost:3000` → `http://localhost:3001`
-  - Compose `3001:3000` mapping과 정렬
 - `ASGARD_MASTER.md`
-  - E-023 추가
-  - startup banner가 health proof가 아니라는 caveat 기록
-- README/application/experimental code 변경 없음
+  - E-024 추가
+  - README infrastructure host-port audit 결과 반영
+  - Documentation Truth 상태 갱신
+- Application/experimental code 변경 없음
+- README actual mutation 없음
 
 ## What Was Executed
 - MASTER first-read
-- `start-all.ps1` static inspection
-- `build-all.ps1` static inspection
-- Compose/README의 기존 Grafana port evidence와 startup output 대조
-- `start-all.ps1` host-port correction commit
-- corrected startup script static re-read 기준으로 MASTER 갱신
+- fresh clone 1회 시도 → `Could not resolve host: github.com` 재현
+- current README line-range inspection
+- current `docker-compose.yml` inspection
+- README Infrastructure Services / Monitoring Stack / Access URLs를 Compose host mappings와 대조
+- Kafka UI `8090`, Redis Commander `8081`, Prometheus `9090`, Zipkin `9411` 정합 확인
+- Grafana만 README `3000` vs Compose host `3001` mismatch임을 재확인
 
 ## What Was Not Verified
-- `start-all.ps1` 실제 PowerShell 실행
-- Startup 후 Heimdall/Bifrost/Frontend 실제 health
-- README 세 줄 actual mutation
+- README 세 Grafana 표현 actual mutation
 - Fresh clone / local working tree / local↔remote sync
 - 실제 Java/Python/Node/Docker versions
 - Clean build / Heimdall tests / Bifrost tests / Frontend build
@@ -348,15 +349,15 @@ Rules:
 
 ## Remaining Risks
 - Execution runner가 없으면 P0-B1을 PASS할 수 없음.
-- README Grafana drift는 위치까지 확정했지만 실제 파일 수정이 아직 필요함.
-- `start-all.ps1`은 background process를 시작한 뒤 실제 application health를 검증하지 않고 완료 banner를 출력함.
+- README Grafana drift는 정확히 3개 표현으로 좁혀졌지만 실제 수정은 아직 필요함.
+- `start-all.ps1` 완료 banner는 application health proof가 아님.
 - 두 CI workflow 수정은 static evidence만 있고 execution PASS는 없음.
 - README의 강한 performance/compliance claims가 남아 있음.
 
 ## Next — single task
-**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 사용 가능해지는 즉시 README의 세 Grafana host-port 표현을 `3001`로 수정하고 재검색하여 Grafana host-port drift가 0건인지 확인한다. Runtime runner가 사용 가능해지면 fresh clone/build preflight를 최우선으로 수행한다.
+**P0-B1 README Grafana Mutation:** patch-capable checkout/editor가 사용 가능해지는 즉시 README의 세 Grafana host-port 표현을 `3001`로 수정하고 재검색하여 drift 0건을 확인한다. Runtime runner가 먼저 사용 가능해지면 fresh clone/build preflight를 최우선으로 수행한다.
 
-**Concrete external prerequisite if still blocked:** GitHub checkout이 가능한 runner 또는 partial-line patch를 지원하는 repository editor.
+**Concrete external prerequisite if still blocked:** `github.com` DNS/HTTPS가 가능한 checkout runner 또는 partial-line patch를 지원하는 repository editor.
 
 ---
 
