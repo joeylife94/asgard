@@ -13,7 +13,7 @@
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Observed HEAD after this iteration's CI correction**: `452204d768fa2e6fbfa3ed0fe4362eee3012f732`
+- **Observed HEAD after this iteration's secondary CI correction**: `5925b0fbacef6f6e13f025b8f4c5b9e38c448c0b`
 - **Original code baseline before MASTER-only/checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
 - **Updated**: 2026-08-18
 - **Final Gate**: Human Review Required
@@ -89,7 +89,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Docker Infra | 7/10 | Repro check 필요 |
 | Observability | 6~7/10 | Real evidence 필요 |
 | Frontend | 4~5/10 | Golden Path 부족 |
-| CI/CD | 5/10 | primary CI contract corrected; execution evidence pending |
+| CI/CD | 5.5/10 | both CI workflows aligned to Java 21; execution evidence pending |
 | E2E Reproducibility | 5~6/10 | Real model run 필요 |
 | Documentation Truth | 4/10 | Cleanup 필요 |
 | Wishket Proof | 5~6/10 | NOT READY |
@@ -184,11 +184,12 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-012 | HP AI Server Run | PENDING | |
 | E-013 | Remote branch state | VERIFIED | `main` inspected; no required status checks |
 | E-014 | Runtime declarations | VERIFIED | Java 21 toolchain, Gradle 8.5, Python >=3.8 |
-| E-015 | Primary CI correction | VERIFIED STATICALLY | `.github/workflows/ci.yml`: JDK 21; Bifrost dependency install now fail-fast |
+| E-015 | Primary CI correction | VERIFIED STATICALLY | `.github/workflows/ci.yml`: JDK 21; Bifrost dependency install fail-fast |
 | E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
 | E-017 | README claim risk | VERIFIED | static build/coverage/production/GDPR claims lack current runtime evidence |
 | E-018 | README ↔ Compose Grafana drift | VERIFIED | README 3000 vs Compose host 3001 |
 | E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
+| E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Heimdall, code-quality, dependency-check all use JDK 21 |
 
 ---
 
@@ -202,21 +203,23 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - Remote `main` is unprotected and has no required status checks.
 - Kafka control-plane, DLQ/redrive, observability and frontend assets exist.
 
-## CORRECTED THIS ITERATION
+## CORRECTED TO DATE
 1. **Primary CI Java mismatch**
    - Before: `.github/workflows/ci.yml` used JDK 17.
    - Now: JDK 21, aligned with project toolchain.
 2. **Primary CI Python fail-open**
    - Before: requirements install fallback ended with `|| true`.
    - Now: requirements install is strict; dependency failure fails the job.
+3. **Secondary CI Java mismatch**
+   - Before: `.github/workflows/ci-cd.yml` used JDK 17 in Heimdall build, code-quality, dependency-check.
+   - Now: all three Java setup steps use JDK 21.
 
 **Important:** static correction ≠ CI PASS. Actual workflow execution is still required.
 
 ## STILL BROKEN / INCONSISTENT
-1. Secondary `.github/workflows/ci-cd.yml` still contains JDK 17 setup in multiple jobs.
-2. Frontend has no `test` script while unified test language can imply all-service testing.
-3. README documents Grafana at `localhost:3000`; Compose publishes host `3001`.
-4. README build/coverage badges are static claims rather than live Evidence.
+1. Frontend has no `test` script while unified test language can imply all-service testing.
+2. README documents Grafana at `localhost:3000`; Compose publishes host `3001`.
+3. README build/coverage badges are static claims rather than live Evidence.
 
 ## UNVERIFIED CLAIMS
 - `production-ready`
@@ -253,8 +256,8 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | ID | Risk | Mitigation |
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
-| R-002 | Secondary CI Java mismatch | `ci-cd.yml` Java 21 alignment |
-| R-003 | False green / test truth | fail-fast + frontend test contract cleanup |
+| R-002 | CI runtime truth unverified | execute both workflows / fresh build when runner available |
+| R-003 | False green / test truth | frontend test contract cleanup |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
@@ -298,20 +301,20 @@ Rules:
 **BLOCKED** — runtime/fresh-clone evidence가 없어 Gate 0 종료 불가. 다만 GitHub-side static baseline과 CI 계약은 계속 개선 중.
 
 ## What Changed
-- `.github/workflows/ci.yml`
-  - JDK 17 → **JDK 21**
-  - Bifrost dependency install의 fail-open fallback 제거
+- `.github/workflows/ci-cd.yml`
+  - Heimdall build: JDK 17 → **JDK 21**
+  - code-quality: JDK 17 → **JDK 21**
+  - dependency-check: JDK 17 → **JDK 21**
 - `ASGARD_MASTER.md`
-  - 위 correction과 Evidence/risks/checkpoint 반영
+  - secondary CI correction, Evidence, risks, checkpoint 반영
 - Application code / experimental feature 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- Primary CI workflow static inspection
 - Secondary CI workflow static inspection
-- Remote `main` branch inspection
-- GitHub-side file update for primary CI
-- Post-update remote HEAD verification
+- Three Java setup locations identified
+- GitHub-side workflow update
+- Post-update workflow re-read confirming all three use Java 21
 
 ## What Was Not Verified
 - Fresh clone / local working tree
@@ -326,12 +329,12 @@ Rules:
 
 ## Remaining Risks
 - Execution runner가 없으면 P0-B1을 PASS할 수 없음.
-- Secondary CI workflow에는 여전히 JDK 17이 남아 있음.
-- Frontend test contract와 README/config drift가 남아 있음.
-- README 강한 claims는 runtime evidence 없이 공개 상태.
+- 두 workflow의 Java contract는 정렬됐지만 실제 execution PASS는 아직 없음.
+- Frontend test contract가 실제보다 강한 성공 인상을 줄 수 있음.
+- README/config drift와 강한 claims가 남아 있음.
 
 ## Next — single task
-**P0-B1 Secondary CI Contract Cleanup:** `.github/workflows/ci-cd.yml`의 모든 Java setup을 Java 21로 정렬하고, 해당 변경을 정적으로 검증한다. Runtime runner가 사용 가능해지면 그 즉시 fresh clone/build preflight가 우선한다.
+**P0-B1 Frontend Test Truth Cleanup:** `test-all.ps1`에서 frontend `test` script가 없을 때 결과가 최종적으로 `Passed`로 덮어써지지 않도록 상태 처리를 수정하고, 정적 검증한다. Runtime runner가 사용 가능해지면 그 즉시 fresh clone/build preflight가 우선한다.
 
 ---
 
