@@ -14,7 +14,7 @@
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Observed main before this checkpoint update**: `331a19fcce22f6c729755a60dddc41f776528fc4`
+- **Observed main before this checkpoint update**: `5743d1bb0f13a55d6372a467bf9734567aac0512`
 - **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
@@ -90,7 +90,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Documentation Truth | 4.5/10 | Grafana README drift + frontend docs/source drift |
 | Wishket Proof | 5~6/10 | NOT READY |
 
-**Current Summary:** Backend/Kafka feature depth는 충분하지만, runtime Evidence와 실제 Frontend build/startup contract가 닫히지 않았다.
+**Current Summary:** Backend/Kafka feature depth는 충분하지만 runtime Evidence가 없고, 현재 tracked Frontend는 기본 Vite build/startup contract를 충족하지 못한다.
 
 > **Feature Development → Proof Hardening**
 
@@ -158,14 +158,10 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] CI static audit
 - [x] README/config static audit
 - [x] Unified test status truth static correction
-- [x] README Grafana port drift exact-location audit
 - [x] Startup script Grafana host-port correction
-- [x] README infrastructure host-port contract audit
-- [x] Current commit status-check lookup — **no statuses attached; NOT CI PASS evidence**
-- [x] README mutation tool-safety check — **whole-file replacement only; no partial patch available**
-- [x] Current commit workflow-run lookup limitation recorded — **PR-triggered runs only; empty result is not push-CI evidence**
-- [x] Frontend tracked-tree audit — **no `index.html`, `src/`, `public/`, or package lock under `bifrost/frontend/`**
-- [x] Unified build/startup frontend failure-boundary audit — **build script necessarily reaches broken Vite build unless skipped; startup script treats package.json presence as sufficient and launches dev server without entrypoint validation**
+- [x] Frontend tracked-tree audit
+- [x] Unified build/startup frontend failure-boundary audit
+- [x] Frontend repair-slice design — **DESIGN ONLY; no implementation in Phase 0**
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -175,98 +171,153 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
-| E-001 | Clean Build | **BROKEN STATICALLY** | `build-all.ps1` unconditionally executes frontend `npm run build` unless `-SkipFrontend`; tracked Vite entry/source tree absent; runtime confirmation pending |
+| E-001 | Clean Build | **BROKEN STATICALLY** | default build reaches frontend Vite build; runtime confirmation pending |
 | E-002 | Heimdall Tests | PENDING | runtime blocked |
 | E-003 | Bifrost Tests | PENDING | runtime blocked |
-| E-004 | Frontend Build | **BROKEN STATICALLY** | `npm run build` points to Vite, but tracked frontend root has no standard entrypoint/source tree; runtime confirmation pending |
+| E-004 | Frontend Build | **BROKEN STATICALLY** | no tracked `index.html` / `src/`; runtime confirmation pending |
 | E-005 | Real Local AI E2E | PENDING | runtime blocked |
 | E-006 | Local vs Cloud Routing | PENDING | runtime blocked |
 | E-007 | DLQ → Redrive → Success | PENDING | runtime blocked |
 | E-008 | Grafana Metrics | PENDING | runtime blocked |
-| E-009 | GitHub Actions Green | PENDING | no green run/status evidence obtained |
+| E-009 | GitHub Actions Green | PENDING | no green run/status evidence |
 | E-010 | Actual Benchmark | PENDING | published numbers unsupported until rerun |
 | E-011 | Final Demo | PENDING | |
 | E-012 | HP AI Server Run | PENDING | |
 | E-013 | Remote branch state | VERIFIED | `main` inspected; branch unprotected, no required status checks |
 | E-014 | Runtime declarations | VERIFIED | Java 21 toolchain, Gradle 8.5, Python >=3.8 |
-| E-015 | Primary CI correction | VERIFIED STATICALLY | `.github/workflows/ci.yml`: JDK 21; Bifrost dependency install fail-fast |
+| E-015 | Primary CI correction | VERIFIED STATICALLY | primary CI JDK 21; Bifrost dependency install fail-fast |
 | E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
 | E-017 | README claim risk | VERIFIED | build/coverage/production/GDPR claims lack current runtime evidence |
-| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose `3001:3000`; README exposes host 3000 |
+| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose `3001:3000`; README still exposes host 3000 in three places |
 | E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
-| E-020 | Secondary CI correction | VERIFIED STATICALLY | `.github/workflows/ci-cd.yml`: Java setup steps use JDK 21 |
-| E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | `No tests`/`Skipped` preserved; no false all-pass summary |
-| E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | exactly three README host-facing corrections required |
-| E-023 | Startup Grafana correction | VERIFIED STATICALLY | `start-all.ps1` prints `localhost:3001`, matching Compose |
-| E-024 | README infra port audit | VERIFIED STATICALLY | Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; Grafana only mismatch |
-| E-025 | Current commit combined status lookup | VERIFIED | no attached combined statuses; absence of evidence, not green CI |
-| E-026 | Fresh clone blocker reproduction | VERIFIED | `git clone` / `git ls-remote` failed with `Could not resolve host: github.com` in execution environment |
-| E-027 | README mutation safety check | VERIFIED | available repository editor replaces whole file only; prior run did not risk partial edit |
-| E-028 | Commit workflow-run lookup limitation | VERIFIED | connector returns PR-triggered runs only; empty result does not prove push CI absence or success |
-| E-029 | Frontend tracked-tree contract | VERIFIED STATICALLY | `bifrost/frontend/` contains only `README.md`, `package.json`, `vite.config.js`; code search found no React `createRoot`/`ReactDOM` entry |
-| E-030 | Unified build/startup frontend failure boundary | VERIFIED STATICALLY | `build-all.ps1` executes `npm install` then `npm run build` and fails on nonzero exit; `start-all.ps1` only checks `package.json` before launching `npm run dev`, so current missing Vite entry/source tree directly blocks normal build and makes startup banner unreliable |
+| E-020 | Secondary CI correction | VERIFIED STATICALLY | secondary CI Java setup uses JDK 21 |
+| E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | no false all-pass summary |
+| E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | three host-facing corrections required |
+| E-023 | Startup Grafana correction | VERIFIED STATICALLY | startup script prints `localhost:3001` |
+| E-024 | README infra port audit | VERIFIED STATICALLY | Grafana is the remaining infra port drift |
+| E-025 | Current commit combined status lookup | VERIFIED | no statuses attached; absence of evidence, not green CI |
+| E-026 | Fresh clone blocker reproduction | VERIFIED | execution environment cannot resolve `github.com` |
+| E-027 | README mutation safety check | VERIFIED | connector only supports whole-file replacement |
+| E-028 | Commit workflow-run lookup limitation | VERIFIED | available lookup cannot prove push-CI success |
+| E-029 | Frontend tracked-tree contract | VERIFIED STATICALLY | only `README.md`, `package.json`, `vite.config.js`; no entry/source tree |
+| E-030 | Unified build/startup frontend failure boundary | VERIFIED STATICALLY | default build reaches Vite build; startup checks package.json only |
+| E-031 | Minimal frontend repair-slice design | VERIFIED STATICALLY | package/Vite/README contracts compared; minimal repair file set and acceptance criteria frozen below |
 
 ---
 
 # 8. Static Baseline Findings
 
 ## VERIFIED / CORRECTED
-1. Project declares Java 21 toolchain; Gradle wrapper 8.5; Python package `>=3.8`.
-2. Primary CI uses JDK 21 and Bifrost dependency install is fail-fast.
-3. Secondary CI Java setup steps use JDK 21.
-4. Unified frontend test runner no longer converts `No tests` / `Skipped` into `Passed`.
+1. Java 21 toolchain; Gradle wrapper 8.5; Python package `>=3.8`.
+2. Primary and secondary CI Java setup aligned to JDK 21.
+3. Bifrost dependency installation is fail-fast in primary CI.
+4. Unified frontend test runner preserves `No tests` / `Skipped` truth.
 5. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
 6. README infra ports match Compose except Grafana.
-7. Current commit combined-status lookup returned no statuses; CI remains unverified.
-8. Commit workflow-run lookup is PR-only in the available connector and cannot prove push-run success/absence.
-9. README mutation requires whole-file replacement through the current connector; edit only when reconstruction is safe.
-10. Frontend `package.json` exposes `build: vite build` but no `test` script.
-11. `bifrost/frontend/` tracked directory currently contains only `README.md`, `package.json`, `vite.config.js`.
-12. `vite.config.js` does not define a custom build input; standard Vite root entry (`index.html`) is absent.
-13. Frontend README claims `public/`, `src/`, components and `npm test`, but those tracked paths/scripts are absent.
-14. `build-all.ps1` necessarily enters the Frontend step unless `-SkipFrontend`; it runs `npm install` then `npm run build` and throws on nonzero exit.
-15. `start-all.ps1` considers Frontend present when only `package.json` exists, starts `npm run dev`, and later prints `ASGARD STARTUP COMPLETE` without validating frontend health.
+7. CI remains execution-unverified; missing statuses are not PASS evidence.
+8. Frontend `package.json` exposes `dev`, `build`, `preview`, `lint`, `format`; no `test` script.
+9. Frontend dependencies already include React 18, React DOM, React Router, Axios, Chart.js and React Query.
+10. `vite.config.js` uses React plugin, dev port `3000`, `/api` proxy → `http://localhost:8000`, build output `../static/react`.
+11. Tracked frontend root has no `index.html`, `src/`, `public/`, or package lock.
+12. Frontend README documents a much larger tree and commands/features that are not currently backed by tracked source.
+13. Default unified build enters frontend unless explicitly skipped.
+14. Startup can announce completion without proving frontend health.
 
-**Important:** static correction ≠ runtime/CI PASS.
+**Important:** static correction/design ≠ runtime/CI PASS.
 
-## FRONTEND BUILD / STARTUP CONTRACT — BROKEN STATICALLY
-Evidence indicates the current tracked frontend cannot satisfy the documented Vite build/startup contract as-is:
+---
 
-- `package.json`: `build = vite build`, `dev = vite`
-- `vite.config.js`: no custom `build.rollupOptions.input`
-- tracked frontend root: no `index.html`
-- tracked frontend root: no `src/` or `public/`
-- `build-all.ps1`: invokes frontend build by default and fails the unified build when `npm run build` exits nonzero
-- `start-all.ps1`: only checks `package.json` existence, launches `npm run dev`, then prints startup completion without endpoint validation
-- frontend README documents missing paths and `npm test`, but package.json has no `test` script
+# 9. Frontend Build / Startup Contract — BROKEN STATICALLY
+
+Current tracked frontend cannot satisfy the documented Vite contract as-is:
+
+- `package.json`: `dev = vite`, `build = vite build`
+- `vite.config.js`: no custom Rollup input
+- no tracked root `index.html`
+- no tracked `src/`
+- build script invokes frontend by default
+- startup script checks only `package.json` before launching dev server
+- README describes non-existent files and `npm test`, but no test script exists
 
 **Classification:** Frontend and default unified clean-build contract are `BROKEN STATICALLY`; runtime command output still pending.
 
-This is a Core-scope issue, but **implementation is deferred until Phase 0 baseline is closed or the next active batch explicitly authorizes the fix**.
+Implementation is not authorized while P0-B1 remains active.
 
-## README ↔ COMPOSE GRAFANA DRIFT
-`docker-compose.yml` publishes Grafana as `3001:3000`; host-facing docs must use `3001`.
+---
 
-README has three known drifted entries:
-1. `Infrastructure Services` → `Grafana: http://localhost:3000 (admin/admin)`
-2. `Monitoring Stack` table → Grafana port `3000`
-3. `Access URLs` → `Grafana: http://localhost:3000`
+# 10. Planned Core Repair Slice — FRONTEND BOOT SHELL
 
-Expected host-facing value: `3001`.
+> **Status: DESIGN FROZEN, NOT ACTIVE, NOT IMPLEMENTED**
+> Activate only after P0-B1 runtime baseline closes or an explicit next batch authorizes repair.
 
-## STARTUP CONTRACT CAVEAT
-`start-all.ps1` prints `ASGARD STARTUP COMPLETE` after launching background processes but does not prove Heimdall/Bifrost/Frontend health. For Frontend specifically, `package.json` existence is the only pre-launch check. UC-01 remains runtime-unverified.
+## Goal
+Restore the smallest truthful Vite/React application shell required to make the tracked frontend buildable and startable without pretending the full dashboard already exists.
 
-## STILL BROKEN / INCONSISTENT
-1. Frontend tracked source/entry tree absent.
-2. Frontend actual test suite absent.
-3. Frontend README describes files/scripts that are not tracked.
-4. Default unified build necessarily reaches broken Frontend step unless explicitly skipped.
-5. Startup script can announce completion while Frontend dev server is nonfunctional.
-6. README Grafana 3-entry mutation pending.
-7. README build/coverage badges are static claims, not live Evidence.
+## Minimum File Set
 
-## UNVERIFIED CLAIMS
+### Must Create
+1. `bifrost/frontend/index.html`
+   - standard Vite root entry
+   - single `#root`
+   - imports `/src/main.jsx`
+
+2. `bifrost/frontend/src/main.jsx`
+   - `ReactDOM.createRoot`
+   - mounts `<App />`
+   - imports base stylesheet
+
+3. `bifrost/frontend/src/App.jsx`
+   - minimal Asgard shell only
+   - identifies project and current UI status
+   - no fake metrics, no fake jobs, no fake provider status
+   - may expose placeholder navigation labels for planned `Overview / Analyze / Jobs / Operations`, but must clearly mark unavailable sections
+
+4. `bifrost/frontend/src/index.css`
+   - minimal readable layout
+   - no design-system work
+
+### Must Not Create In This Slice
+- mock API data
+- fake Grafana/health metrics
+- Analysis API integration
+- Job tables
+- Redrive UI
+- Chart.js dashboards
+- React Query abstraction
+- auth UI
+- routing framework unless required for the minimal shell
+- tests that assert mocked product behavior
+- new dependencies
+
+## Dependency Decision
+Current dependencies are more than sufficient for the boot shell. **Add no package dependencies.** The first repair should use React + ReactDOM only. Existing React Router/Axios/Chart.js/React Query remain unused until the later operator-experience slice actually needs them.
+
+## Acceptance Criteria — Repair Batch
+- [ ] tracked `index.html` exists and points to `/src/main.jsx`
+- [ ] tracked `src/main.jsx`, `src/App.jsx`, `src/index.css` exist
+- [ ] no fake operational data or unsupported feature claims in UI
+- [ ] no new npm dependency added
+- [ ] `npm install` completes — runtime evidence required
+- [ ] `npm run build` exits 0 and emits Vite assets to configured output — runtime evidence required
+- [ ] `npm run dev` starts and root page returns successfully — runtime evidence required
+- [ ] default `build-all.ps1` no longer fails at Frontend build step — runtime evidence required
+- [ ] startup script behavior is rechecked; banner alone is not health evidence
+- [ ] frontend README is reduced/aligned only after the new tracked tree exists
+
+## Closure Condition
+**Frontend transitions from `BROKEN STATICALLY` to `BUILDABLE VERIFIED` only when runtime build/start evidence exists. Static file creation alone is insufficient.**
+
+## Why This Slice Is Small
+The v1.0 product requires a Minimal React Dashboard, but Phase 2 owns operator screens. The immediate repair must only restore the executable frontend contract so Phase 1/2 work can proceed without carrying a broken default build.
+
+---
+
+# 11. README / Claim Debt
+
+## Known Drift
+`docker-compose.yml` publishes Grafana as `3001:3000`; README still has three host-facing `3000` entries.
+
+## Unverified Claims — Do Not Publish As Fact
 - `production-ready`
 - `GDPR-compliant`
 - `80%+ test coverage`
@@ -280,44 +331,29 @@ Expected host-facing value: `3001`.
 
 ---
 
-# 9. Claim Policy
-
-**Evidence 없는 숫자/품질 주장은 공개 문서에 넣지 않는다.**
-
-검증 전 사용 금지:
-- Production Ready
-- GDPR Compliant / Article 32 Compliant
-- 10,000+ req/s / 50K+ msg/s
-- 80%+ coverage
-- 60% cost reduction
-- 70% MTTR reduction
-- 80% local workload
-- CI/CD time `40-60% reduction`
-
----
-
-# 10. Known Risks
+# 12. Known Risks
 
 | ID | Risk | Mitigation |
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
 | R-002 | CI runtime truth unverified | execute workflow/build when runner available |
-| R-003 | Frontend source/entrypoint absent | classify truthfully now; repair in an explicitly authorized Core batch |
+| R-003 | Frontend source/entrypoint absent | execute frozen minimal repair slice only after authorization |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
 | R-007 | Docs/config drift | Evidence-backed docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
-| R-009 | Connector whole-file replacement only | mutate large files only after complete safe reconstruction |
-| R-010 | Startup banner can overstate readiness | require actual health evidence before UC-01 PASS |
-| R-011 | No status checks attached to current commit | never interpret missing statuses as successful CI |
-| R-012 | Commit workflow lookup is PR-only | do not use empty PR-run result as push-CI evidence |
-| R-013 | Frontend README describes non-existent tracked tree | align docs only after source direction is decided |
-| R-014 | Default unified build currently reaches broken frontend | repair frontend contract before treating clean build as viable |
+| R-009 | Connector whole-file replacement only | large-file mutations only with complete safe reconstruction |
+| R-010 | Startup banner can overstate readiness | require health evidence before UC-01 PASS |
+| R-011 | No status checks attached | never interpret missing statuses as CI PASS |
+| R-012 | Workflow lookup limitation | do not infer push-CI outcome from unsupported lookup |
+| R-013 | Frontend README describes absent tree | align after source direction is implemented |
+| R-014 | Default build reaches broken frontend | repair frontend contract before clean-build PASS |
+| R-015 | Repair slice could expand into UI rebuild | frozen 4-file boot shell; no API/features/new deps |
 
 ---
 
-# 11. Work Rules
+# 13. Work Rules
 
 Every iteration:
 1. `ASGARD_MASTER.md` first-read
@@ -346,40 +382,36 @@ Rules:
 
 ---
 
-# 12. Current Checkpoint — P0-B1
+# 14. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. Frontend는 tracked repository contract 기준 **BROKEN STATICALLY**이며, default `build-all.ps1`도 Frontend를 skip하지 않는 한 이 failure boundary를 반드시 통과한다.
+**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. Frontend/default unified build는 tracked contract 기준 **BROKEN STATICALLY**.
 
 ## What Changed
 - `ASGARD_MASTER.md`
-  - observed `main`을 `331a19fcce22f6c729755a60dddc41f776528fc4`로 최신화
-  - E-030 Unified build/startup frontend failure boundary 추가
-  - Clean Build를 `BROKEN STATICALLY at Frontend step`로 재분류
-  - startup/build contract caveat와 R-014 추가
+  - observed main을 `5743d1bb0f13a55d6372a467bf9734567aac0512`로 최신화
+  - E-031 Minimal frontend repair-slice design 추가
+  - planned Core repair를 4-file boot shell로 동결
+  - repair acceptance / closure criteria 명시
 - Application / experimental code 변경 없음
-- Frontend 구현은 Phase 0 범위를 넘으므로 생성하지 않음
+- Frontend 구현 없음
 
 ## What Was Executed
 - MASTER first-read
-- remote `main` inspection → `331a19fcce22f6c729755a60dddc41f776528fc4`
-- `build-all.ps1` static trace
-  - Frontend step enabled by default
-  - `npm install --silent`
-  - `npm run build`
-  - nonzero exit → unified build failure
-- `start-all.ps1` static trace
-  - Frontend presence check = `bifrost\frontend\package.json` only
-  - launches `npm run dev` without validating `index.html` / `src/`
-  - final startup banner does not health-check Frontend
-- prior frontend tracked-tree evidence reused: no `index.html`, `src/`, `public/`
-- repeated DNS clone attempt intentionally skipped under blocker-loop rule
+- remote `main` inspection
+- runtime DNS check 1회 → `github.com` resolution failure persists
+- `bifrost/frontend/package.json` inspection
+- `bifrost/frontend/README.md` inspection
+- `bifrost/frontend/vite.config.js` inspection
+- dependency / command / tracked-tree contract comparison
+- repeated clone retries intentionally skipped under blocker-loop rule
 
 ## What Was Not Verified
-- actual `npm run build` / `npm run dev` failure output
 - Fresh clone / local working tree / local↔remote sync
 - actual Java/Python/Node/Docker versions
-- Heimdall tests / Bifrost tests
+- `npm install`, `npm run build`, `npm run dev`
+- Heimdall/Bifrost tests
+- default `build-all.ps1` runtime failure
 - Compose/E2E
 - GitHub Actions green result
 - Real AI calls / Grafana live metrics
@@ -387,15 +419,14 @@ Rules:
 
 ## Remaining Risks
 - GitHub-accessible runtime runner 없이는 P0-B1 PASS 불가.
-- Frontend source/entrypoint 부재로 default unified build와 UC-01 startup이 현재 Core blocker다.
-- Startup banner가 실제 readiness보다 성공적으로 보일 수 있다.
-- README는 존재하지 않는 frontend tree/scripts를 문서화한다.
-- README Grafana drift 3곳이 남아 있다.
-- README performance/compliance claims는 unsupported.
+- Frontend/default build는 runtime confirmation 전까지 BROKEN STATICALLY 상태다.
+- Startup banner는 실제 readiness보다 성공적으로 보일 수 있다.
+- README frontend 문서는 tracked source보다 앞서 있다.
+- README Grafana drift와 unsupported performance/compliance claims가 남아 있다.
 
 ## Next — single task
-**P0-B1 Runtime Preflight remains first priority:** GitHub-accessible checkout runner가 확보되면 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → `build-all.ps1` / `npm run build` 실행으로 static failure boundary를 runtime-confirm한다.
+**P0-B1 Runtime Preflight remains first priority:** `github.com` DNS/HTTPS가 가능한 checkout runner에서 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → `npm install` / `npm run build` → default build readiness를 실행해 static diagnosis를 runtime-confirm한다.
 
-**If the environmental blocker still persists:** 다음 non-redundant GitHub-side step은 frontend repair에 들어가기 전, `bifrost/frontend/package.json` dependency set과 README가 의도한 최소 화면 구조를 비교해 **Phase 1 Core repair slice의 최소 파일 세트와 acceptance criteria만 설계**한다. 구현은 Phase 0에서 하지 않는다.
+**If the same environmental blocker persists again:** repair 구현으로 넘어가지 말고, Backend/Frontend integration을 위해 실제로 존재하는 Analysis/Job/Redrive API surface를 GitHub에서 정적으로 inventory하여 Phase 2 operator UI가 사용할 최소 API contract만 설계한다.
 
 **Concrete external prerequisite:** `github.com` DNS/HTTPS가 가능한 checkout runner.
