@@ -14,7 +14,7 @@
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Observed main before this checkpoint update**: `4c740a6b04d1e7643a938f90bfdb9b6df581c21a`
+- **Observed main before this checkpoint update**: `c1980da0f00526f1f0e97aa87a68ca2c80613ee2`
 - **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
@@ -163,6 +163,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] README infrastructure host-port contract audit
 - [x] Current commit status-check lookup — **no statuses attached; NOT CI PASS evidence**
 - [x] README mutation tool-safety check — **whole-file replacement only; no partial patch available**
+- [x] Current commit workflow-run lookup limitation recorded — **PR-triggered runs only; empty result is not push-CI evidence**
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -196,9 +197,10 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | exactly three README host-facing corrections required |
 | E-023 | Startup Grafana correction | VERIFIED STATICALLY | `start-all.ps1` prints `localhost:3001`, matching Compose |
 | E-024 | README infra port audit | VERIFIED STATICALLY | Kafka UI 8090, Redis Commander 8081, Prometheus 9090, Zipkin 9411 match Compose; Grafana only mismatch |
-| E-025 | Current commit status lookup | VERIFIED | no attached combined statuses; absence of evidence, not green CI |
-| E-026 | Fresh clone blocker reproduction | VERIFIED | `git clone` failed with `Could not resolve host: github.com` in execution environment |
+| E-025 | Current commit combined status lookup | VERIFIED | no attached combined statuses; absence of evidence, not green CI |
+| E-026 | Fresh clone blocker reproduction | VERIFIED | `git clone` / `git ls-remote` failed with `Could not resolve host: github.com` in execution environment |
 | E-027 | README mutation safety check | VERIFIED | available repository editor replaces whole file only; no partial-line patch path available, so 3-line README edit was not risked |
+| E-028 | Commit workflow-run lookup limitation | VERIFIED | connector returns PR-triggered runs only; current commit returned none, which does not prove push CI absence or success |
 
 ---
 
@@ -212,8 +214,9 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 5. Frontend has a production build script but no actual `test` script.
 6. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
 7. README infra ports match Compose except Grafana.
-8. Current commit status lookup returned no statuses; CI remains unverified.
-9. README mutation cannot be performed safely through the current connector without reconstructing and replacing the entire file.
+8. Current commit combined-status lookup returned no statuses; CI remains unverified.
+9. Commit workflow-run lookup is PR-only in the available connector and cannot prove push-run success/absence.
+10. README mutation cannot be performed safely through the current connector without reconstructing and replacing the entire file.
 
 **Important:** static correction ≠ runtime/CI PASS.
 
@@ -281,6 +284,7 @@ Expected host-facing value: `3001`.
 | R-009 | Connector whole-file replacement only | do not mutate large files until full-file safe reconstruction or patch-capable editor exists |
 | R-010 | Startup banner can overstate readiness | require actual health evidence before UC-01 PASS |
 | R-011 | No status checks attached to current commit | never interpret missing statuses as successful CI |
+| R-012 | Commit workflow lookup is PR-only | do not use empty PR-run result as push-CI evidence |
 
 ---
 
@@ -316,25 +320,27 @@ Rules:
 # 12. Current Checkpoint — P0-B1
 
 ## Result
-**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. README Grafana drift는 정확히 식별됐지만 현재 repository editor가 partial patch를 지원하지 않아 안전한 3-line mutation도 보류했다.
+**BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. GitHub-side CI 조회를 추가했지만 current commit의 combined status는 비어 있고, available workflow-run lookup은 PR-triggered run만 반환하므로 push CI PASS를 증명할 수 없다. README Grafana drift 3곳도 아직 남아 있다.
 
 ## What Changed
 - `ASGARD_MASTER.md`
-  - observed `main`을 `4c740a6b04d1e7643a938f90bfdb9b6df581c21a`로 최신화
-  - E-027 README mutation safety check 추가
-  - connector whole-file replacement risk 명시
-  - checkpoint / risk / next 최신화
+  - observed `main`을 `c1980da0f00526f1f0e97aa87a68ca2c80613ee2`로 최신화
+  - E-028 commit workflow-run lookup limitation 추가
+  - combined-status empty result와 PR-only workflow lookup의 의미를 구분
+  - risk / checkpoint / next 최신화
 - README / application / experimental code 변경 없음
 
 ## What Was Executed
 - MASTER first-read
-- remote `main` inspection → `4c740a6b04d1e7643a938f90bfdb9b6df581c21a`
-- README current blob 확인 → `63756f3b63431cd4593deeb139752e54def289dd`
-- README Grafana drift search → known 3-entry mismatch 유지 확인
-- GitHub repository write capability inspection → existing-file mutation은 complete UTF-8 replacement만 지원, partial-line patch 없음
-- unsafe whole-file README replacement는 실행하지 않음
+- remote `main` inspection → `c1980da0f00526f1f0e97aa87a68ca2c80613ee2`
+- `.github/workflows/ci.yml` first section 재확인 → push(main/master), PR(main/master), manual dispatch; JDK 21
+- current commit combined-status lookup → statuses `[]`
+- current commit workflow-run lookup → PR-triggered runs `[]`; connector scope limitation 확인
+- local `git ls-remote https://github.com/joeylife94/asgard.git HEAD` 1회 실행 → `Could not resolve host: github.com`
+- 동일 DNS blocker 반복은 중단
 
 ## What Was Not Verified
+- push-triggered GitHub Actions run 존재/결과
 - README 세 Grafana 표현 actual mutation / drift 0건
 - Fresh clone / local working tree / local↔remote sync
 - 실제 Java/Python/Node/Docker versions
@@ -345,33 +351,15 @@ Rules:
 
 ## Remaining Risks
 - GitHub-accessible runtime runner 없이는 P0-B1 PASS 불가.
+- current commit에 combined statuses가 없어 CI green 증거가 없음.
+- available workflow-run lookup은 PR-only라 push CI truth를 닫지 못함.
 - README Grafana drift 3곳이 실제 문서에 남아 있음.
 - 현재 editor로 README 전체를 재구성 없이 수정하면 문서 손상 위험이 있음.
-- CI workflow 수정은 static evidence만 있고 execution PASS 없음.
 - README performance/compliance claims는 unsupported.
 
 ## Next — single task
-**P0-B1 Runtime Preflight OR Safe README Patch, whichever becomes executable first:**
-1. `github.com` DNS/HTTPS가 가능한 checkout runner 확보 시 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → clean build readiness를 실행한다.
-2. patch-capable repository editor가 먼저 확보되면 README의 Grafana 3곳만 `3001`로 수정하고 재검색하여 drift 0건을 확인한다.
+**P0-B1 Runtime Preflight:** GitHub-accessible checkout runner가 확보되면 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → clean build readiness를 실행한다. 동일 runtime blocker가 계속되면 다음 GitHub-side iteration은 push-triggered workflow run을 직접 조회할 수 있는 안전한 Actions path가 생겼는지 확인하고, 없으면 README safe-patch capability 확보 전까지 추가 문서 mutation을 만들지 않는다.
 
-**Concrete external prerequisite:** GitHub-accessible checkout runner 또는 partial-line patch를 지원하는 repository editor.
+**Concrete external prerequisite:** `github.com` DNS/HTTPS가 가능한 checkout runner.
 
 ---
-
-# 13. Final Target
-
-```text
-Clone → Configure → Start
-→ Input Log → Analysis Job → Kafka
-→ Hybrid AI Routing → Real AI Result
-→ Dashboard / Metrics
-→ Failure → DLQ → Redrive → Success
-
-CI GREEN
-E2E PASS
-EVIDENCE ATTACHED
-README TRUTHFUL
-
-→ ASGARD v1.0 — PROOF PASS
-```
