@@ -780,7 +780,7 @@ async def get_feedback_stats(
     Args:
         hours: Time period for statistics (default: 24)
         provider: Filter by AI provider (ollama, bedrock, etc.)
-        lane: Filter by routing lane (on_device/cloud)
+        lane: Filter by routing lane (on_device_rag, cloud_direct)
     """
     from bifrost.feedback import FeedbackService
     
