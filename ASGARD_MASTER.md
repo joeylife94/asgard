@@ -10,18 +10,15 @@
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B2 — Minimal Frontend Boot-Shell Repair
-- **Active Issue**: #6 — `P0-B2: restore minimal frontend boot shell`
-- **Active PR**: #7 — `fix: restore minimal frontend boot shell`
-- **Active PR Branch**: `agent/p0-b2-frontend-boot-shell`
-- **Current exact head**: `4c5404642cb68594538396f00d89558fea7c655f`
-- **Batch Result**: IN PROGRESS
-- **Status**: IN PROGRESS
+- **Batch Result**: PASS / MERGED
+- **Status**: READY FOR NEXT BOUNDED GAP
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline**: `bca6567919cbcac3f9039268c09526b25179f370`
 - **PR #3 execution merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd`
 - **PR #4 bounded repair merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
-- **Updated**: 2026-08-19
+- **PR #7 frontend boot-shell merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
+- **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
 ---
@@ -127,85 +124,70 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - final exact head: `1d301377a5951962cb3afd4e653a1975b8a2267a`
 - merged main SHA: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 
-Final bounded changes:
-- `bifrost/bifrost/api.py`: restore missing `Any` / `Dict` typing imports.
-- `.github/workflows/ci-cd.yml`: install Bifrost itself with `pip install -e .` before secondary lint/tests.
-- accidental feedback lane documentation regression removed before merge.
+Bounded changes:
+- restored missing `Any` / `Dict` typing imports in Bifrost.
+- secondary CI installs Bifrost with `pip install -e .` before lint/tests.
+- accidental feedback-lane documentation regression removed before merge.
 
-Executed exact-head evidence:
+Executed evidence:
 - primary CI `32262136812`: Heimdall + Bifrost unit job GREEN.
 - secondary CI/CD `32262136715`: Bifrost install/lint/pytest/coverage GREEN.
-- dependency security job GREEN.
-- frontend preflight RED only at missing `index.html` boundary.
+- dependency security GREEN.
 - Heimdall secondary build RED at pre-existing `:heimdall:checkstyleMain`: 41 files, 109 warnings + 2 info. **Do not mass-fix in unrelated slices.**
 
 ---
 
-# 6. Active Slice — P0-B2 Frontend Boot Shell
+# 6. Closed Phase 0 Slice — P0-B2 PASS
 
 ## Issue / PR
-- **Issue #6**: OPEN
-- **PR #7**: OPEN
-- **Exact head**: `4c5404642cb68594538396f00d89558fea7c655f`
+- **Issue #6**: CLOSED
+- **PR #7**: MERGED
+- **Final exact head**: `4c5404642cb68594538396f00d89558fea7c655f`
+- **Merged main SHA**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
 
 ## Goal
-Restore the minimum tracked Vite/React boot tree required to make the existing frontend build/startup contract executable. No product UI expansion.
+Restore the minimum tracked Vite/React boot tree required to make the existing frontend build contract executable without product UI expansion.
 
-## Product repair scope
+## Merged Scope
 - `bifrost/frontend/index.html`
 - `bifrost/frontend/src/main.jsx`
 - `bifrost/frontend/src/App.jsx`
 - `bifrost/frontend/src/index.css`
+- `.github/workflows/ci-cd.yml` only for the evidence-required frontend install correction (`npm ci` without lockfile → bounded `npm install`).
 
-Implemented on PR #7:
-- [x] Vite HTML entrypoint
-- [x] React root bootstrap
-- [x] minimal human-visible Asgard boot shell
-- [x] minimal readable styling
-- [x] no fake metrics/jobs/API integration/product feature expansion
+## Executed Exact-Head Evidence
 
-## Evidence-required CI correction
+PR-visible primary `CI` run `32262906086` on exact head `4c540464...`:
+- **SUCCESS**.
 
-PR #7 first secondary Frontend job reached `actions/setup-node@v4` and failed before install/build because workflow required nonexistent:
+PR-visible secondary `CI/CD Pipeline` run `32262906127` on the same exact head:
+- `Build & Test Frontend`: **SUCCESS**.
+  - Node setup: success
+  - dependency install: success
+  - lint step: success
+  - production bundle build: success
+  - artifact upload: success
+- `Build & Test Bifrost`: **SUCCESS**.
+- `Dependency Security Check`: **SUCCESS**.
+- `Build & Test Heimdall`: **FAILURE**, confirmed unrelated/pre-existing at `:heimdall:checkstyleMain` with **41 files / 109 warnings / 2 info**. This is the same classified debt from P0-B1 and is not a PR #7 regression.
 
-`bifrost/frontend/package-lock.json`
+Review state before merge:
+- no inline review threads.
+- no submitted reviews blocking merge.
 
-The same job also used `npm ci`, which requires a lockfile. This is executed evidence that the verification contract itself was not executable.
-
-Issue #6 scope was therefore minimally expanded to allow exactly one additional file:
-- `.github/workflows/ci-cd.yml`
-
-Correction committed at PR #7 exact head `4c5404642cb68594538396f00d89558fea7c655f`:
-- remove npm cache configuration tied to nonexistent lockfile.
-- replace `npm ci` with `npm install --no-audit --no-fund`.
-- no unrelated workflow refactor.
-
-## Acceptance Criteria
-- [ ] `npm install` succeeds on current exact head.
-- [ ] `npm run build` exits 0 on current exact head.
-- [ ] `npm run dev` serves a reachable root page.
-- [ ] default repository build path completes the frontend step.
-- [ ] secondary Frontend CI reaches and executes build step.
+## Acceptance Classification
+- [x] `npm install` succeeds under exact-head PR execution.
+- [x] `npm run build` / production bundle build succeeds under exact-head PR execution.
+- [x] secondary Frontend CI reaches and executes build successfully.
 - [x] no fake operational data introduced.
-- [x] product implementation stays inside frozen four-file scope.
-- [x] only evidence-required extra file is the bounded secondary-CI correction.
+- [x] product implementation stayed inside frozen four-file scope.
+- [x] only extra file was the evidence-required CI correction.
+- [ ] `npm run dev` root reachability — **NOT VERIFIED** by current CI.
+- [ ] default root `build-all.ps1` frontend-step execution — **NOT VERIFIED** directly; frontend production build itself is verified.
 
-## Current exact-head execution
+## Result
 
-New PR-visible workflows for `4c5404642cb68594538396f00d89558fea7c655f`:
-- primary `CI` run `32262906086`: QUEUED at last observation.
-- secondary `CI/CD Pipeline` run `32262906127`: QUEUED at last observation.
-
-Previous PR #7 head `baf957a21b07f2fdccb07f2b97c411a3d92d217d` evidence:
-- primary frontend preflight started normal install/build execution.
-- secondary Frontend job FAILED at Node setup because `package-lock.json` did not exist; build never ran.
-- this failure directly justified the bounded workflow correction above.
-
-## Closure Condition
-
-**Frontend build/startup contract is executable and verified, without adding product features.**
-
-Do not merge PR #7 until current exact-head evidence establishes the applicable acceptance criteria and review/security state is clean. Any remaining unexecutable acceptance item must be recorded explicitly rather than inferred PASS.
+**PASS / MERGED** for the bounded P0-B2 repair. The two unexecuted acceptance items remain explicit proof debt and must not be represented as verified.
 
 ---
 
@@ -215,23 +197,27 @@ Do not merge PR #7 until current exact-head evidence establishes the applicable 
 |---|---|---|---|
 | E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 |
 | E-002 | PR #3 merge | VERIFIED | `888f2c5694940fe42284466fb57a0b33b2ec73cd` |
-| E-003 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 → `fa3f129783387fbeafae537e8a22b4629faf6d42` |
+| E-003 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 → `fa3f129...` |
 | E-004 | PR #4 primary unit tests | VERIFIED GREEN | run `32262136812` |
 | E-005 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32262136715` |
 | E-006 | Phase 0 runtime versions | VERIFIED | Java 21.0.12 / Python 3.11.16 / Node 20.20.2 / npm 10.8.2 / Docker 28.0.4 |
-| E-007 | Frontend pre-repair npm install | VERIFIED GREEN | exact executed preflight |
-| E-008 | Frontend pre-repair build | FAILED EXECUTED | missing `index.html` |
-| E-009 | Heimdall secondary build | VERIFIED RED / PRE-EXISTING | checkstyle debt |
-| E-010 | Issue #6 lifecycle | VERIFIED | created before P0-B2 implementation |
-| E-011 | PR #7 initial bounded product diff | VERIFIED STATIC | four frontend files only |
-| E-012 | PR #7 secondary Frontend CI | FAILED EXECUTED / CONTRACT | nonexistent lockfile blocks setup |
-| E-013 | PR #7 CI contract repair | IMPLEMENTED / RE-EXECUTION PENDING | current head `4c540464...` |
-| E-014 | Real Local AI E2E | PENDING | |
-| E-015 | Local vs Cloud Routing | PENDING | |
-| E-016 | DLQ → Redrive → Success | PENDING | |
-| E-017 | Grafana live metrics | PENDING | |
-| E-018 | Final Demo | PENDING | |
-| E-019 | HP AI Server reference run | PENDING | |
+| E-007 | Frontend pre-repair build | FAILED EXECUTED | missing `index.html` |
+| E-008 | Heimdall secondary build | VERIFIED RED / PRE-EXISTING | checkstyle debt |
+| E-009 | Issue #6 lifecycle | VERIFIED / CLOSED | issue-first lifecycle |
+| E-010 | PR #7 bounded frontend diff | VERIFIED / MERGED | four boot files + bounded CI correction |
+| E-011 | PR #7 primary CI | VERIFIED GREEN | run `32262906086` |
+| E-012 | PR #7 secondary Frontend | VERIFIED GREEN | run `32262906127` |
+| E-013 | PR #7 secondary Bifrost | VERIFIED GREEN | run `32262906127` |
+| E-014 | PR #7 dependency security | VERIFIED GREEN | run `32262906127` |
+| E-015 | PR #7 Heimdall failure classification | VERIFIED RED / PRE-EXISTING | checkstyleMain 41 / 109 / 2 |
+| E-016 | Frontend dev-server root reachability | PENDING | not executed |
+| E-017 | Root default build path | PENDING | not executed directly |
+| E-018 | Real Local AI E2E | PENDING | |
+| E-019 | Local vs Cloud Routing | PENDING | |
+| E-020 | DLQ → Redrive → Success | PENDING | |
+| E-021 | Grafana live metrics | PENDING | |
+| E-022 | Final Demo | PENDING | |
+| E-023 | HP AI Server reference run | PENDING | |
 
 ---
 
@@ -239,12 +225,12 @@ Do not merge PR #7 until current exact-head evidence establishes the applicable 
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | Frontend acceptance not yet re-executed after CI fix | inspect current PR #7 exact-head workflows first |
-| R-002 | Broad Heimdall checkstyle debt | classify separately; no unrelated mass-fix |
-| R-003 | README overclaim | publish evidence-backed claims only |
-| R-004 | Fallback-only E2E | real-model evidence mandatory |
-| R-005 | Scope explosion | keep Frozen Scope |
-| R-006 | Missing workflow status | missing ≠ PASS/FAIL; prefer PR-visible execution |
+| R-001 | Frontend dev-server reachability not yet executed | preserve as proof debt; verify in later startup slice |
+| R-002 | Root default build path not directly executed | verify before UC-01 closure |
+| R-003 | Broad Heimdall checkstyle debt | classify separately; no unrelated mass-fix |
+| R-004 | README overclaim | publish evidence-backed claims only |
+| R-005 | Fallback-only E2E | real-model evidence mandatory |
+| R-006 | Scope explosion | keep Frozen Scope |
 | R-007 | Agent self-report without remote/executed proof | never treat as proof |
 
 Known later proof-hardening debt:
@@ -299,38 +285,41 @@ Rules:
 
 ## Result
 
-**P0-B1 PASS / P0-B2 IN PROGRESS.** PR #4 is merged. Issue #6 and PR #7 now own the next proven Core defect: the missing frontend boot tree. The four-file boot shell is implemented. Exact execution exposed and then corrected one CI verification-contract defect; the corrected exact-head workflows are now pending execution.
+**P0-B1 PASS / P0-B2 PASS.** Issue #6 is closed and PR #7 is merged. The missing frontend Vite entry/source defect is repaired and the exact-head production frontend build is executed GREEN. The secondary Heimdall RED remains the same pre-existing broad checkstyle debt and was deliberately not expanded into Issue #6.
 
 ## What Changed
-- Completed PR #4 remote review correction, exact-head verification, expected-head merge, and MASTER reconciliation.
-- Created Issue #6 before new frontend implementation.
-- Created PR #7 with exactly the frozen four frontend boot-shell files.
-- Inspected first PR #7 secondary Frontend failure.
-- Proved it failed before frontend execution because CI referenced nonexistent `package-lock.json` and used `npm ci` without a lockfile.
-- Updated Issue #6 with the evidence-required CI correction boundary.
-- Corrected only the secondary Frontend CI install contract on the same PR.
+- Inspected current PR #7 exact head and both PR-visible workflows.
+- Confirmed primary CI success.
+- Inspected secondary workflow jobs and concrete Heimdall failure log.
+- Confirmed Frontend install/build/artifact job success.
+- Confirmed Heimdall failure is the already-classified `checkstyleMain` debt, not a PR #7 regression.
+- Confirmed no review threads/reviews blocked the bounded merge.
+- Merged PR #7 with expected-head guard.
+- Confirmed Issue #6 auto-closed.
+- Reconciled this MASTER on `main`.
 
 ## What Was Executed
-- PR #4 branch mutation, review resolution, exact-head CI inspection, and merge.
-- Issue search and Issue #6 creation.
-- PR #7 branch/file creation and PR creation.
 - PR #7 exact-head workflow lookup.
-- Secondary Frontend CI job/log inspection on initial PR #7 head.
-- CI correction commit triggering new exact-head workflows.
+- Secondary workflow job inspection.
+- Concrete Heimdall job-log inspection.
+- Review-thread/review inspection.
+- Expected-head squash merge.
+- Issue #6 closure verification.
 
 ## What Was Not Verified
-- `npm install` success on current PR #7 exact head.
-- `npm run build` success on current PR #7 exact head.
 - `npm run dev` root reachability.
-- default repository build path frontend-step success.
-- current exact-head PR #7 review/security state after CI settles.
-- Compose/E2E/real AI/Grafana live evidence.
+- direct execution of root `build-all.ps1` frontend step.
+- Compose startup / UC-01 closure.
+- real Local AI E2E.
+- Local vs Cloud routing execution.
+- DLQ → Redrive → Success execution.
+- Grafana live evidence.
 
 ## Remaining Risks
-- PR #7 may expose another concrete frontend build/startup defect when the new exact-head jobs run.
-- Secondary Heimdall checkstyle debt remains pre-existing and unrelated.
-- Real-model, recovery, observability, and final proof evidence remain pending.
+- UC-01 still needs startup/runtime proof, including frontend root reachability.
+- Real-model, routing, recovery, observability, and final proof evidence remain pending.
+- Broad Heimdall checkstyle debt remains pre-existing and should be handled only when a MASTER-authorized gap requires it.
 
 ## NEXT
 
-**Inspect PR #7 exact-head `4c5404642cb68594538396f00d89558fea7c655f` PR-visible workflows `32262906086` and `32262906127`. If RED, inspect the first concrete active-slice failure and make only the smallest Issue #6-scoped correction. If bounded acceptance is proven and review/security state is clean, merge with `expected_head_sha`, confirm Issue #6 closure, then reconcile this MASTER before selecting another gap.**
+**Re-read this merged checkpoint, search for an existing open Issue matching the smallest remaining Phase 0 acceptance gap. If none exists, create exactly one bounded Issue for executable UC-01 startup verification (including frontend dev-server root reachability and the default repository frontend build path) before any new implementation. Do not broaden into product UI or Heimdall checkstyle cleanup.**
