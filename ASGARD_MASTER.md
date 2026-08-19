@@ -11,17 +11,15 @@
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B3 — UC-01 Frontend Startup / Default Build Verification
 - **Batch Result**: IN PROGRESS
-- **Status**: FRONTEND DEV VERIFIED; ROOT BUILD BLOCKER VERIFIED; BOUNDED BUILD-CONTRACT REPAIR AUTHORIZED
+- **Status**: BUILD-CONTRACT REPAIR PR #10 OPEN; EXACT-HEAD EXECUTION PENDING
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 - **P0-B2 merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
-- **PR #9 merge**: `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`
+- **PR #9 proof-harness merge**: `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`
 - **Issue #8**: OPEN
-- **PR #9**: MERGED as proof harness; Issue #8 intentionally remains OPEN because the default build-path acceptance criterion is not yet satisfied
-- **PR #9 exact head**: `1f50afc4ff2c4590178bfce14f250866339bd9e6`
-- **Primary CI run**: `32273762721`
-- **Secondary CI/CD run**: `32273762445`
+- **PR #10**: OPEN — `fix: make SkipTests use Heimdall assemble path`
+- **PR #10 exact head**: `dc8cc524bb2f10e8b5674cfcc98247882782a82a`
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -89,13 +87,12 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - primary Heimdall + Bifrost unit job GREEN.
 - secondary Bifrost install/lint/pytest/coverage GREEN.
 - dependency security GREEN.
-- secondary Heimdall RED classified as pre-existing `:heimdall:checkstyleMain`: 41 files / 109 warnings / 2 info.
+- Heimdall broad `checkstyleMain` debt classified as pre-existing: **41 files / 109 warnings / 2 info**.
 
 ## P0-B2 — PASS / MERGED
 - Issue #6 CLOSED; PR #7 merged at `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`.
 - minimal four-file frontend boot tree restored.
 - exact-head production frontend build GREEN.
-- secondary Bifrost and dependency security GREEN.
 
 ---
 
@@ -104,67 +101,61 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 ## Issue / PR
 - **Issue #8**: `P0-B3: verify UC-01 frontend startup and default build path`
 - **PR #9**: proof harness merged at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`
-- **Issue state**: OPEN
+- **PR #10**: bounded build-contract repair, OPEN
+- **PR #10 exact head**: `dc8cc524bb2f10e8b5674cfcc98247882782a82a`
 
 ## Goal
-Close the two remaining frontend/startup proof debts from P0-B2:
+Close the two frontend/startup proof debts from P0-B2:
 1. Vite dev-server root reachability;
 2. root `build-all.ps1 -SkipTests` without `-SkipFrontend`, including a successful frontend build step.
 
-## Executed Evidence
+## Executed Evidence Before PR #10
 
-Primary CI run `32273762721`, exact head `1f50afc4ff2c4590178bfce14f250866339bd9e6`:
-- **UC-01 frontend dev root reachability: GREEN**.
-- frontend dependency install: success.
-- Vite dev server start: success.
-- HTTP GET `http://127.0.0.1:3000/`: success on attempt 2.
+PR #9 exact head `1f50afc4ff2c4590178bfce14f250866339bd9e6`, primary run `32273762721`:
+- frontend dependency install: GREEN.
+- Vite dev server: GREEN.
+- HTTP GET `http://127.0.0.1:3000/`: GREEN on attempt 2.
 - Phase 0 frontend install/build preflight: GREEN.
 - primary Heimdall + Bifrost unit job: GREEN.
-- Windows default build path: EXECUTED RED.
-- root `build-all.ps1 -SkipTests` stopped in Heimdall at `:heimdall:checkstyleMain` before reaching Frontend.
-- exact failure is the already-classified broad debt: **41 files / 109 warnings / 2 info**.
-- default-build evidence artifact uploaded successfully.
-
-Secondary CI/CD run `32273762445`:
-- Bifrost: GREEN.
-- dependency security: GREEN.
-- Heimdall: RED at the same pre-existing build/checkstyle boundary.
-- Frontend job skipped because only workflow files changed.
+- Windows `build-all.ps1 -SkipTests`: EXECUTED RED before Frontend.
+- failure boundary: `:heimdall:checkstyleMain`, exactly the known **41 files / 109 warnings / 2 info** debt.
+- evidence artifact uploaded.
 
 ## Acceptance Criteria
-- [x] `npm install` succeeds in `bifrost/frontend` under exact-head GitHub execution.
+- [x] `npm install` succeeds in `bifrost/frontend` under GitHub-hosted execution.
 - [x] `npm run dev` starts successfully.
-- [x] HTTP GET `/` returns success under exact-head GitHub execution.
+- [x] HTTP GET `/` returns success.
 - [x] root `build-all.ps1 -SkipTests` execution result observed.
 - [ ] default build path reaches and completes frontend build step.
 - [x] no product UI expansion.
 - [x] no broad Heimdall cleanup.
 
 ## Root-Build Contract Decision
-The blocker is now executable and falsifiable. `build-all.ps1 -SkipTests` currently calls:
+The original `-SkipTests` path used:
 
 ```text
 :heimdall:clean :heimdall:build -x test
 ```
 
-Gradle `build` still runs `checkstyleMain`, so `-SkipTests` does not produce a usable artifact path in the presence of the already-known style debt and prevents the unified build from reaching Bifrost/Frontend.
+Gradle `build` still executes `checkstyleMain`, so the explicit SkipTests artifact path could not progress through the unified build despite the style debt already being classified separately.
 
-**Authorized bounded repair inside Issue #8:**
-- when `-SkipTests` is supplied, change only the Heimdall artifact-build task from `build -x test` to an artifact-producing task that does not execute verification gates, preferably `:heimdall:assemble` after `:heimdall:clean`;
-- when `-SkipTests` is NOT supplied, preserve the existing full `:heimdall:build` behavior;
-- do not disable checkstyle globally;
-- do not modify Checkstyle rules;
-- do not mass-fix Heimdall style debt;
-- do not expand product UI or other services.
+### PR #10 Authorized Repair
+Only `build-all.ps1` changes:
+- `-SkipTests` → `:heimdall:clean :heimdall:assemble`.
+- normal build without `-SkipTests` → unchanged full `:heimdall:build`.
+- no Checkstyle rule/config change.
+- no global quality-gate suppression.
+- no Heimdall style cleanup.
+- no product/frontend change.
 
-## Repair Acceptance
-- [ ] PR-visible Windows execution of `build-all.ps1 -SkipTests` reaches Frontend.
-- [ ] Frontend build completes successfully in the unified default path.
-- [ ] existing primary Heimdall+Bifrost unit job remains GREEN.
-- [ ] no global checkstyle suppression and no broad style cleanup.
+### PR #10 Acceptance
+- [ ] exact-head Windows `build-all.ps1 -SkipTests` reaches Frontend.
+- [ ] Frontend build succeeds in the unified path.
+- [ ] primary Heimdall+Bifrost unit job remains GREEN.
+- [ ] no global checkstyle suppression / broad cleanup.
 
 ## Result
-**IN PROGRESS — E-016 PASS; E-017 VERIFIED RED at pre-existing Heimdall quality-gate boundary; minimal build-contract repair authorized.**
+**IN PROGRESS — E-016 PASS; E-017 has executed RED evidence; PR #10 is the smallest authorized repair and awaits exact-head execution.**
 
 ---
 
@@ -178,8 +169,8 @@ Gradle `build` still runs `checkstyleMain`, so `-SkipTests` does not produce a u
 | E-004 | Heimdall checkstyle debt | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
 | E-005 | P0-B2 frontend repair | VERIFIED / MERGED | PR #7 |
 | E-006 | P0-B2 frontend production build | VERIFIED GREEN | PR #7 |
-| E-016 | Frontend dev-server root reachability | VERIFIED GREEN | PR #9 run `32273762721` |
-| E-017 | Root default build path | VERIFIED RED / BLOCKED | Windows runner reaches Heimdall then stops at pre-existing `checkstyleMain` before Frontend |
+| E-016 | Frontend dev-server root reachability | VERIFIED GREEN | PR #9 |
+| E-017 | Root default build path | REPAIR IN PROGRESS | PR #9 proved pre-Frontend checkstyle block; PR #10 tests bounded SkipTests artifact-path correction |
 | E-018 | Real Local AI E2E | PENDING | |
 | E-019 | Local vs Cloud Routing | PENDING | |
 | E-020 | DLQ → Redrive → Success | PENDING | |
@@ -193,9 +184,9 @@ Gradle `build` still runs `checkstyleMain`, so `-SkipTests` does not produce a u
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | root build stops before Frontend at Heimdall checkstyle | use only the bounded SkipTests build-contract repair authorized above |
+| R-001 | PR #10 may expose a new unified-build failure after Heimdall | inspect first concrete RED; fix only Issue #8 scope |
 | R-002 | broad Heimdall checkstyle debt | keep visible; do not mass-fix in P0-B3 |
-| R-003 | changing build semantics could accidentally hide quality gates | preserve normal full `build`; only SkipTests artifact path may use `assemble` |
+| R-003 | assemble could accidentally weaken normal quality gates | normal full `build` must remain unchanged |
 | R-004 | README overclaim / Grafana port drift | proof-hardening later |
 | R-005 | fallback-only E2E risk | real-model evidence mandatory |
 | R-006 | scope explosion | keep Frozen Scope |
@@ -207,14 +198,13 @@ Gradle `build` still runs `checkstyleMain`, so `-SkipTests` does not produce a u
 
 1. Read MASTER first.
 2. Active focused PR first.
-3. Otherwise use the existing open Issue matching the current acceptance gap.
-4. Do not create another Issue while Issue #8 remains active.
-5. Corrections inside this gap stay under Issue #8.
-6. RED → first concrete failing evidence → smallest in-scope fix only.
-7. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
-8. Issue closes only after executed acceptance + merge.
-9. Reconcile MASTER on `main` before another Issue.
-10. Re-evaluate Human Review/FREEZE before another Issue.
+3. Do not create another Issue while Issue #8 remains active.
+4. Corrections inside this gap stay under Issue #8 / PR #10 where possible.
+5. RED → first concrete failing evidence → smallest in-scope fix only.
+6. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
+7. Issue closes only after executed acceptance + merge.
+8. Reconcile MASTER on `main` before another Issue.
+9. Re-evaluate Human Review/FREEZE before another Issue.
 
 **Ordinary bounded intermediate PR merges do not require human approval. Human Review remains the FINAL v1.0 gate.**
 
@@ -245,28 +235,30 @@ Rules:
 ## Result
 **P0-B1 PASS / P0-B2 PASS / P0-B3 IN PROGRESS.**
 
-Frontend dev-server reachability is verified. The unified root build is also now executed and its blocker is proven: pre-existing Heimdall `checkstyleMain` prevents the build from reaching Frontend. PR #9 was merged as durable proof infrastructure without auto-closing Issue #8.
+The dev-server portion is proven GREEN. PR #9 proved the unified build currently stops in Heimdall checkstyle before Frontend. That proof harness is merged and Issue #8 remains open. PR #10 now contains the single bounded build-contract correction authorized by this MASTER.
 
 ## What Changed
 - Read authoritative MASTER first.
-- Re-fetched current PR #9 exact head and completed workflows.
-- Inspected the concrete Windows default-build failure log.
-- Confirmed the failure is the exact previously classified 41-file / 109-warning / 2-info Heimdall checkstyle debt.
-- Updated PR #9 body from `Closes #8` to `Refs #8` because Issue acceptance is not complete.
-- Merged PR #9 with expected-head guard.
-- Reconciled MASTER on `main`.
-- Authorized one bounded build-contract repair under the still-open Issue #8.
+- Re-fetched PR #9 exact-head completed runs/review state.
+- Inspected the Windows failure log and confirmed the exact known checkstyle boundary.
+- Removed `Closes #8` from PR #9 because acceptance was incomplete.
+- Merged PR #9 with expected-head guard at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`.
+- Reconciled MASTER before new product change.
+- Under existing Issue #8, created branch `agent/p0-b3-skiptests-build-contract`.
+- Changed only the Heimdall SkipTests path in `build-all.ps1` to use `assemble`; normal full build remains unchanged.
+- Opened PR #10 at exact head `dc8cc524bb2f10e8b5674cfcc98247882782a82a`.
 
 ## What Was Executed
-- PR #9 workflow lookup.
-- primary and secondary workflow job inspection.
-- Windows job log inspection.
-- exact-head primary unit job confirmed GREEN.
-- dev-server root reachability confirmed GREEN.
-- `build-all.ps1 -SkipTests` confirmed RED before Frontend at `:heimdall:checkstyleMain`.
+- PR #9 primary/secondary job inspection.
+- Windows job full log inspection.
+- exact-head unit job GREEN verification.
+- dev-server root GREEN verification.
+- PR #9 expected-head squash merge.
+- PR #10 workflow lookup immediately after opening; no PR-visible run had appeared yet at that observation.
 
 ## What Was Not Verified
-- unified root build reaching Frontend successfully.
+- PR #10 exact-head Windows unified build result.
+- PR #10 exact-head primary unit result.
 - Compose/full-stack startup / UC-01 full service-health closure.
 - real Local AI E2E.
 - Local vs Cloud routing execution.
@@ -274,9 +266,9 @@ Frontend dev-server reachability is verified. The unified root build is also now
 - Grafana live evidence.
 
 ## Remaining Risks
-- a SkipTests build-contract change must not suppress normal full-build quality gates.
-- broad checkstyle debt remains visible and unresolved.
+- unified build may expose another concrete failure after Heimdall assembly.
+- broad checkstyle debt remains visible in normal full-build/secondary CI paths.
 - UC-01 full service-health closure remains outside this bounded slice.
 
 ## NEXT
-**Under existing Issue #8, create the smallest focused branch/PR that changes only the Heimdall `-SkipTests` path in `build-all.ps1` from `:heimdall:build -x test` to an artifact-producing path such as `:heimdall:assemble`, while preserving normal full `:heimdall:build`. Execute the existing PR-visible Windows proof. If the unified build reaches and completes Frontend and primary unit checks remain GREEN, merge with expected-head guard, close Issue #8, and reconcile MASTER before selecting another gap.**
+**Re-fetch current PR #10 exact head and PR-visible workflows/review. Inspect the Windows `UC-01 default build path` job first. If RED, inspect the first concrete failing step/log and fix only an Issue #8-scoped defect. If Windows unified build reaches/completes Frontend, primary unit checks remain GREEN, and review/security state is clean, merge PR #10 with expected-head guard, close Issue #8, and reconcile MASTER before selecting another gap.**
