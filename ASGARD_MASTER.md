@@ -10,12 +10,16 @@
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B2 — Minimal Frontend Boot-Shell Repair
-- **Batch Result**: NOT STARTED — Issue-first activation required
+- **Active Issue**: #6 — `P0-B2: restore minimal frontend boot shell`
+- **Active PR**: #7 — `fix: restore minimal frontend boot shell`
+- **Active PR Branch**: `agent/p0-b2-frontend-boot-shell`
+- **Current exact head**: `4c5404642cb68594538396f00d89558fea7c655f`
+- **Batch Result**: IN PROGRESS
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Phase 0 execution-enabling merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd` (PR #3)
+- **PR #3 execution merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd`
 - **PR #4 bounded repair merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 - **Updated**: 2026-08-19
 - **Final v1.0 Gate**: **Human Review Required**
@@ -37,9 +41,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 2. v1.0 Target State
-
-> **실제 데이터를 넣어 실제 AI 분석을 수행하고, 장애를 재현·복구할 수 있으며, 제3자가 clone 후 실행·검증할 수 있는 Single-node Production-like Hybrid AI Ops Platform**
+# 2. v1.0 Boundary
 
 ## Done Enough To Use
 - 실제 Local AI 분석
@@ -53,11 +55,11 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - 재현 가능한 실행
 
 ## Done Enough To Show
-- Reproducible build/runtime evidence
+- reproducible build/runtime evidence
 - Real-model E2E PASS
 - Failure → Recovery PASS
-- Relevant CI green for bounded release slices
-- Runtime / Grafana screenshots
+- relevant CI green for bounded slices
+- runtime / Grafana screenshots
 - README ↔ Evidence 일치
 - 2~3분 Demo
 
@@ -119,161 +121,125 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 5. Phase 0 Executed Baseline
-
-## PR #3 — EXECUTED AND MERGED
-
-Merged to `main` as `888f2c5694940fe42284466fb57a0b33b2ec73cd`.
-
-Proven:
-- [x] GitHub-hosted execution path exists.
-- [x] Heimdall primary unit tests can pass independently of integration tests.
-- [x] Frontend install reaches Vite build.
-- [x] Frontend build fails because `bifrost/frontend/index.html` is absent.
-- [x] Bifrost collection exposed missing `Dict` / `Any` imports.
-- [x] Secondary Heimdall build exposes broad pre-existing checkstyle debt.
-
-Interpretation:
-- Missing frontend entrypoint = separate Core repair boundary.
-- Bifrost typing/package-install defects = bounded Phase 0 repair, now closed by PR #4.
-- Broad Heimdall checkstyle debt = pre-existing; **do not mass-fix inside unrelated bounded work**.
-
----
-
-# 6. P0-B1 — Bifrost Typing / CI Package Repair — PASS
+# 5. Closed Phase 0 Slice — P0-B1 PASS
 
 ## PR #4
+- final exact head: `1d301377a5951962cb3afd4e653a1975b8a2267a`
+- merged main SHA: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 
-- **PR**: #4 — `fix: restore Bifrost typing imports`
-- **Final exact head**: `1d301377a5951962cb3afd4e653a1975b8a2267a`
-- **Merged to main**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
-- **Result**: PASS for bounded slice
+Final bounded changes:
+- `bifrost/bifrost/api.py`: restore missing `Any` / `Dict` typing imports.
+- `.github/workflows/ci-cd.yml`: install Bifrost itself with `pip install -e .` before secondary lint/tests.
+- accidental feedback lane documentation regression removed before merge.
 
-## Final bounded diff
-
-`bifrost/bifrost/api.py`
-- add `Any` and `Dict` to typing imports.
-
-`.github/workflows/ci-cd.yml`
-- add `pip install -e .` before secondary Bifrost lint/tests.
-
-The accidental feedback-lane documentation regression was remotely corrected before merge. Final PR diff no longer contained that line change.
-
-## Executed exact-head evidence
-
-### Primary `CI` run `32262136812`
-- **Unit tests (Heimdall + Bifrost): GREEN**
-  - Heimdall unit tests GREEN
-  - Bifrost dependency install GREEN
-  - Bifrost unit tests GREEN
-- **Phase 0 frontend preflight: RED / unrelated boundary**
-  - `npm install`: GREEN; 351 packages installed
-  - `npm run build`: RED
-  - exact failure: `Could not resolve entry module "index.html".`
-  - runtime captured: Java 21.0.12, Python 3.11.16, Node 20.20.2, npm 10.8.2, Docker 28.0.4
-
-### `CI/CD Pipeline` run `32262136715`
-- **Build & Test Bifrost: GREEN**
-  - package install GREEN
-  - flake8 GREEN
-  - pytest GREEN
-  - coverage upload GREEN
-- **Dependency Security Check: GREEN**
-- **Build & Test Heimdall: RED / unrelated pre-existing debt**
-  - failing task: `:heimdall:checkstyleMain`
-  - 41 files with violations
-  - 109 warnings + 2 info
-  - no mass-fix authorized
-
-## Review state
-- [x] Remote lane documentation restored to `on_device_rag, cloud_direct`.
-- [x] Remote PR diff verified bounded after correction.
-- [x] Review thread resolved only after remote proof.
-- [x] Exact-head relevant CI re-executed.
-- [x] Merge used `expected_head_sha` guard.
+Executed exact-head evidence:
+- primary CI `32262136812`: Heimdall + Bifrost unit job GREEN.
+- secondary CI/CD `32262136715`: Bifrost install/lint/pytest/coverage GREEN.
+- dependency security job GREEN.
+- frontend preflight RED only at missing `index.html` boundary.
+- Heimdall secondary build RED at pre-existing `:heimdall:checkstyleMain`: 41 files, 109 warnings + 2 info. **Do not mass-fix in unrelated slices.**
 
 ---
 
-# 7. P0-B2 — Minimal Frontend Boot-Shell Repair
+# 6. Active Slice — P0-B2 Frontend Boot Shell
 
-## Activation rule
-
-This is a **new work item**. Before any branch/commit/implementation/proof test:
-1. search for one open Issue exactly matching this acceptance gap;
-2. if none exists, create exactly one bounded Issue;
-3. then create one focused Issue-linked branch/PR.
+## Issue / PR
+- **Issue #6**: OPEN
+- **PR #7**: OPEN
+- **Exact head**: `4c5404642cb68594538396f00d89558fea7c655f`
 
 ## Goal
+Restore the minimum tracked Vite/React boot tree required to make the existing frontend build/startup contract executable. No product UI expansion.
 
-Restore only the minimum tracked Vite/React boot tree required to make the existing frontend contract executable. No product UI expansion.
-
-## Frozen file scope
-
-Only these files may be added/changed for the repair unless executed evidence proves another file is strictly required:
+## Product repair scope
 - `bifrost/frontend/index.html`
 - `bifrost/frontend/src/main.jsx`
 - `bifrost/frontend/src/App.jsx`
 - `bifrost/frontend/src/index.css`
 
-## Allowed
-- React/Vite boot shell
-- human-visible product title/context
-- minimal CSS needed for a readable boot screen
+Implemented on PR #7:
+- [x] Vite HTML entrypoint
+- [x] React root bootstrap
+- [x] minimal human-visible Asgard boot shell
+- [x] minimal readable styling
+- [x] no fake metrics/jobs/API integration/product feature expansion
 
-## Non-goals
-- fake metrics or fake jobs
-- API integration
-- routing controls
-- job table
-- redrive UI
-- charts
-- auth UI
-- design-system expansion
-- dependency upgrade
+## Evidence-required CI correction
+
+PR #7 first secondary Frontend job reached `actions/setup-node@v4` and failed before install/build because workflow required nonexistent:
+
+`bifrost/frontend/package-lock.json`
+
+The same job also used `npm ci`, which requires a lockfile. This is executed evidence that the verification contract itself was not executable.
+
+Issue #6 scope was therefore minimally expanded to allow exactly one additional file:
+- `.github/workflows/ci-cd.yml`
+
+Correction committed at PR #7 exact head `4c5404642cb68594538396f00d89558fea7c655f`:
+- remove npm cache configuration tied to nonexistent lockfile.
+- replace `npm ci` with `npm install --no-audit --no-fund`.
+- no unrelated workflow refactor.
 
 ## Acceptance Criteria
-- [ ] `npm install` succeeds.
-- [ ] `npm run build` exits 0.
+- [ ] `npm install` succeeds on current exact head.
+- [ ] `npm run build` exits 0 on current exact head.
 - [ ] `npm run dev` serves a reachable root page.
 - [ ] default repository build path completes the frontend step.
-- [ ] no fake operational data is introduced.
-- [ ] PR diff remains inside frozen scope unless a new executed contradiction is documented first.
+- [ ] secondary Frontend CI reaches and executes build step.
+- [x] no fake operational data introduced.
+- [x] product implementation stays inside frozen four-file scope.
+- [x] only evidence-required extra file is the bounded secondary-CI correction.
+
+## Current exact-head execution
+
+New PR-visible workflows for `4c5404642cb68594538396f00d89558fea7c655f`:
+- primary `CI` run `32262906086`: QUEUED at last observation.
+- secondary `CI/CD Pipeline` run `32262906127`: QUEUED at last observation.
+
+Previous PR #7 head `baf957a21b07f2fdccb07f2b97c411a3d92d217d` evidence:
+- primary frontend preflight started normal install/build execution.
+- secondary Frontend job FAILED at Node setup because `package-lock.json` did not exist; build never ran.
+- this failure directly justified the bounded workflow correction above.
 
 ## Closure Condition
 
 **Frontend build/startup contract is executable and verified, without adding product features.**
 
+Do not merge PR #7 until current exact-head evidence establishes the applicable acceptance criteria and review/security state is clean. Any remaining unexecutable acceptance item must be recorded explicitly rather than inferred PASS.
+
 ---
 
-# 8. Evidence Registry
+# 7. Evidence Registry
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
 | E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 |
 | E-002 | PR #3 merge | VERIFIED | `888f2c5694940fe42284466fb57a0b33b2ec73cd` |
-| E-003 | Bifrost typing repair | VERIFIED / MERGED | PR #4 → `fa3f129783387fbeafae537e8a22b4629faf6d42` |
+| E-003 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 → `fa3f129783387fbeafae537e8a22b4629faf6d42` |
 | E-004 | PR #4 primary unit tests | VERIFIED GREEN | run `32262136812` |
 | E-005 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32262136715` |
-| E-006 | Dependency security check | VERIFIED GREEN | run `32262136715` |
-| E-007 | Frontend npm install | VERIFIED GREEN | run `32262136812` |
-| E-008 | Frontend Vite build | FAILED EXECUTED | `Could not resolve entry module "index.html".` |
-| E-009 | Phase 0 runtime versions | VERIFIED | Java 21.0.12 / Python 3.11.16 / Node 20.20.2 / npm 10.8.2 / Docker 28.0.4 |
-| E-010 | Heimdall secondary build | VERIFIED RED / PRE-EXISTING | `checkstyleMain`: 41 files, 109 warnings + 2 info |
-| E-011 | PR #4 review correction | VERIFIED | remote correction + resolved thread |
-| E-012 | Real Local AI E2E | PENDING | |
-| E-013 | Local vs Cloud Routing | PENDING | |
-| E-014 | DLQ → Redrive → Success | PENDING | |
-| E-015 | Grafana live metrics | PENDING | |
-| E-016 | Final Demo | PENDING | |
-| E-017 | HP AI Server reference run | PENDING | |
+| E-006 | Phase 0 runtime versions | VERIFIED | Java 21.0.12 / Python 3.11.16 / Node 20.20.2 / npm 10.8.2 / Docker 28.0.4 |
+| E-007 | Frontend pre-repair npm install | VERIFIED GREEN | exact executed preflight |
+| E-008 | Frontend pre-repair build | FAILED EXECUTED | missing `index.html` |
+| E-009 | Heimdall secondary build | VERIFIED RED / PRE-EXISTING | checkstyle debt |
+| E-010 | Issue #6 lifecycle | VERIFIED | created before P0-B2 implementation |
+| E-011 | PR #7 initial bounded product diff | VERIFIED STATIC | four frontend files only |
+| E-012 | PR #7 secondary Frontend CI | FAILED EXECUTED / CONTRACT | nonexistent lockfile blocks setup |
+| E-013 | PR #7 CI contract repair | IMPLEMENTED / RE-EXECUTION PENDING | current head `4c540464...` |
+| E-014 | Real Local AI E2E | PENDING | |
+| E-015 | Local vs Cloud Routing | PENDING | |
+| E-016 | DLQ → Redrive → Success | PENDING | |
+| E-017 | Grafana live metrics | PENDING | |
+| E-018 | Final Demo | PENDING | |
+| E-019 | HP AI Server reference run | PENDING | |
 
 ---
 
-# 9. Known Debt / Risks
+# 8. Known Debt / Risks
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | Frontend entrypoint absent | P0-B2 frozen minimal repair |
+| R-001 | Frontend acceptance not yet re-executed after CI fix | inspect current PR #7 exact-head workflows first |
 | R-002 | Broad Heimdall checkstyle debt | classify separately; no unrelated mass-fix |
 | R-003 | README overclaim | publish evidence-backed claims only |
 | R-004 | Fallback-only E2E | real-model evidence mandatory |
@@ -281,32 +247,27 @@ Only these files may be added/changed for the repair unless executed evidence pr
 | R-006 | Missing workflow status | missing ≠ PASS/FAIL; prefer PR-visible execution |
 | R-007 | Agent self-report without remote/executed proof | never treat as proof |
 
-Resolved:
-- ~~R-008 Branch mutation unavailable~~ — GitHub `fetch_blob` + SHA-guarded `update_file` proved a safe branch mutation path on PR #4.
-
 Known later proof-hardening debt:
 - README Grafana port drift (`3000` vs Compose `3001`)
 - unsupported production/compliance/performance claims
 
 ---
 
-# 10. Work Item / PR Lifecycle
-
-After grandfathered PR #4, all new acceptance gaps use Issue-first execution:
+# 9. Work Item / PR Lifecycle
 
 1. Read MASTER first.
 2. Active focused PR first.
 3. Otherwise search for one existing open Issue matching the exact next MASTER-authorized gap.
 4. If none exists, create exactly one bounded Issue before new implementation/proof work.
-5. Issue body must include Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
+5. Issue body: Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
 6. Default one active implementation Issue at a time.
 7. CI/review corrections inside that gap stay in the same Issue/PR.
 8. PR links the Issue and records Changed / Actually Executed / Verified / Not Verified / Risks.
-9. RED → inspect the first concrete failing job/step/log and make only the smallest scope-safe correction.
+9. RED → inspect first concrete failing job/step/log; fix only smallest active-slice defect.
 10. GREEN bounded acceptance + clean review/security state → merge with expected-head guard rather than idle.
 11. Issue closes only after required verification + merged acceptance.
-12. Reconcile this MASTER on `main` before selecting another gap.
-13. Re-evaluate Human Review/FREEZE before creating another Issue.
+12. Reconcile MASTER on `main` before selecting another gap.
+13. Re-evaluate Human Review/FREEZE before another Issue.
 
 **Ordinary bounded intermediate PR merges do not require human approval.**
 
@@ -314,7 +275,7 @@ After grandfathered PR #4, all new acceptance gaps use Issue-first execution:
 
 ---
 
-# 11. Required Completion Report
+# 10. Required Completion Report
 
 Every iteration records:
 - **What Changed**
@@ -334,42 +295,42 @@ Rules:
 
 ---
 
-# 12. Current Checkpoint
+# 11. Current Checkpoint
 
 ## Result
 
-**P0-B1 PASS / P0-B2 NOT STARTED.** PR #4 is merged with exact-head evidence proving the Bifrost typing/package-install repair. The next proven Core defect is the missing frontend Vite entry/source boot tree.
+**P0-B1 PASS / P0-B2 IN PROGRESS.** PR #4 is merged. Issue #6 and PR #7 now own the next proven Core defect: the missing frontend boot tree. The four-file boot shell is implemented. Exact execution exposed and then corrected one CI verification-contract defect; the corrected exact-head workflows are now pending execution.
 
 ## What Changed
-- Restored the feedback lane documentation on PR #4 directly on the remote branch using the exact fetched blob SHA.
-- Verified the corrected PR diff contains only the intended Bifrost typing import and CI editable-install changes.
-- Resolved the review thread after remote proof.
-- Re-ran exact-head PR-visible workflows.
-- Merged PR #4 with `expected_head_sha=1d301377a5951962cb3afd4e653a1975b8a2267a`.
-- Updated the authoritative MASTER to the resulting main merge `fa3f129783387fbeafae537e8a22b4629faf6d42`.
+- Completed PR #4 remote review correction, exact-head verification, expected-head merge, and MASTER reconciliation.
+- Created Issue #6 before new frontend implementation.
+- Created PR #7 with exactly the frozen four frontend boot-shell files.
+- Inspected first PR #7 secondary Frontend failure.
+- Proved it failed before frontend execution because CI referenced nonexistent `package-lock.json` and used `npm ci` without a lockfile.
+- Updated Issue #6 with the evidence-required CI correction boundary.
+- Corrected only the secondary Frontend CI install contract on the same PR.
 
 ## What Was Executed
-- PR metadata/diff/review inspection.
-- SHA-guarded GitHub branch file update.
-- Exact-head primary CI `32262136812`.
-- Exact-head secondary CI/CD `32262136715`.
-- Frontend `npm install` and `npm run build` on GitHub-hosted Ubuntu runner.
-- Heimdall and Bifrost primary unit tests.
-- Secondary Bifrost install/lint/pytest/coverage.
-- Dependency security check.
-- Expected-head guarded PR #4 squash merge.
+- PR #4 branch mutation, review resolution, exact-head CI inspection, and merge.
+- Issue search and Issue #6 creation.
+- PR #7 branch/file creation and PR creation.
+- PR #7 exact-head workflow lookup.
+- Secondary Frontend CI job/log inspection on initial PR #7 head.
+- CI correction commit triggering new exact-head workflows.
 
 ## What Was Not Verified
-- Frontend successful build after repair.
-- Frontend dev-server reachability.
-- Default full repository build after frontend repair.
+- `npm install` success on current PR #7 exact head.
+- `npm run build` success on current PR #7 exact head.
+- `npm run dev` root reachability.
+- default repository build path frontend-step success.
+- current exact-head PR #7 review/security state after CI settles.
 - Compose/E2E/real AI/Grafana live evidence.
 
 ## Remaining Risks
-- Frontend currently cannot build because its Vite entrypoint/source boot tree is absent.
-- Secondary Heimdall build remains red on broad pre-existing checkstyle debt.
+- PR #7 may expose another concrete frontend build/startup defect when the new exact-head jobs run.
+- Secondary Heimdall checkstyle debt remains pre-existing and unrelated.
 - Real-model, recovery, observability, and final proof evidence remain pending.
 
 ## NEXT
 
-**Issue-first activation of P0-B2: search for an existing open Issue matching the frozen minimal frontend boot-shell repair. If none exists, create exactly one bounded Issue with the frozen four-file scope and acceptance criteria before any implementation.**
+**Inspect PR #7 exact-head `4c5404642cb68594538396f00d89558fea7c655f` PR-visible workflows `32262906086` and `32262906127`. If RED, inspect the first concrete active-slice failure and make only the smallest Issue #6-scoped correction. If bounded acceptance is proven and review/security state is clean, merge with `expected_head_sha`, confirm Issue #6 closure, then reconcile this MASTER before selecting another gap.**
