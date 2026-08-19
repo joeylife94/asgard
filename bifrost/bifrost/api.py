@@ -3,7 +3,7 @@
 import time
 import os
 import uuid
-from typing import Optional, List
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
@@ -780,7 +780,7 @@ async def get_feedback_stats(
     Args:
         hours: Time period for statistics (default: 24)
         provider: Filter by AI provider (ollama, bedrock, etc.)
-        lane: Filter by routing lane (on_device_rag, cloud_direct)
+        lane: Filter by routing lane (on_device/cloud)
     """
     from bifrost.feedback import FeedbackService
     
