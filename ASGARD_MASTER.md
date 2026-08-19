@@ -1,21 +1,22 @@
 # ASGARD MASTER
 
-> **Authoritative execution contract**
-> Asgard의 현재 상태, v1.0 종료선, Evidence, 다음 작업을 관리한다.
-> README보다 본 문서의 상태 판정을 우선한다.
+> **Authoritative v1.0 execution contract**
+>
+> This file is the single source of truth for Asgard v1.0 execution. README and agent self-report do not override it.
 
 ## 0. Control
+
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B1 — Focused CI Repair
-- **Batch Result**: IN PROGRESS
+- **Batch Result**: BLOCKED
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline**: `bca6567919cbcac3f9039268c09526b25179f370`
 - **Phase 0 execution-enabling merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd` (PR #3)
-- **MASTER reconciliation commit**: `4b9ee9a440b34af5c92677e7b6329d840b34f063`
+- **MASTER reconciliation**: completed on main
 - **Updated**: 2026-08-19
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -96,9 +97,9 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - Redis / Elasticsearch / Tracing
 
 ## EXPERIMENTAL — v1.0 Gate에 영향 없음
-- Feedback
-- A/B Testing
-- Advanced Routing
+- Feedback feature expansion
+- A/B Testing expansion
+- Advanced Routing expansion
 - Additional Providers
 - Interview-specific features
 
@@ -122,7 +123,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ## PR #3 — EXECUTED AND MERGED
 
-PR #3 (`ci: retain Phase 0 preflight evidence`) was executed on GitHub-hosted Actions and merged to `main` as:
+PR #3 (`ci: retain Phase 0 preflight evidence`) executed on GitHub-hosted Actions and merged to `main` as:
 
 `888f2c5694940fe42284466fb57a0b33b2ec73cd`
 
@@ -144,55 +145,86 @@ PR #3 (`ci: retain Phase 0 preflight evidence`) was executed on GitHub-hosted Ac
 
 # 6. Current Focus — PR #4 Bifrost Typing Slice
 
-## Exact head
-`422a664961e054102e042f0e96a70aabacf02ba5`
+## PR
+- **PR**: #4 — `fix: restore Bifrost typing imports`
+- **Branch**: `agent/p0-bifrost-typing-import`
+- **Current exact head**: `422a664961e054102e042f0e96a70aabacf02ba5`
+- **State**: OPEN / mergeable
 
 ## Intended changes
 - `bifrost/bifrost/api.py`: import `Any` and `Dict` used by runtime annotations.
 - `.github/workflows/ci-cd.yml`: install Bifrost itself (`pip install -e .`) before secondary lint/pytest.
 
 ## Executed exact-head evidence
+
 ### Primary `CI` run `32226966755`
 - **Unit tests (Heimdall + Bifrost): GREEN**
 - **Frontend preflight: RED** at the already-known missing `index.html` boundary
 
 ### `CI/CD Pipeline` run `32226965403`
 - **Build & Test Bifrost: GREEN**
-  - dependency install GREEN
+  - editable package install GREEN
   - flake8 GREEN
   - pytest GREEN
   - coverage upload GREEN
 - **Build & Test Heimdall: RED**
   - first failing build step: `./gradlew :heimdall:build`
   - actual failure: `:heimdall:checkstyleMain`
-  - **41 files with violations**
-  - **109 warnings + 2 info**
-  - violations span services/controllers/entities/repositories/security/config/util
-  - classification: **broad pre-existing checkstyle debt, unrelated to PR #4 Bifrost slice**
+  - 41 files with violations
+  - 109 warnings + 2 info
+  - classification: broad pre-existing checkstyle debt, unrelated to PR #4 Bifrost slice
   - action: **DO NOT MASS-FIX**
 
-## PR #4 bounded acceptance
+## Bounded acceptance
 - [x] Prior `Dict` / `Any` collection failure is gone.
 - [x] Primary Bifrost/Heimdall unit job GREEN.
 - [x] Secondary Bifrost job GREEN.
 - [x] Remaining Heimdall RED classified as unrelated pre-existing debt.
 - [x] Remaining frontend RED classified as separate frozen Core boundary.
-- [ ] Review regression fixed: feedback stats lane docs must remain `on_device_rag, cloud_direct`.
-- [ ] Review thread resolved only after source branch actually contains the fix.
-- [ ] Merge with `expected_head_sha` after exact-head review state is clean.
+- [ ] Restore exact feedback lane documentation: `on_device_rag, cloud_direct`.
+- [ ] Confirm the restoration exists on the remote PR branch.
+- [ ] Resolve the review thread after the remote diff is clean.
+- [ ] Re-check exact-head relevant workflows after the correction.
+- [ ] Merge using `expected_head_sha` only after review state is clean.
 
-## Current blocker
-PR #4 currently still changes:
+## Current merge blocker — PROVEN
 
-`lane: Filter by routing lane (on_device_rag, cloud_direct)`
+PR #4 still contains this review regression:
 
-into the incorrect:
+```text
+lane: Filter by routing lane (on_device/cloud)
+```
 
-`lane: Filter by routing lane (on_device/cloud)`
+Required restoration:
 
-Automated review correctly identifies this as a behavioral documentation regression because feedback lane matching is exact. A prior agent self-report claimed a local correction but **no correction commit is present on the PR branch**, so self-report is not proof.
+```text
+lane: Filter by routing lane (on_device_rag, cloud_direct)
+```
 
-A new explicit request has been posted to the existing review thread to push only this one-line restoration directly to `agent/p0-bifrost-typing-import`. Until the branch head changes and the diff is clean, PR #4 must not merge.
+The unresolved review thread is valid because feedback lane matching is exact.
+
+Two Codex attempts created local-only correction commits (`a84cd2b`, later `b87a1e3`) but neither commit exists on GitHub. The latest Codex report explicitly states that its checkout had **no configured Git remote**, so it could not push to `agent/p0-bifrost-typing-import`. Agent self-report is therefore not proof.
+
+### Current execution-environment mutation blocker
+
+This automation environment currently has no safe partial-line GitHub write path for `bifrost/bifrost/api.py`:
+
+- local `git` cannot reach `github.com` due DNS resolution failure;
+- `gh` is unavailable;
+- the available GitHub contents writer replaces an entire file rather than applying a one-line patch;
+- replacing this large API file wholesale solely to alter one docstring line creates unnecessary corruption risk.
+
+Therefore PR #4 remains **BLOCKED**, and merging it would violate the active bounded acceptance contract.
+
+### Exact external prerequisite
+
+One of the following must become available:
+
+1. a GitHub-capable checkout/remote that can push the one-line correction to `agent/p0-bifrost-typing-import`; or
+2. a safe partial-file/patch mutation path for that branch; or
+3. a human applies exactly this one-line restoration in the GitHub UI.
+
+No broader code change is authorized as a workaround.
 
 ---
 
@@ -204,7 +236,8 @@ Known gap:
 - no `bifrost/frontend/index.html`
 - no sufficient tracked `bifrost/frontend/src/` boot tree
 
-## Frozen next repair batch — activates after PR #4 resolves
+## Frozen next repair batch — activates only after PR #4 resolves
+
 Minimum files only:
 - `bifrost/frontend/index.html`
 - `bifrost/frontend/src/main.jsx`
@@ -236,14 +269,15 @@ Required runtime acceptance:
 | E-005 | Bifrost typing collection failure | REPAIRED ON PR #4 | exact-head jobs no longer fail on `Dict` / `Any` |
 | E-006 | PR #4 primary unit job | VERIFIED GREEN | run `32226966755` |
 | E-007 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32226965403` |
-| E-008 | PR #4 secondary Heimdall | VERIFIED RED / UNRELATED | `checkstyleMain`: 41 files, 109 warning + 2 info |
-| E-009 | PR #4 review correctness | BLOCKED | one-line feedback-lane doc regression still on branch |
-| E-010 | Real Local AI E2E | PENDING | |
-| E-011 | Local vs Cloud Routing | PENDING | |
-| E-012 | DLQ → Redrive → Success | PENDING | |
-| E-013 | Grafana live metrics | PENDING | |
-| E-014 | Final Demo | PENDING | |
-| E-015 | HP AI Server reference run | PENDING | |
+| E-008 | PR #4 secondary Heimdall | VERIFIED RED / UNRELATED | `checkstyleMain`: 41 files, 109 warnings + 2 info |
+| E-009 | PR #4 review correctness | BLOCKED | exact lane doc regression remains on remote branch |
+| E-010 | Codex correction push | NOT VERIFIED / NOT PRESENT | local-only commits; no GitHub object |
+| E-011 | Real Local AI E2E | PENDING | |
+| E-012 | Local vs Cloud Routing | PENDING | |
+| E-013 | DLQ → Redrive → Success | PENDING | |
+| E-014 | Grafana live metrics | PENDING | |
+| E-015 | Final Demo | PENDING | |
+| E-016 | HP AI Server reference run | PENDING | |
 
 ---
 
@@ -258,6 +292,7 @@ Required runtime acceptance:
 | R-005 | Scope explosion | keep Frozen Scope |
 | R-006 | Missing workflow status | missing ≠ PASS/FAIL; prefer PR-visible execution |
 | R-007 | Agent self-report without pushed commit | never treat as proof |
+| R-008 | Branch mutation unavailable in current automation environment | require safe patch/push path; do not wholesale-rewrite large source file |
 
 Known later proof-hardening debt:
 - README Grafana port drift (`3000` vs Compose `3001`)
@@ -305,35 +340,37 @@ Rules:
 # 12. Current Checkpoint
 
 ## Result
-**IN PROGRESS** — PR #4 Bifrost repair is technically proven by exact-head execution; merge is blocked only by one concrete documentation review regression that is still present on the branch.
+
+**BLOCKED** — PR #4's Bifrost typing/package-install acceptance is technically proven by exact-head execution, but merge remains blocked by one unresolved one-line documentation regression that is still present on the remote branch. The current automation environment cannot safely push that single-line correction without risking a wholesale rewrite of the large API file.
 
 ## What Changed
-- Repaired stale MASTER first and committed it on main.
-- Re-read committed MASTER before further action.
-- Inspected PR #4 current exact head/diff/reviews.
-- Retrieved exact-head workflow jobs and full failing Heimdall job log.
-- Classified Heimdall RED as broad pre-existing `checkstyleMain` debt, not a PR #4 regression.
-- Re-requested the exact one-line lane-doc restoration directly on the current PR branch.
+- Re-read the authoritative MASTER before acting.
+- Re-confirmed PR #4 remote exact head remains `422a664961e054102e042f0e96a70aabacf02ba5`.
+- Re-confirmed the incorrect lane documentation is still present in the actual PR diff.
+- Re-confirmed the review thread is unresolved and the previous Codex fixes were local-only, not pushed.
+- Re-confirmed exact-head PR-visible workflow runs remain the already-classified executed evidence.
+- Recorded the precise branch-mutation prerequisite instead of manufacturing another unrelated implementation step.
 
 ## What Was Executed
-- Main/PR #3 merge verification.
-- PR #4 exact-head verification: `422a664961e054102e042f0e96a70aabacf02ba5`.
-- PR-visible run lookup for `32226966755` and `32226965403`.
-- Job inspection for secondary pipeline.
-- Full job log inspection for Heimdall job `95988540570`.
-- Review-thread/diff inspection.
+- PR #4 metadata/head inspection.
+- PR #4 file patch inspection.
+- PR #4 unresolved review-thread inspection.
+- Exact-head workflow-run lookup.
+- Git commit/tree history inspection for the typing and package-install commits.
+- Local mutation-path check: `gh` unavailable; local GitHub DNS access unavailable.
 
 ## What Was Not Verified
-- A pushed commit restoring the feedback lane documentation.
-- Exact-head CI after that future one-line correction.
+- A remote commit restoring the feedback lane documentation.
+- Exact-head CI after that future correction.
 - PR #4 merge result.
-- Frontend boot-shell repair runtime acceptance.
+- Frontend boot-shell runtime acceptance.
 - Compose/E2E/real AI/Grafana live evidence.
 
 ## Remaining Risks
-- PR #4 must not merge until the incorrect lane documentation is actually gone from the branch.
-- Frontend remains a separately proven Core failure.
-- Broad Heimdall style debt remains intentionally deferred.
+- Merging PR #4 now would knowingly ship misleading API documentation.
+- Wholesale replacement of the large `api.py` file for one-line correction would create disproportionate corruption risk.
+- Frontend remains the next separately proven Core failure after PR #4 resolves.
 
 ## NEXT
-**Inspect PR #4 head first. If the requested one-line lane restoration has been pushed, verify the diff/review state and exact-head relevant CI, resolve the review thread, then merge PR #4 with `expected_head_sha`. If it has not been pushed, make no broad change: restore only that line using the safest available branch mutation path, then verify exact-head execution before merge.**
+
+**Apply exactly one remote branch correction on `agent/p0-bifrost-typing-import`: restore `lane: Filter by routing lane (on_device_rag, cloud_direct)`. Then inspect the new exact head, resolve the review thread only if the remote diff is clean, verify relevant PR-visible CI, merge with `expected_head_sha`, update this MASTER on `main`, and transition explicitly to the frozen 4-file frontend boot-shell repair batch.**
