@@ -11,7 +11,7 @@
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B4 — UC-01 Full Core-Service Startup / Health Verification
 - **Batch Result**: IN PROGRESS
-- **Status**: PR #12 OPEN — ELASTICSEARCH CORRECTION PUSHED; EXACT-HEAD CI RUNNING
+- **Status**: PR #12 OPEN — gRPC STARTUP BLOCKER FIX PUSHED; EXACT-HEAD CI RUNNING
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
@@ -20,8 +20,9 @@
 - **Issue #11**: OPEN — `P0-B4: verify UC-01 full core-service startup and health`
 - **PR #12**: OPEN — `test: verify UC-01 full core-service startup and health`
 - **Initial tested PR #12 head**: `e874550e018e89b889ae9b3a7b6a6eb1542e2e63`
-- **Current PR #12 head**: `d2d96f47a394e7ce4cc6a798a368b6b83cd28a7a`
-- **Current exact-head CI**: `CI 32291645192` + `CI/CD Pipeline 32291645245` — RUNNING
+- **Elasticsearch-corrected head**: `d2d96f47a394e7ce4cc6a798a368b6b83cd28a7a`
+- **Current PR #12 head**: `f7abfa7e565711bf7a39539c7865293532905828`
+- **Current exact-head CI**: `CI 32296242418` + `CI/CD Pipeline 32296242329` — RUNNING
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -74,7 +75,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
-| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | IN PROGRESS — infra readiness proven; Elasticsearch correction under exact-head execution |
+| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | IN PROGRESS — infra including Elasticsearch proven; Heimdall gRPC startup blocker corrected, exact-head execution running |
 | UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | PENDING |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
@@ -126,7 +127,7 @@ Execute the actual core stack and collect concrete service readiness/reachabilit
 - Prometheus / Grafana host `3001` reachability.
 - Redis readiness because current startup contract configures Redis.
 - Elasticsearch readiness because current Heimdall dev startup contract enables Elasticsearch.
-- only minimum proof-harness corrections justified by executed evidence.
+- only minimum product/config/proof corrections justified by executed startup evidence.
 
 ## Out of Scope
 - UC-02/03/04/05 behavior.
@@ -149,47 +150,75 @@ Execute the actual core stack and collect concrete service readiness/reachabilit
 
 Captured Heimdall log proved Spring/Tomcat/JPA/PostgreSQL initialization proceeded, then application-context startup aborted because the enabled Elasticsearch repository/service attempted `localhost:9200` and received `Connection refused`.
 
-```text
-elasticsearchService
-→ logSearchRepository
-→ SimpleElasticsearchRepository
-→ DataAccessResourceFailureException
-→ Connection refused (localhost:9200)
-```
-
-Automated review independently identified the same missing Elasticsearch startup dependency.
-
-## Correction — Current Head `d2d96f47...`
+## Elasticsearch Correction / Executed Evidence — `d2d96f47...`
 
 Changed only the Issue #11 proof harness:
 - existing Compose `elasticsearch` service added to infrastructure startup.
 - explicit readiness loop added for `http://127.0.0.1:9200/_cluster/health` before Heimdall startup.
-- no product behavior, UI, Checkstyle or README changes.
+
+Exact-head `CI` run `32291645192`: **FAILURE**.
+Supporting `CI/CD Pipeline` run `32291645245`: **FAILURE**.
+
+Core-health job evidence after adding Elasticsearch:
+- boot/dependency preparation: GREEN.
+- PostgreSQL: GREEN.
+- Kafka: GREEN.
+- Redis: GREEN.
+- Elasticsearch `_cluster/health`: GREEN.
+- Prometheus: GREEN.
+- Grafana `3001`: GREEN.
+- Heimdall `/actuator/health`: RED after 60 attempts.
+
+The fatal Heimdall startup error was no longer Elasticsearch. Application startup advanced through PostgreSQL/JPA, then `GrpcServerSecurityAutoConfiguration` failed because no `GrpcAuthenticationReader` bean exists:
+
+```text
+BeanCreationException
+→ shadedNettyGrpcServerFactory
+→ GrpcServerSecurityAutoConfiguration
+→ authenticatingServerInterceptor
+→ No qualifying bean of type GrpcAuthenticationReader
+→ APPLICATION FAILED TO START
+```
+
+The duplicate PostgreSQL `idx_severity` DDL observation also appeared, but Hibernate continued past it and the later gRPC failure terminated startup. Therefore `idx_severity` remains HOLD and is not the current blocker.
+
+## Current Correction — `f7abfa7...`
+
+Repository/source verification found:
+- `heimdall/build.gradle` had `net.devh:grpc-spring-boot-starter:2.15.0.RELEASE` active.
+- protobuf plugin/generation is disabled.
+- repository search found no tracked `@GrpcService`, `@GrpcClient`, `GrpcAuthenticationReader`, or other active Heimdall gRPC implementation.
+
+Smallest Issue #11 correction:
+- removed only the inactive gRPC starter dependency from Heimdall.
+- did **not** invent a fake authentication reader.
+- did **not** weaken Spring Security or add insecure gRPC auth configuration.
+- no UC-02 product behavior, UI, README or Checkstyle changes.
 
 Current PR-visible exact-head execution:
-- `CI` run `32291645192`: RUNNING.
-- `CI/CD Pipeline` run `32291645245`: RUNNING.
+- `CI` run `32296242418`: RUNNING.
+- `CI/CD Pipeline` run `32296242329`: RUNNING.
 - no PASS is recorded until current exact-head runtime completes.
 
 ### Separate Observation — HOLD
-Initial Heimdall logs also exposed a duplicate PostgreSQL index-name warning/error for `idx_severity`. It is recorded but is not authorized for proactive repair. Address only if it becomes the next concrete P0-B4 startup blocker.
+Duplicate PostgreSQL index-name error/warning for `idx_severity` remains recorded but not authorized for proactive repair. Address only if a future exact-head run proves it is the next concrete P0-B4 blocker.
 
 ## Acceptance Criteria
 - [x] reviewable checkout/configuration/proof command.
 - [x] actual PR-visible core-stack execution exists.
 - [ ] current exact-head Heimdall health verified.
 - [ ] current exact-head Bifrost health verified in full-stack job.
-- [x] PostgreSQL readiness verified on initial run.
-- [x] Kafka readiness verified on initial run.
+- [x] PostgreSQL readiness verified.
+- [x] Kafka readiness verified.
 - [ ] current exact-head Frontend root verified in full-stack job.
-- [x] Prometheus reachability verified on initial run.
-- [x] Grafana `3001` reachability verified on initial run.
-- [x] Redis readiness verified on initial run.
-- [ ] Elasticsearch readiness verified by current exact-head run.
+- [x] Prometheus reachability verified.
+- [x] Grafana `3001` reachability verified.
+- [x] Redis readiness verified.
+- [x] Elasticsearch readiness verified on `d2d96f47...`.
 - [x] no out-of-scope expansion.
 
 ## Result
-**IN PROGRESS — bounded Elasticsearch correction is pushed; current exact-head execution is running. P0-B4 is not PASS.**
+**IN PROGRESS — executed runtime exposed an inactive gRPC-starter startup failure after Elasticsearch was fixed. The bounded gRPC dependency correction is pushed; current exact-head execution is running. P0-B4 is not PASS.**
 
 ---
 
@@ -212,9 +241,11 @@ Initial Heimdall logs also exposed a duplicate PostgreSQL index-name warning/err
 | E-022 | Final Demo | PENDING | |
 | E-023 | HP AI Server reference run | PENDING | |
 | E-024 | UC-01 full core-stack health | IN PROGRESS | PR #12 |
-| E-025 | P0-B4 infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Prometheus/Grafana initial run |
-| E-026 | Missing Elasticsearch dependency failure | VERIFIED RED | initial PR #12 run |
-| E-027 | Elasticsearch proof-harness correction | PUSHED / EXECUTION PENDING | head `d2d96f47...` |
+| E-025 | P0-B4 infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Prometheus/Grafana |
+| E-026 | Missing Elasticsearch dependency failure | VERIFIED RED / SUPERSEDED | initial PR #12 run |
+| E-027 | Elasticsearch readiness/correction | VERIFIED GREEN | head `d2d96f47...` |
+| E-028 | Heimdall gRPC security startup failure | VERIFIED RED | run `32291645192` |
+| E-029 | Inactive gRPC starter removal | PUSHED / EXECUTION PENDING | head `f7abfa7...` |
 
 ---
 
@@ -222,13 +253,14 @@ Initial Heimdall logs also exposed a duplicate PostgreSQL index-name warning/err
 
 | ID | Risk | Handling |
 |---|---|---|
-| R-001 | Current Heimdall dev startup requires Elasticsearch | correction under exact-head execution |
-| R-002 | duplicate `idx_severity` schema index name observed | HOLD; fix only if next concrete startup blocker |
+| R-001 | Heimdall dev startup required Elasticsearch | Elasticsearch now included/proven ready in P0-B4 harness |
+| R-002 | duplicate `idx_severity` schema index name observed | HOLD; non-fatal on `d2d96f47...`; fix only if future run proves blocker |
 | R-003 | broad Heimdall checkstyle debt | no mass-fix in P0-B4 |
 | R-004 | startup banner is not health proof | endpoint/readiness evidence required |
-| R-005 | README overclaim / Grafana port drift | proof-hardening later |
-| R-006 | fallback-only E2E risk | real-model proof required later |
-| R-007 | agent self-report | never PASS without executed evidence |
+| R-005 | inactive gRPC starter caused Spring Security auto-config failure | bounded dependency removal under exact-head execution |
+| R-006 | README overclaim / Grafana port drift | proof-hardening later |
+| R-007 | fallback-only E2E risk | real-model proof required later |
+| R-008 | agent self-report | never PASS without executed evidence |
 
 ---
 
@@ -252,27 +284,30 @@ Initial Heimdall logs also exposed a duplicate PostgreSQL index-name warning/err
 **P0-B1 PASS / P0-B2 PASS / P0-B3 PASS / P0-B4 IN PROGRESS.**
 
 ## What Changed
-- MASTER reconciled with initial PR #12 executed failure evidence.
-- repository Compose Elasticsearch contract confirmed: service `elasticsearch`, host `9200`, `_cluster/health` healthcheck.
-- PR #12 proof harness corrected to start Elasticsearch and wait for readiness.
-- exact-head advanced from `e874550...` to `d2d96f47...`.
+- stale `d2d96f47...` RUNNING state reconciled to executed FAILURE.
+- Elasticsearch readiness is now VERIFIED GREEN.
+- first fatal post-Elasticsearch boundary identified as gRPC security auto-configuration requiring an absent `GrpcAuthenticationReader`.
+- duplicate `idx_severity` confirmed non-fatal in that execution and kept on HOLD.
+- inactive Heimdall gRPC starter removed on PR #12; exact head advanced to `f7abfa7...`.
 - new PR-visible CI runs triggered.
 
 ## What Was Executed
-- initial exact-head core-stack proof and failing Heimdall health probe.
-- concrete infrastructure readiness for PostgreSQL/Kafka/Redis/Prometheus/Grafana.
-- captured Heimdall Elasticsearch connection-refused root cause.
-- current-head workflow dispatch via PR push; runs are active.
+- `CI` run `32291645192`: completed FAILURE on `d2d96f47...`.
+- infrastructure readiness for PostgreSQL/Kafka/Redis/Elasticsearch/Prometheus/Grafana: GREEN.
+- Heimdall boot advanced past Elasticsearch and failed at gRPC security bean creation.
+- source search/build-contract inspection confirmed no active tracked Heimdall gRPC implementation.
+- current-head workflow execution started: `32296242418`, `32296242329`.
 
 ## What Was Not Verified
-- current-head Elasticsearch readiness result.
-- current-head Heimdall/Bifrost/full-stack Frontend health.
-- current-head overall relevant workflow conclusions.
+- current-head Heimdall health after gRPC starter removal.
+- current-head Bifrost health in the full-stack job.
+- current-head Frontend root in the full-stack job.
+- current-head overall workflow conclusions/review state.
 - real Local AI E2E, routing, recovery, live metrics, reference deployment, final demo.
 
 ## Remaining Risks
-- Elasticsearch correction may reveal the next real startup boundary.
-- duplicate `idx_severity` remains a recorded HOLD, not a proactive cleanup target.
+- removing the inactive starter may reveal the next real startup boundary.
+- duplicate `idx_severity` remains a HOLD and must not be proactively repaired without executed blocker evidence.
 
 ## NEXT
-**Inspect PR #12 exact-head `d2d96f47a394e7ce4cc6a798a368b6b83cd28a7a` runs `32291645192` and `32291645245`. If RED, inspect only the first concrete Issue #11-scoped failure and apply the smallest justified correction. If bounded acceptance is GREEN and review/security state is clean, resolve the now-outdated Elasticsearch review thread, merge PR #12 with expected-head guard, close Issue #11 only after merge/acceptance, and reconcile MASTER before selecting new work.**
+**Inspect PR #12 exact-head `f7abfa7e565711bf7a39539c7865293532905828` runs `32296242418` and `32296242329`. If RED, inspect only the first concrete Issue #11-scoped failing job/step/log and apply the smallest justified correction. If all Issue #11 acceptance is GREEN and review/security state is clean, merge PR #12 with expected-head guard, ensure Issue #11 closes only after acceptance/merge, then reconcile MASTER on main before selecting new work.**
