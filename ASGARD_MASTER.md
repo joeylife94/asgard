@@ -2,21 +2,21 @@
 
 > **Authoritative v1.0 execution contract**
 >
-> This file is the single source of truth for Asgard v1.0 execution. README and agent self-report do not override it.
+> This file is the single source of truth for Asgard v1.0 execution. README and agent self-report do not override executed evidence recorded here.
 
 ## 0. Control
 
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
-- **Current Batch**: P0-B1 — Focused CI Repair
-- **Batch Result**: BLOCKED
+- **Current Batch**: P0-B2 — Minimal Frontend Boot-Shell Repair
+- **Batch Result**: NOT STARTED — Issue-first activation required
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline**: `bca6567919cbcac3f9039268c09526b25179f370`
 - **Phase 0 execution-enabling merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd` (PR #3)
-- **MASTER reconciliation**: completed on main
+- **PR #4 bounded repair merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 - **Updated**: 2026-08-19
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -119,142 +119,129 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 5. Phase 0 — Authoritative Executed Baseline
+# 5. Phase 0 Executed Baseline
 
 ## PR #3 — EXECUTED AND MERGED
 
-PR #3 (`ci: retain Phase 0 preflight evidence`) executed on GitHub-hosted Actions and merged to `main` as:
+Merged to `main` as `888f2c5694940fe42284466fb57a0b33b2ec73cd`.
 
-`888f2c5694940fe42284466fb57a0b33b2ec73cd`
-
-### Proven by PR #3
+Proven:
 - [x] GitHub-hosted execution path exists.
-- [x] Heimdall primary unit tests passed.
-- [x] Frontend install reached Vite build.
-- [x] Frontend build failed because `bifrost/frontend/index.html` is absent.
+- [x] Heimdall primary unit tests can pass independently of integration tests.
+- [x] Frontend install reaches Vite build.
+- [x] Frontend build fails because `bifrost/frontend/index.html` is absent.
 - [x] Bifrost collection exposed missing `Dict` / `Any` imports.
-- [x] Secondary Heimdall Build & Test exposed broad pre-existing checkstyle debt.
+- [x] Secondary Heimdall build exposes broad pre-existing checkstyle debt.
 
-### Interpretation
-- Missing frontend entrypoint = separate frozen Core repair boundary.
-- Missing Bifrost typing names = focused Phase 0 repair.
-- Broad Heimdall checkstyle debt = pre-existing; **no mass-fix** in focused slices.
-- Remaining RED unrelated to a bounded slice does not invalidate a proven bounded acceptance criterion.
+Interpretation:
+- Missing frontend entrypoint = separate Core repair boundary.
+- Bifrost typing/package-install defects = bounded Phase 0 repair, now closed by PR #4.
+- Broad Heimdall checkstyle debt = pre-existing; **do not mass-fix inside unrelated bounded work**.
 
 ---
 
-# 6. Current Focus — PR #4 Bifrost Typing Slice
+# 6. P0-B1 — Bifrost Typing / CI Package Repair — PASS
 
-## PR
+## PR #4
+
 - **PR**: #4 — `fix: restore Bifrost typing imports`
-- **Branch**: `agent/p0-bifrost-typing-import`
-- **Current exact head**: `422a664961e054102e042f0e96a70aabacf02ba5`
-- **State**: OPEN / mergeable
+- **Final exact head**: `1d301377a5951962cb3afd4e653a1975b8a2267a`
+- **Merged to main**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
+- **Result**: PASS for bounded slice
 
-## Intended changes
-- `bifrost/bifrost/api.py`: import `Any` and `Dict` used by runtime annotations.
-- `.github/workflows/ci-cd.yml`: install Bifrost itself (`pip install -e .`) before secondary lint/pytest.
+## Final bounded diff
+
+`bifrost/bifrost/api.py`
+- add `Any` and `Dict` to typing imports.
+
+`.github/workflows/ci-cd.yml`
+- add `pip install -e .` before secondary Bifrost lint/tests.
+
+The accidental feedback-lane documentation regression was remotely corrected before merge. Final PR diff no longer contained that line change.
 
 ## Executed exact-head evidence
 
-### Primary `CI` run `32226966755`
+### Primary `CI` run `32262136812`
 - **Unit tests (Heimdall + Bifrost): GREEN**
-- **Frontend preflight: RED** at the already-known missing `index.html` boundary
+  - Heimdall unit tests GREEN
+  - Bifrost dependency install GREEN
+  - Bifrost unit tests GREEN
+- **Phase 0 frontend preflight: RED / unrelated boundary**
+  - `npm install`: GREEN; 351 packages installed
+  - `npm run build`: RED
+  - exact failure: `Could not resolve entry module "index.html".`
+  - runtime captured: Java 21.0.12, Python 3.11.16, Node 20.20.2, npm 10.8.2, Docker 28.0.4
 
-### `CI/CD Pipeline` run `32226965403`
+### `CI/CD Pipeline` run `32262136715`
 - **Build & Test Bifrost: GREEN**
-  - editable package install GREEN
+  - package install GREEN
   - flake8 GREEN
   - pytest GREEN
   - coverage upload GREEN
-- **Build & Test Heimdall: RED**
-  - first failing build step: `./gradlew :heimdall:build`
-  - actual failure: `:heimdall:checkstyleMain`
+- **Dependency Security Check: GREEN**
+- **Build & Test Heimdall: RED / unrelated pre-existing debt**
+  - failing task: `:heimdall:checkstyleMain`
   - 41 files with violations
   - 109 warnings + 2 info
-  - classification: broad pre-existing checkstyle debt, unrelated to PR #4 Bifrost slice
-  - action: **DO NOT MASS-FIX**
+  - no mass-fix authorized
 
-## Bounded acceptance
-- [x] Prior `Dict` / `Any` collection failure is gone.
-- [x] Primary Bifrost/Heimdall unit job GREEN.
-- [x] Secondary Bifrost job GREEN.
-- [x] Remaining Heimdall RED classified as unrelated pre-existing debt.
-- [x] Remaining frontend RED classified as separate frozen Core boundary.
-- [ ] Restore exact feedback lane documentation: `on_device_rag, cloud_direct`.
-- [ ] Confirm the restoration exists on the remote PR branch.
-- [ ] Resolve the review thread after the remote diff is clean.
-- [ ] Re-check exact-head relevant workflows after the correction.
-- [ ] Merge using `expected_head_sha` only after review state is clean.
-
-## Current merge blocker — PROVEN
-
-PR #4 still contains this review regression:
-
-```text
-lane: Filter by routing lane (on_device/cloud)
-```
-
-Required restoration:
-
-```text
-lane: Filter by routing lane (on_device_rag, cloud_direct)
-```
-
-The unresolved review thread is valid because feedback lane matching is exact.
-
-Two Codex attempts created local-only correction commits (`a84cd2b`, later `b87a1e3`) but neither commit exists on GitHub. The latest Codex report explicitly states that its checkout had **no configured Git remote**, so it could not push to `agent/p0-bifrost-typing-import`. Agent self-report is therefore not proof.
-
-### Current execution-environment mutation blocker
-
-This automation environment currently has no safe partial-line GitHub write path for `bifrost/bifrost/api.py`:
-
-- local `git` cannot reach `github.com` due DNS resolution failure;
-- `gh` is unavailable;
-- the available GitHub contents writer replaces an entire file rather than applying a one-line patch;
-- replacing this large API file wholesale solely to alter one docstring line creates unnecessary corruption risk.
-
-Therefore PR #4 remains **BLOCKED**, and merging it would violate the active bounded acceptance contract.
-
-### Exact external prerequisite
-
-One of the following must become available:
-
-1. a GitHub-capable checkout/remote that can push the one-line correction to `agent/p0-bifrost-typing-import`; or
-2. a safe partial-file/patch mutation path for that branch; or
-3. a human applies exactly this one-line restoration in the GitHub UI.
-
-No broader code change is authorized as a workaround.
+## Review state
+- [x] Remote lane documentation restored to `on_device_rag, cloud_direct`.
+- [x] Remote PR diff verified bounded after correction.
+- [x] Review thread resolved only after remote proof.
+- [x] Exact-head relevant CI re-executed.
+- [x] Merge used `expected_head_sha` guard.
 
 ---
 
-# 7. Frontend Contract — EXECUTED FAILURE, REPAIR FROZEN
+# 7. P0-B2 — Minimal Frontend Boot-Shell Repair
 
-PR #3 proved Vite build failure at the missing entrypoint boundary.
+## Activation rule
 
-Known gap:
-- no `bifrost/frontend/index.html`
-- no sufficient tracked `bifrost/frontend/src/` boot tree
+This is a **new work item**. Before any branch/commit/implementation/proof test:
+1. search for one open Issue exactly matching this acceptance gap;
+2. if none exists, create exactly one bounded Issue;
+3. then create one focused Issue-linked branch/PR.
 
-## Frozen next repair batch — activates only after PR #4 resolves
+## Goal
 
-Minimum files only:
+Restore only the minimum tracked Vite/React boot tree required to make the existing frontend contract executable. No product UI expansion.
+
+## Frozen file scope
+
+Only these files may be added/changed for the repair unless executed evidence proves another file is strictly required:
 - `bifrost/frontend/index.html`
 - `bifrost/frontend/src/main.jsx`
 - `bifrost/frontend/src/App.jsx`
 - `bifrost/frontend/src/index.css`
 
-Allowed scope:
-- boot shell only
-- no fake metrics/jobs
-- no API feature expansion
-- no design-system work
+## Allowed
+- React/Vite boot shell
+- human-visible product title/context
+- minimal CSS needed for a readable boot screen
 
-Required runtime acceptance:
-- [ ] `npm install`
-- [ ] `npm run build` exit 0
-- [ ] `npm run dev` root reachable
-- [ ] default repository build path passes frontend step
+## Non-goals
+- fake metrics or fake jobs
+- API integration
+- routing controls
+- job table
+- redrive UI
+- charts
+- auth UI
+- design-system expansion
+- dependency upgrade
+
+## Acceptance Criteria
+- [ ] `npm install` succeeds.
+- [ ] `npm run build` exits 0.
+- [ ] `npm run dev` serves a reachable root page.
+- [ ] default repository build path completes the frontend step.
+- [ ] no fake operational data is introduced.
+- [ ] PR diff remains inside frozen scope unless a new executed contradiction is documented first.
+
+## Closure Condition
+
+**Frontend build/startup contract is executable and verified, without adding product features.**
 
 ---
 
@@ -264,20 +251,21 @@ Required runtime acceptance:
 |---|---|---|---|
 | E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 |
 | E-002 | PR #3 merge | VERIFIED | `888f2c5694940fe42284466fb57a0b33b2ec73cd` |
-| E-003 | Heimdall primary unit tests | VERIFIED GREEN | PR #3 / PR #4 primary CI |
-| E-004 | Frontend Vite build | FAILED EXECUTED | missing `bifrost/frontend/index.html` |
-| E-005 | Bifrost typing collection failure | REPAIRED ON PR #4 | exact-head jobs no longer fail on `Dict` / `Any` |
-| E-006 | PR #4 primary unit job | VERIFIED GREEN | run `32226966755` |
-| E-007 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32226965403` |
-| E-008 | PR #4 secondary Heimdall | VERIFIED RED / UNRELATED | `checkstyleMain`: 41 files, 109 warnings + 2 info |
-| E-009 | PR #4 review correctness | BLOCKED | exact lane doc regression remains on remote branch |
-| E-010 | Codex correction push | NOT VERIFIED / NOT PRESENT | local-only commits; no GitHub object |
-| E-011 | Real Local AI E2E | PENDING | |
-| E-012 | Local vs Cloud Routing | PENDING | |
-| E-013 | DLQ → Redrive → Success | PENDING | |
-| E-014 | Grafana live metrics | PENDING | |
-| E-015 | Final Demo | PENDING | |
-| E-016 | HP AI Server reference run | PENDING | |
+| E-003 | Bifrost typing repair | VERIFIED / MERGED | PR #4 → `fa3f129783387fbeafae537e8a22b4629faf6d42` |
+| E-004 | PR #4 primary unit tests | VERIFIED GREEN | run `32262136812` |
+| E-005 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32262136715` |
+| E-006 | Dependency security check | VERIFIED GREEN | run `32262136715` |
+| E-007 | Frontend npm install | VERIFIED GREEN | run `32262136812` |
+| E-008 | Frontend Vite build | FAILED EXECUTED | `Could not resolve entry module "index.html".` |
+| E-009 | Phase 0 runtime versions | VERIFIED | Java 21.0.12 / Python 3.11.16 / Node 20.20.2 / npm 10.8.2 / Docker 28.0.4 |
+| E-010 | Heimdall secondary build | VERIFIED RED / PRE-EXISTING | `checkstyleMain`: 41 files, 109 warnings + 2 info |
+| E-011 | PR #4 review correction | VERIFIED | remote correction + resolved thread |
+| E-012 | Real Local AI E2E | PENDING | |
+| E-013 | Local vs Cloud Routing | PENDING | |
+| E-014 | DLQ → Redrive → Success | PENDING | |
+| E-015 | Grafana live metrics | PENDING | |
+| E-016 | Final Demo | PENDING | |
+| E-017 | HP AI Server reference run | PENDING | |
 
 ---
 
@@ -285,14 +273,16 @@ Required runtime acceptance:
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | Frontend entrypoint absent | frozen 4-file repair after PR #4 |
-| R-002 | Broad Heimdall checkstyle debt | do not mass-fix in bounded PRs |
+| R-001 | Frontend entrypoint absent | P0-B2 frozen minimal repair |
+| R-002 | Broad Heimdall checkstyle debt | classify separately; no unrelated mass-fix |
 | R-003 | README overclaim | publish evidence-backed claims only |
 | R-004 | Fallback-only E2E | real-model evidence mandatory |
 | R-005 | Scope explosion | keep Frozen Scope |
 | R-006 | Missing workflow status | missing ≠ PASS/FAIL; prefer PR-visible execution |
-| R-007 | Agent self-report without pushed commit | never treat as proof |
-| R-008 | Branch mutation unavailable in current automation environment | require safe patch/push path; do not wholesale-rewrite large source file |
+| R-007 | Agent self-report without remote/executed proof | never treat as proof |
+
+Resolved:
+- ~~R-008 Branch mutation unavailable~~ — GitHub `fetch_blob` + SHA-guarded `update_file` proved a safe branch mutation path on PR #4.
 
 Known later proof-hardening debt:
 - README Grafana port drift (`3000` vs Compose `3001`)
@@ -300,16 +290,23 @@ Known later proof-hardening debt:
 
 ---
 
-# 10. PR Lifecycle Rule
+# 10. Work Item / PR Lifecycle
+
+After grandfathered PR #4, all new acceptance gaps use Issue-first execution:
 
 1. Read MASTER first.
-2. Inspect current focused PR exact head and PR-visible workflows.
-3. RED → inspect first concrete failing job/step/log.
-4. Fix only active-slice failures; classify unrelated/pre-existing debt explicitly.
-5. Do not mass-fix debt to manufacture green.
-6. If bounded acceptance is proven, diff is in scope, and no unresolved review/security/human-decision blocker remains, merge with `expected_head_sha`.
-7. Update MASTER on `main` with executed evidence and resulting main SHA.
-8. Continue to next smallest acceptance gap.
+2. Active focused PR first.
+3. Otherwise search for one existing open Issue matching the exact next MASTER-authorized gap.
+4. If none exists, create exactly one bounded Issue before new implementation/proof work.
+5. Issue body must include Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
+6. Default one active implementation Issue at a time.
+7. CI/review corrections inside that gap stay in the same Issue/PR.
+8. PR links the Issue and records Changed / Actually Executed / Verified / Not Verified / Risks.
+9. RED → inspect the first concrete failing job/step/log and make only the smallest scope-safe correction.
+10. GREEN bounded acceptance + clean review/security state → merge with expected-head guard rather than idle.
+11. Issue closes only after required verification + merged acceptance.
+12. Reconcile this MASTER on `main` before selecting another gap.
+13. Re-evaluate Human Review/FREEZE before creating another Issue.
 
 **Ordinary bounded intermediate PR merges do not require human approval.**
 
@@ -341,36 +338,38 @@ Rules:
 
 ## Result
 
-**BLOCKED** — PR #4's Bifrost typing/package-install acceptance is technically proven by exact-head execution, but merge remains blocked by one unresolved one-line documentation regression that is still present on the remote branch. The current automation environment cannot safely push that single-line correction without risking a wholesale rewrite of the large API file.
+**P0-B1 PASS / P0-B2 NOT STARTED.** PR #4 is merged with exact-head evidence proving the Bifrost typing/package-install repair. The next proven Core defect is the missing frontend Vite entry/source boot tree.
 
 ## What Changed
-- Re-read the authoritative MASTER before acting.
-- Re-confirmed PR #4 remote exact head remains `422a664961e054102e042f0e96a70aabacf02ba5`.
-- Re-confirmed the incorrect lane documentation is still present in the actual PR diff.
-- Re-confirmed the review thread is unresolved and the previous Codex fixes were local-only, not pushed.
-- Re-confirmed exact-head PR-visible workflow runs remain the already-classified executed evidence.
-- Recorded the precise branch-mutation prerequisite instead of manufacturing another unrelated implementation step.
+- Restored the feedback lane documentation on PR #4 directly on the remote branch using the exact fetched blob SHA.
+- Verified the corrected PR diff contains only the intended Bifrost typing import and CI editable-install changes.
+- Resolved the review thread after remote proof.
+- Re-ran exact-head PR-visible workflows.
+- Merged PR #4 with `expected_head_sha=1d301377a5951962cb3afd4e653a1975b8a2267a`.
+- Updated the authoritative MASTER to the resulting main merge `fa3f129783387fbeafae537e8a22b4629faf6d42`.
 
 ## What Was Executed
-- PR #4 metadata/head inspection.
-- PR #4 file patch inspection.
-- PR #4 unresolved review-thread inspection.
-- Exact-head workflow-run lookup.
-- Git commit/tree history inspection for the typing and package-install commits.
-- Local mutation-path check: `gh` unavailable; local GitHub DNS access unavailable.
+- PR metadata/diff/review inspection.
+- SHA-guarded GitHub branch file update.
+- Exact-head primary CI `32262136812`.
+- Exact-head secondary CI/CD `32262136715`.
+- Frontend `npm install` and `npm run build` on GitHub-hosted Ubuntu runner.
+- Heimdall and Bifrost primary unit tests.
+- Secondary Bifrost install/lint/pytest/coverage.
+- Dependency security check.
+- Expected-head guarded PR #4 squash merge.
 
 ## What Was Not Verified
-- A remote commit restoring the feedback lane documentation.
-- Exact-head CI after that future correction.
-- PR #4 merge result.
-- Frontend boot-shell runtime acceptance.
+- Frontend successful build after repair.
+- Frontend dev-server reachability.
+- Default full repository build after frontend repair.
 - Compose/E2E/real AI/Grafana live evidence.
 
 ## Remaining Risks
-- Merging PR #4 now would knowingly ship misleading API documentation.
-- Wholesale replacement of the large `api.py` file for one-line correction would create disproportionate corruption risk.
-- Frontend remains the next separately proven Core failure after PR #4 resolves.
+- Frontend currently cannot build because its Vite entrypoint/source boot tree is absent.
+- Secondary Heimdall build remains red on broad pre-existing checkstyle debt.
+- Real-model, recovery, observability, and final proof evidence remain pending.
 
 ## NEXT
 
-**Apply exactly one remote branch correction on `agent/p0-bifrost-typing-import`: restore `lane: Filter by routing lane (on_device_rag, cloud_direct)`. Then inspect the new exact head, resolve the review thread only if the remote diff is clean, verify relevant PR-visible CI, merge with `expected_head_sha`, update this MASTER on `main`, and transition explicitly to the frozen 4-file frontend boot-shell repair batch.**
+**Issue-first activation of P0-B2: search for an existing open Issue matching the frozen minimal frontend boot-shell repair. If none exists, create exactly one bounded Issue with the frozen four-file scope and acceptance criteria before any implementation.**
