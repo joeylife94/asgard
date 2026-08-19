@@ -9,16 +9,15 @@
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
-- **Current Batch**: P0-B3 — UC-01 Frontend Startup / Default Build Verification
-- **Batch Result**: PASS
-- **Status**: P0-B3 CLOSED; NEXT GAP SELECTION PENDING
+- **Current Batch**: P0-B4 — UC-01 Full Core-Service Startup / Health Verification
+- **Batch Result**: IN PROGRESS
+- **Status**: ISSUE #11 OPEN; EXECUTABLE PROOF SLICE NOT YET CREATED
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 - **P0-B2 merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
-- **PR #9 proof-harness merge**: `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`
-- **PR #10 merge**: `74da74c71625b9bca111b2e1c1bbbb933c82077a`
-- **Issue #8**: CLOSED — completed
+- **P0-B3 merge**: `74da74c71625b9bca111b2e1c1bbbb933c82077a`
+- **Issue #11**: OPEN — `P0-B4: verify UC-01 full core-service startup and health`
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -71,7 +70,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
-| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | PARTIAL — frontend/startup build slice proven; full service health pending |
+| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | IN PROGRESS — build/frontend slice proven; full service health pending under Issue #11 |
 | UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | PENDING |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
@@ -94,46 +93,67 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - exact-head production frontend build GREEN.
 
 ## P0-B3 — PASS / MERGED
-
-### Work Item
-- Issue #8: `P0-B3: verify UC-01 frontend startup and default build path` — CLOSED completed.
+- Issue #8 CLOSED.
 - PR #9 proof harness merged at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`.
-- PR #10 build-contract repair merged at `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
-- PR #10 exact tested head: `dc8cc524bb2f10e8b5674cfcc98247882782a82a`.
-
-### Executed Evidence
-PR #9 proved:
-- frontend `npm install`: GREEN.
-- `npm run dev`: GREEN.
-- HTTP GET `http://127.0.0.1:3000/`: GREEN.
-- primary Heimdall + Bifrost unit job: GREEN.
-- original Windows `build-all.ps1 -SkipTests`: RED before Frontend because Gradle `build -x test` still executed the known Heimdall Checkstyle debt.
-
-PR #10 changed only the explicit SkipTests artifact path:
-
-```text
--SkipTests → :heimdall:clean :heimdall:assemble
-normal build → :heimdall:clean :heimdall:build
-```
-
-PR #10 exact-head PR-visible execution:
+- PR #10 exact tested head `dc8cc524bb2f10e8b5674cfcc98247882782a82a` merged at `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
 - `CI/CD Pipeline` run `32279712933`: SUCCESS.
 - `CI` run `32279712788`: SUCCESS.
-- Windows unified `build-all.ps1 -SkipTests` reached and completed the Frontend build step.
-- primary Heimdall+Bifrost unit execution remained GREEN.
-- no review submissions.
-- no unresolved inline review threads.
-- diff remained bounded to one `build-all.ps1` contract change.
-- no Checkstyle rule/config change.
-- no broad Heimdall cleanup.
-- no product/frontend expansion.
-
-### Result
-**P0-B3 PASS.** E-016 and E-017 are both executed GREEN within the bounded startup/build slice.
+- Vite dev server + HTTP root reachability: GREEN.
+- root `build-all.ps1 -SkipTests` reaches/completes Frontend: GREEN.
+- explicit SkipTests path uses `:heimdall:assemble`; normal full build remains `:heimdall:build`.
+- no Checkstyle config suppression or broad cleanup.
 
 ---
 
-# 5. Evidence Registry
+# 5. Active Phase 0 Slice — P0-B4
+
+## Issue
+- **Issue #11**: `P0-B4: verify UC-01 full core-service startup and health`
+- State: OPEN
+
+## Goal
+Close the remaining UC-01 startup proof gap by executing the actual core stack and collecting concrete service-health/reachability evidence.
+
+## In Scope
+- reproducible checkout/configuration for the proof.
+- execute the repository-supported core startup path or the minimum CI-equivalent runtime path when the interactive PowerShell launcher is unsuitable for GitHub-hosted execution.
+- verify Heimdall reachability/health.
+- verify Bifrost reachability/health.
+- verify PostgreSQL readiness.
+- verify Kafka readiness.
+- verify Frontend root reachability as part of the running stack.
+- verify Prometheus reachability.
+- verify Grafana reachability using Compose host port `3001`.
+- verify Redis only if required by the active application/startup contract.
+- add only the minimum proof harness required for reviewable execution.
+
+## Current Static Contract Relevant To Execution
+- root `docker-compose.yml` contains infrastructure only; application processes are not Compose services.
+- Compose includes PostgreSQL, Kafka/Zookeeper, Redis, Elasticsearch, Prometheus, Grafana, Zipkin and support UIs.
+- Grafana host mapping is `3001:3000`.
+- `start-all.ps1` starts infrastructure with Compose, then starts Heimdall/Bifrost/Frontend as background processes.
+- `start-all.ps1` currently prints a completion banner without proving application health; therefore the banner is not UC-01 evidence.
+- interactive `Start-Process powershell` behavior may not be directly suitable as a GitHub-hosted proof harness; any CI-equivalent harness must preserve the same service contract rather than invent a different product flow.
+
+## Acceptance Criteria
+- [ ] checkout/configuration required by proof is explicit and reproducible.
+- [ ] core stack startup command executes under reviewable runtime evidence.
+- [ ] Heimdall health/reachability verified.
+- [ ] Bifrost health/reachability verified.
+- [ ] PostgreSQL readiness verified.
+- [ ] Kafka readiness verified.
+- [ ] Frontend root reachability verified as part of the stack.
+- [ ] Prometheus reachability verified.
+- [ ] Grafana reachability verified at host port `3001`.
+- [ ] Redis readiness verified if required by active startup contract.
+- [ ] no UC-02 product flow, UI expansion, README hardening, or broad Heimdall style cleanup.
+
+## Result
+**IN PROGRESS — Issue #11 is the only active implementation/proof work item. No runtime PASS has been claimed yet.**
+
+---
+
+# 6. Evidence Registry
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
@@ -151,16 +171,17 @@ PR #10 exact-head PR-visible execution:
 | E-021 | Grafana live metrics | PENDING | |
 | E-022 | Final Demo | PENDING | |
 | E-023 | HP AI Server reference run | PENDING | |
+| E-024 | UC-01 full core-stack service health | IN PROGRESS | Issue #11 |
 
 ---
 
-# 6. Known Debt / Risks
+# 7. Known Debt / Risks
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | UC-01 full core-service health is not yet proven | next Phase 0 startup gap should execute full service-health evidence only |
+| R-001 | full-stack startup may expose environment/configuration failures | inspect first concrete RED; fix only Issue #11 scope |
 | R-002 | broad Heimdall checkstyle debt | keep visible; do not mass-fix unless a later authorized quality batch requires it |
-| R-003 | SkipTests uses `assemble` and intentionally skips verification gates | normal full `build` remains unchanged and continues enforcing verification |
+| R-003 | interactive Windows startup script is not itself a health proof | use executable health checks; do not count banner text as PASS |
 | R-004 | README overclaim / Grafana port drift | proof-hardening later |
 | R-005 | fallback-only E2E risk | real-model evidence mandatory |
 | R-006 | scope explosion | keep Frozen Scope |
@@ -168,25 +189,23 @@ PR #10 exact-head PR-visible execution:
 
 ---
 
-# 7. Work Item / PR Lifecycle
+# 8. Work Item / PR Lifecycle
 
 1. Read MASTER first.
 2. Active focused PR first.
-3. Search for one existing open Issue exactly matching the next MASTER-authorized acceptance gap.
-4. If none exists, create exactly one bounded Issue before new implementation/proof work.
-5. Issue body requires Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
-6. One active implementation Issue at a time by default.
-7. RED → first concrete failing evidence → smallest in-scope fix only.
-8. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
-9. Issue closes only after executed acceptance + merge.
-10. Reconcile MASTER on `main` before another Issue.
-11. Re-evaluate Human Review/FREEZE before another Issue.
+3. One active implementation/proof Issue at a time by default.
+4. Corrections inside the active acceptance gap stay in the same Issue/PR.
+5. RED → first concrete failing evidence → smallest in-scope fix only.
+6. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
+7. Issue closes only after executed acceptance + merge.
+8. Reconcile MASTER on `main` before another Issue.
+9. Re-evaluate Human Review/FREEZE before another Issue.
 
 **Ordinary bounded intermediate PR merges do not require human approval. Human Review remains the FINAL v1.0 gate.**
 
 ---
 
-# 8. Required Completion Report
+# 9. Required Completion Report
 
 Every iteration records:
 - What Changed
@@ -206,50 +225,50 @@ Rules:
 
 ---
 
-# 9. Current Checkpoint
+# 10. Current Checkpoint
 
 ## Result
-**P0-B1 PASS / P0-B2 PASS / P0-B3 PASS.**
+**P0-B1 PASS / P0-B2 PASS / P0-B3 PASS / P0-B4 IN PROGRESS.**
 
-The frontend boot shell, production build, dev-server root reachability, and unified explicit `-SkipTests` artifact-build path are now backed by executed GitHub-hosted evidence. Issue #8 is closed and PR #10 is merged.
-
-This does **not** mean UC-01 as a whole is complete. The remaining UC-01 requirement is still the broader `clone/configure → core services healthy` proof across the actual service stack.
+P0-B3 closed with exact-head GREEN workflows, a guarded merge of PR #10, and completed Issue #8. The remaining UC-01 gap is now isolated under Issue #11: prove the actual core services start and are reachable/healthy together.
 
 ## What Changed
-- Read authoritative MASTER first.
-- Re-fetched current PR #10 and confirmed exact head `dc8cc524bb2f10e8b5674cfcc98247882782a82a`.
-- Confirmed PR #10 was open, mergeable, non-draft, and one-file bounded.
-- Re-fetched exact-head PR-visible workflows.
-- Confirmed `CI/CD Pipeline` run `32279712933` SUCCESS.
-- Confirmed `CI` run `32279712788` SUCCESS.
-- Confirmed no submitted PR reviews and no inline review threads.
-- Merged PR #10 with expected-head guard.
-- Resulting main merge SHA: `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
-- Closed Issue #8 as completed after acceptance and merge.
-- Reconciled this MASTER on main.
+- read authoritative MASTER first.
+- re-fetched PR #10 exact head, diff, workflow state, and review state.
+- confirmed exact head `dc8cc524bb2f10e8b5674cfcc98247882782a82a` remained current.
+- confirmed both PR-visible workflows GREEN.
+- confirmed no review submissions or unresolved inline review threads.
+- merged PR #10 with expected-head guard; resulting main SHA `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
+- closed Issue #8 as completed after acceptance and merge.
+- reconciled MASTER on main.
+- searched for an existing open Issue matching the remaining UC-01 full-stack health gap; none existed.
+- created exactly one bounded Issue #11 for P0-B4.
+- inspected current Compose/startup contract only enough to define the next executable proof slice.
 
 ## What Was Executed
-- Current PR metadata inspection.
-- Exact-head PR workflow lookup.
-- PR review submission inspection.
-- PR inline review-thread inspection.
-- Expected-head squash merge.
-- Issue closure.
-- MASTER reconciliation.
+- PR #10 exact-head workflow lookup.
+- PR review/review-thread inspection.
+- expected-head squash merge.
+- Issue #8 closure.
+- open-Issue search for the next exact acceptance gap.
+- Issue #11 creation.
+- Compose/startup contract inspection.
 
 ## What Was Not Verified
-- UC-01 full Compose/core-service startup and health across Heimdall, Bifrost, Kafka, PostgreSQL, Prometheus/Grafana, and frontend as one stack.
+- P0-B4 core-stack runtime execution.
+- Heimdall/Bifrost health in the full running stack.
+- PostgreSQL/Kafka/Prometheus/Grafana readiness in one reviewable startup proof.
 - real Local AI E2E.
 - Local vs Cloud routing execution.
 - DLQ → Redrive → Success.
-- Grafana live metric evidence.
+- Grafana live metric correctness.
 - HP AI Server reference deployment.
 - final demo.
 
 ## Remaining Risks
-- broader full-stack startup may expose environment/configuration failures not covered by the frontend/build slice.
-- normal full Heimdall `build` still exposes the known broad Checkstyle debt.
-- production claims remain constrained by missing real-model/full-stack proof.
+- application configuration may prevent Heimdall or Bifrost from reaching healthy state after infrastructure starts.
+- GitHub-hosted execution may require a bounded non-interactive equivalent of the interactive `start-all.ps1` process launcher.
+- normal Heimdall full build still exposes known Checkstyle debt.
 
 ## NEXT
-**Re-evaluate Phase 0 / UC-01 closure. Search existing open Issues for an exact match to the remaining full core-service startup/health proof gap. If none exists, create one bounded Phase 0 Issue whose only goal is to execute `clone/configure → core services healthy` with concrete service-health evidence. Do not start UC-02, UI expansion, README hardening, or Heimdall style cleanup before that UC-01 gap is classified.**
+**Under Issue #11, create the smallest PR-visible executable proof harness for UC-01 full-stack startup/health. Prefer the existing startup/service contracts; do not invent product behavior. The first execution must capture infrastructure readiness plus Heimdall, Bifrost, Frontend, Prometheus and Grafana reachability. If RED, inspect only the first concrete failing boundary and fix only Issue #11 scope.**
