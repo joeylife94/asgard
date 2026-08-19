@@ -10,16 +10,15 @@
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B3 — UC-01 Frontend Startup / Default Build Verification
-- **Batch Result**: IN PROGRESS
-- **Status**: BUILD-CONTRACT REPAIR PR #10 OPEN; EXACT-HEAD EXECUTION PENDING
+- **Batch Result**: PASS
+- **Status**: P0-B3 CLOSED; NEXT GAP SELECTION PENDING
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 - **P0-B2 merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
 - **PR #9 proof-harness merge**: `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`
-- **Issue #8**: OPEN
-- **PR #10**: OPEN — `fix: make SkipTests use Heimdall assemble path`
-- **PR #10 exact head**: `dc8cc524bb2f10e8b5674cfcc98247882782a82a`
+- **PR #10 merge**: `74da74c71625b9bca111b2e1c1bbbb933c82077a`
+- **Issue #8**: CLOSED — completed
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -70,13 +69,13 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 # 3. Required Use Cases
 
-| UC | Goal | PASS 기준 |
-|---|---|---|
-| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy |
-| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED |
-| UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 |
-| UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED |
-| UC-05 Observability | 운영 가시성 | jobs/latency/routes/DLQ/redrive/health 확인 |
+| UC | Goal | PASS 기준 | Current |
+|---|---|---|---|
+| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | PARTIAL — frontend/startup build slice proven; full service health pending |
+| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | PENDING |
+| UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
+| UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
+| UC-05 Observability | 운영 가시성 | jobs/latency/routes/DLQ/redrive/health 확인 | PENDING |
 
 ---
 
@@ -94,72 +93,47 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - minimal four-file frontend boot tree restored.
 - exact-head production frontend build GREEN.
 
----
+## P0-B3 — PASS / MERGED
 
-# 5. Active Phase 0 Slice — P0-B3
+### Work Item
+- Issue #8: `P0-B3: verify UC-01 frontend startup and default build path` — CLOSED completed.
+- PR #9 proof harness merged at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`.
+- PR #10 build-contract repair merged at `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
+- PR #10 exact tested head: `dc8cc524bb2f10e8b5674cfcc98247882782a82a`.
 
-## Issue / PR
-- **Issue #8**: `P0-B3: verify UC-01 frontend startup and default build path`
-- **PR #9**: proof harness merged at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`
-- **PR #10**: bounded build-contract repair, OPEN
-- **PR #10 exact head**: `dc8cc524bb2f10e8b5674cfcc98247882782a82a`
-
-## Goal
-Close the two frontend/startup proof debts from P0-B2:
-1. Vite dev-server root reachability;
-2. root `build-all.ps1 -SkipTests` without `-SkipFrontend`, including a successful frontend build step.
-
-## Executed Evidence Before PR #10
-
-PR #9 exact head `1f50afc4ff2c4590178bfce14f250866339bd9e6`, primary run `32273762721`:
-- frontend dependency install: GREEN.
-- Vite dev server: GREEN.
-- HTTP GET `http://127.0.0.1:3000/`: GREEN on attempt 2.
-- Phase 0 frontend install/build preflight: GREEN.
+### Executed Evidence
+PR #9 proved:
+- frontend `npm install`: GREEN.
+- `npm run dev`: GREEN.
+- HTTP GET `http://127.0.0.1:3000/`: GREEN.
 - primary Heimdall + Bifrost unit job: GREEN.
-- Windows `build-all.ps1 -SkipTests`: EXECUTED RED before Frontend.
-- failure boundary: `:heimdall:checkstyleMain`, exactly the known **41 files / 109 warnings / 2 info** debt.
-- evidence artifact uploaded.
+- original Windows `build-all.ps1 -SkipTests`: RED before Frontend because Gradle `build -x test` still executed the known Heimdall Checkstyle debt.
 
-## Acceptance Criteria
-- [x] `npm install` succeeds in `bifrost/frontend` under GitHub-hosted execution.
-- [x] `npm run dev` starts successfully.
-- [x] HTTP GET `/` returns success.
-- [x] root `build-all.ps1 -SkipTests` execution result observed.
-- [ ] default build path reaches and completes frontend build step.
-- [x] no product UI expansion.
-- [x] no broad Heimdall cleanup.
-
-## Root-Build Contract Decision
-The original `-SkipTests` path used:
+PR #10 changed only the explicit SkipTests artifact path:
 
 ```text
-:heimdall:clean :heimdall:build -x test
+-SkipTests → :heimdall:clean :heimdall:assemble
+normal build → :heimdall:clean :heimdall:build
 ```
 
-Gradle `build` still executes `checkstyleMain`, so the explicit SkipTests artifact path could not progress through the unified build despite the style debt already being classified separately.
-
-### PR #10 Authorized Repair
-Only `build-all.ps1` changes:
-- `-SkipTests` → `:heimdall:clean :heimdall:assemble`.
-- normal build without `-SkipTests` → unchanged full `:heimdall:build`.
+PR #10 exact-head PR-visible execution:
+- `CI/CD Pipeline` run `32279712933`: SUCCESS.
+- `CI` run `32279712788`: SUCCESS.
+- Windows unified `build-all.ps1 -SkipTests` reached and completed the Frontend build step.
+- primary Heimdall+Bifrost unit execution remained GREEN.
+- no review submissions.
+- no unresolved inline review threads.
+- diff remained bounded to one `build-all.ps1` contract change.
 - no Checkstyle rule/config change.
-- no global quality-gate suppression.
-- no Heimdall style cleanup.
-- no product/frontend change.
+- no broad Heimdall cleanup.
+- no product/frontend expansion.
 
-### PR #10 Acceptance
-- [ ] exact-head Windows `build-all.ps1 -SkipTests` reaches Frontend.
-- [ ] Frontend build succeeds in the unified path.
-- [ ] primary Heimdall+Bifrost unit job remains GREEN.
-- [ ] no global checkstyle suppression / broad cleanup.
-
-## Result
-**IN PROGRESS — E-016 PASS; E-017 has executed RED evidence; PR #10 is the smallest authorized repair and awaits exact-head execution.**
+### Result
+**P0-B3 PASS.** E-016 and E-017 are both executed GREEN within the bounded startup/build slice.
 
 ---
 
-# 6. Evidence Registry
+# 5. Evidence Registry
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
@@ -170,7 +144,7 @@ Only `build-all.ps1` changes:
 | E-005 | P0-B2 frontend repair | VERIFIED / MERGED | PR #7 |
 | E-006 | P0-B2 frontend production build | VERIFIED GREEN | PR #7 |
 | E-016 | Frontend dev-server root reachability | VERIFIED GREEN | PR #9 |
-| E-017 | Root default build path | REPAIR IN PROGRESS | PR #9 proved pre-Frontend checkstyle block; PR #10 tests bounded SkipTests artifact-path correction |
+| E-017 | Root default SkipTests build path reaches/completes Frontend | VERIFIED GREEN / MERGED | PR #10; runs 32279712933 + 32279712788 |
 | E-018 | Real Local AI E2E | PENDING | |
 | E-019 | Local vs Cloud Routing | PENDING | |
 | E-020 | DLQ → Redrive → Success | PENDING | |
@@ -180,13 +154,13 @@ Only `build-all.ps1` changes:
 
 ---
 
-# 7. Known Debt / Risks
+# 6. Known Debt / Risks
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | PR #10 may expose a new unified-build failure after Heimdall | inspect first concrete RED; fix only Issue #8 scope |
-| R-002 | broad Heimdall checkstyle debt | keep visible; do not mass-fix in P0-B3 |
-| R-003 | assemble could accidentally weaken normal quality gates | normal full `build` must remain unchanged |
+| R-001 | UC-01 full core-service health is not yet proven | next Phase 0 startup gap should execute full service-health evidence only |
+| R-002 | broad Heimdall checkstyle debt | keep visible; do not mass-fix unless a later authorized quality batch requires it |
+| R-003 | SkipTests uses `assemble` and intentionally skips verification gates | normal full `build` remains unchanged and continues enforcing verification |
 | R-004 | README overclaim / Grafana port drift | proof-hardening later |
 | R-005 | fallback-only E2E risk | real-model evidence mandatory |
 | R-006 | scope explosion | keep Frozen Scope |
@@ -194,23 +168,25 @@ Only `build-all.ps1` changes:
 
 ---
 
-# 8. Work Item / PR Lifecycle
+# 7. Work Item / PR Lifecycle
 
 1. Read MASTER first.
 2. Active focused PR first.
-3. Do not create another Issue while Issue #8 remains active.
-4. Corrections inside this gap stay under Issue #8 / PR #10 where possible.
-5. RED → first concrete failing evidence → smallest in-scope fix only.
-6. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
-7. Issue closes only after executed acceptance + merge.
-8. Reconcile MASTER on `main` before another Issue.
-9. Re-evaluate Human Review/FREEZE before another Issue.
+3. Search for one existing open Issue exactly matching the next MASTER-authorized acceptance gap.
+4. If none exists, create exactly one bounded Issue before new implementation/proof work.
+5. Issue body requires Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
+6. One active implementation Issue at a time by default.
+7. RED → first concrete failing evidence → smallest in-scope fix only.
+8. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
+9. Issue closes only after executed acceptance + merge.
+10. Reconcile MASTER on `main` before another Issue.
+11. Re-evaluate Human Review/FREEZE before another Issue.
 
 **Ordinary bounded intermediate PR merges do not require human approval. Human Review remains the FINAL v1.0 gate.**
 
 ---
 
-# 9. Required Completion Report
+# 8. Required Completion Report
 
 Every iteration records:
 - What Changed
@@ -230,45 +206,50 @@ Rules:
 
 ---
 
-# 10. Current Checkpoint
+# 9. Current Checkpoint
 
 ## Result
-**P0-B1 PASS / P0-B2 PASS / P0-B3 IN PROGRESS.**
+**P0-B1 PASS / P0-B2 PASS / P0-B3 PASS.**
 
-The dev-server portion is proven GREEN. PR #9 proved the unified build currently stops in Heimdall checkstyle before Frontend. That proof harness is merged and Issue #8 remains open. PR #10 now contains the single bounded build-contract correction authorized by this MASTER.
+The frontend boot shell, production build, dev-server root reachability, and unified explicit `-SkipTests` artifact-build path are now backed by executed GitHub-hosted evidence. Issue #8 is closed and PR #10 is merged.
+
+This does **not** mean UC-01 as a whole is complete. The remaining UC-01 requirement is still the broader `clone/configure → core services healthy` proof across the actual service stack.
 
 ## What Changed
 - Read authoritative MASTER first.
-- Re-fetched PR #9 exact-head completed runs/review state.
-- Inspected the Windows failure log and confirmed the exact known checkstyle boundary.
-- Removed `Closes #8` from PR #9 because acceptance was incomplete.
-- Merged PR #9 with expected-head guard at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`.
-- Reconciled MASTER before new product change.
-- Under existing Issue #8, created branch `agent/p0-b3-skiptests-build-contract`.
-- Changed only the Heimdall SkipTests path in `build-all.ps1` to use `assemble`; normal full build remains unchanged.
-- Opened PR #10 at exact head `dc8cc524bb2f10e8b5674cfcc98247882782a82a`.
+- Re-fetched current PR #10 and confirmed exact head `dc8cc524bb2f10e8b5674cfcc98247882782a82a`.
+- Confirmed PR #10 was open, mergeable, non-draft, and one-file bounded.
+- Re-fetched exact-head PR-visible workflows.
+- Confirmed `CI/CD Pipeline` run `32279712933` SUCCESS.
+- Confirmed `CI` run `32279712788` SUCCESS.
+- Confirmed no submitted PR reviews and no inline review threads.
+- Merged PR #10 with expected-head guard.
+- Resulting main merge SHA: `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
+- Closed Issue #8 as completed after acceptance and merge.
+- Reconciled this MASTER on main.
 
 ## What Was Executed
-- PR #9 primary/secondary job inspection.
-- Windows job full log inspection.
-- exact-head unit job GREEN verification.
-- dev-server root GREEN verification.
-- PR #9 expected-head squash merge.
-- PR #10 workflow lookup immediately after opening; no PR-visible run had appeared yet at that observation.
+- Current PR metadata inspection.
+- Exact-head PR workflow lookup.
+- PR review submission inspection.
+- PR inline review-thread inspection.
+- Expected-head squash merge.
+- Issue closure.
+- MASTER reconciliation.
 
 ## What Was Not Verified
-- PR #10 exact-head Windows unified build result.
-- PR #10 exact-head primary unit result.
-- Compose/full-stack startup / UC-01 full service-health closure.
+- UC-01 full Compose/core-service startup and health across Heimdall, Bifrost, Kafka, PostgreSQL, Prometheus/Grafana, and frontend as one stack.
 - real Local AI E2E.
 - Local vs Cloud routing execution.
 - DLQ → Redrive → Success.
-- Grafana live evidence.
+- Grafana live metric evidence.
+- HP AI Server reference deployment.
+- final demo.
 
 ## Remaining Risks
-- unified build may expose another concrete failure after Heimdall assembly.
-- broad checkstyle debt remains visible in normal full-build/secondary CI paths.
-- UC-01 full service-health closure remains outside this bounded slice.
+- broader full-stack startup may expose environment/configuration failures not covered by the frontend/build slice.
+- normal full Heimdall `build` still exposes the known broad Checkstyle debt.
+- production claims remain constrained by missing real-model/full-stack proof.
 
 ## NEXT
-**Re-fetch current PR #10 exact head and PR-visible workflows/review. Inspect the Windows `UC-01 default build path` job first. If RED, inspect the first concrete failing step/log and fix only an Issue #8-scoped defect. If Windows unified build reaches/completes Frontend, primary unit checks remain GREEN, and review/security state is clean, merge PR #10 with expected-head guard, close Issue #8, and reconcile MASTER before selecting another gap.**
+**Re-evaluate Phase 0 / UC-01 closure. Search existing open Issues for an exact match to the remaining full core-service startup/health proof gap. If none exists, create one bounded Phase 0 Issue whose only goal is to execute `clone/configure → core services healthy` with concrete service-health evidence. Do not start UC-02, UI expansion, README hardening, or Heimdall style cleanup before that UC-01 gap is classified.**
