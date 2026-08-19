@@ -14,7 +14,7 @@
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline before checkpoint work**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Observed main before this checkpoint update**: `5743d1bb0f13a55d6372a467bf9734567aac0512`
+- **Observed main before this checkpoint update**: `99fc68233f2ab2e48337c2ef036b7a62b33fa2db`
 - **Updated**: 2026-08-19
 - **Final Gate**: Human Review Required
 
@@ -78,10 +78,10 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Area | Level | Judgment |
 |---|---:|---|
 | Architecture | 8/10 | Strong |
-| Spring Backend | 8/10 | Strong; runtime proof pending |
+| Spring Backend | 8/10 | Core operator API surface exists; runtime proof pending |
 | Kafka Control Plane | 8/10 | Strong; runtime proof pending |
 | AI Routing | 6~7/10 | Runtime proof 필요 |
-| DLQ / Redrive | 7~8/10 | Demo proof 필요 |
+| DLQ / Redrive | 7~8/10 | API/audit surface verified statically; runtime demo pending |
 | Docker Infra | 7/10 | Repro check 필요 |
 | Observability | 6~7/10 | Startup Grafana URL corrected; live evidence 필요 |
 | Frontend | 3/10 | **BROKEN STATICALLY**: tracked Vite entry/source tree absent |
@@ -90,7 +90,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | Documentation Truth | 4.5/10 | Grafana README drift + frontend docs/source drift |
 | Wishket Proof | 5~6/10 | NOT READY |
 
-**Current Summary:** Backend/Kafka feature depth는 충분하지만 runtime Evidence가 없고, 현재 tracked Frontend는 기본 Vite build/startup contract를 충족하지 못한다.
+**Current Summary:** Backend/Kafka core depth와 operator API surface는 존재하지만 runtime Evidence가 없고, tracked Frontend는 기본 Vite build/startup contract를 충족하지 못한다.
 
 > **Feature Development → Proof Hardening**
 
@@ -162,6 +162,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - [x] Frontend tracked-tree audit
 - [x] Unified build/startup frontend failure-boundary audit
 - [x] Frontend repair-slice design — **DESIGN ONLY; no implementation in Phase 0**
+- [x] Analysis / Job / Redrive operator API inventory — **STATIC CONTRACT ONLY**
 
 **Gate 0:** 거짓말 없는 Baseline 확보.
 
@@ -201,13 +202,13 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | E-028 | Commit workflow-run lookup limitation | VERIFIED | available lookup cannot prove push-CI success |
 | E-029 | Frontend tracked-tree contract | VERIFIED STATICALLY | only `README.md`, `package.json`, `vite.config.js`; no entry/source tree |
 | E-030 | Unified build/startup frontend failure boundary | VERIFIED STATICALLY | default build reaches Vite build; startup checks package.json only |
-| E-031 | Minimal frontend repair-slice design | VERIFIED STATICALLY | package/Vite/README contracts compared; minimal repair file set and acceptance criteria frozen below |
+| E-031 | Minimal frontend repair-slice design | VERIFIED STATICALLY | 4-file boot shell frozen; no implementation in Phase 0 |
+| E-032 | Core operator API inventory | VERIFIED STATICALLY | Analysis request/result, Job read/failed list, Redrive, per-job/recent audit endpoints exist; runtime behavior pending |
 
 ---
 
 # 8. Static Baseline Findings
 
-## VERIFIED / CORRECTED
 1. Java 21 toolchain; Gradle wrapper 8.5; Python package `>=3.8`.
 2. Primary and secondary CI Java setup aligned to JDK 21.
 3. Bifrost dependency installation is fail-fast in primary CI.
@@ -215,21 +216,20 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 5. `start-all.ps1` Grafana URL matches Compose: `http://localhost:3001`.
 6. README infra ports match Compose except Grafana.
 7. CI remains execution-unverified; missing statuses are not PASS evidence.
-8. Frontend `package.json` exposes `dev`, `build`, `preview`, `lint`, `format`; no `test` script.
-9. Frontend dependencies already include React 18, React DOM, React Router, Axios, Chart.js and React Query.
-10. `vite.config.js` uses React plugin, dev port `3000`, `/api` proxy → `http://localhost:8000`, build output `../static/react`.
+8. Frontend `package.json` has Vite build but no test script.
+9. Frontend dependencies already include React/ReactDOM/Router/Axios/Chart.js/React Query.
+10. `vite.config.js`: dev 3000, `/api` proxy → Heimdall 8000, build output `../static/react`.
 11. Tracked frontend root has no `index.html`, `src/`, `public/`, or package lock.
-12. Frontend README documents a much larger tree and commands/features that are not currently backed by tracked source.
-13. Default unified build enters frontend unless explicitly skipped.
+12. Frontend README describes a larger tree and commands not backed by tracked source.
+13. Default unified build enters frontend unless skipped.
 14. Startup can announce completion without proving frontend health.
+15. Heimdall exposes the Core operator API needed for a later minimal operator UI; no new backend endpoint is currently required merely to design Analyze / Jobs / Operations screens.
 
 **Important:** static correction/design ≠ runtime/CI PASS.
 
 ---
 
 # 9. Frontend Build / Startup Contract — BROKEN STATICALLY
-
-Current tracked frontend cannot satisfy the documented Vite contract as-is:
 
 - `package.json`: `dev = vite`, `build = vite build`
 - `vite.config.js`: no custom Rollup input
@@ -248,71 +248,111 @@ Implementation is not authorized while P0-B1 remains active.
 # 10. Planned Core Repair Slice — FRONTEND BOOT SHELL
 
 > **Status: DESIGN FROZEN, NOT ACTIVE, NOT IMPLEMENTED**
-> Activate only after P0-B1 runtime baseline closes or an explicit next batch authorizes repair.
-
-## Goal
-Restore the smallest truthful Vite/React application shell required to make the tracked frontend buildable and startable without pretending the full dashboard already exists.
 
 ## Minimum File Set
+- `bifrost/frontend/index.html`
+- `bifrost/frontend/src/main.jsx`
+- `bifrost/frontend/src/App.jsx`
+- `bifrost/frontend/src/index.css`
 
-### Must Create
-1. `bifrost/frontend/index.html`
-   - standard Vite root entry
-   - single `#root`
-   - imports `/src/main.jsx`
+## Rules
+- React + ReactDOM only for first repair
+- no new dependencies
+- no fake metrics/jobs/provider state
+- no API integration in this repair slice
+- no dashboard/Redrive/auth expansion
 
-2. `bifrost/frontend/src/main.jsx`
-   - `ReactDOM.createRoot`
-   - mounts `<App />`
-   - imports base stylesheet
+## Runtime Acceptance
+- [ ] `npm install`
+- [ ] `npm run build` exit 0
+- [ ] `npm run dev` root reachable
+- [ ] default `build-all.ps1` passes Frontend step
 
-3. `bifrost/frontend/src/App.jsx`
-   - minimal Asgard shell only
-   - identifies project and current UI status
-   - no fake metrics, no fake jobs, no fake provider status
-   - may expose placeholder navigation labels for planned `Overview / Analyze / Jobs / Operations`, but must clearly mark unavailable sections
-
-4. `bifrost/frontend/src/index.css`
-   - minimal readable layout
-   - no design-system work
-
-### Must Not Create In This Slice
-- mock API data
-- fake Grafana/health metrics
-- Analysis API integration
-- Job tables
-- Redrive UI
-- Chart.js dashboards
-- React Query abstraction
-- auth UI
-- routing framework unless required for the minimal shell
-- tests that assert mocked product behavior
-- new dependencies
-
-## Dependency Decision
-Current dependencies are more than sufficient for the boot shell. **Add no package dependencies.** The first repair should use React + ReactDOM only. Existing React Router/Axios/Chart.js/React Query remain unused until the later operator-experience slice actually needs them.
-
-## Acceptance Criteria — Repair Batch
-- [ ] tracked `index.html` exists and points to `/src/main.jsx`
-- [ ] tracked `src/main.jsx`, `src/App.jsx`, `src/index.css` exist
-- [ ] no fake operational data or unsupported feature claims in UI
-- [ ] no new npm dependency added
-- [ ] `npm install` completes — runtime evidence required
-- [ ] `npm run build` exits 0 and emits Vite assets to configured output — runtime evidence required
-- [ ] `npm run dev` starts and root page returns successfully — runtime evidence required
-- [ ] default `build-all.ps1` no longer fails at Frontend build step — runtime evidence required
-- [ ] startup script behavior is rechecked; banner alone is not health evidence
-- [ ] frontend README is reduced/aligned only after the new tracked tree exists
-
-## Closure Condition
-**Frontend transitions from `BROKEN STATICALLY` to `BUILDABLE VERIFIED` only when runtime build/start evidence exists. Static file creation alone is insufficient.**
-
-## Why This Slice Is Small
-The v1.0 product requires a Minimal React Dashboard, but Phase 2 owns operator screens. The immediate repair must only restore the executable frontend contract so Phase 1/2 work can proceed without carrying a broken default build.
+**Closure:** static files alone do not promote Frontend to PASS; runtime evidence required.
 
 ---
 
-# 11. README / Claim Debt
+# 11. Core Operator API Contract — STATIC INVENTORY
+
+> **Purpose:** Phase 2 UI 설계를 위한 최소 backend contract를 고정한다. 구현/동작 PASS가 아니라 source-level inventory다.
+
+## Analyze
+
+### Request analysis
+`POST /api/v1/logs/{logId}/analysis`
+
+Optional inputs:
+- Header: `Idempotency-Key`
+- Body: `{ "idempotencyKey": string <= 200, "modelPolicy": object }`
+
+Accepted response:
+- `jobId`
+- `status`
+- `created`
+
+### Latest analysis result
+`GET /api/v1/logs/{logId}/analysis`
+
+Response includes:
+- `analysisId`, `logId`, `bifrostAnalysisId`
+- `summary`, `rootCause`, `recommendation`
+- `severity`, `confidence`, `model`, `analyzedAt`
+
+## Jobs
+
+### Job detail
+`GET /api/v1/analysis/jobs/{jobId}`
+
+Response includes:
+- `jobId`, `idempotencyKey`, `status`, `attemptCount`
+- `createdAt`, `startedAt`, `finishedAt`
+- `traceId`, `logId`
+- `resultRef`, `resultSummary`, `resultPayload`
+- `errorCode`, `errorMessage`
+
+### Failed jobs
+`GET /api/v1/analysis/jobs/failed?page=0&size=20`
+
+Returns paginated `AnalysisJobResponse`.
+
+## Operations / Redrive
+
+### Redrive job
+`POST /api/v1/analysis/jobs/{jobId}/redrive`
+
+Optional body:
+```json
+{ "reason": "operator reason" }
+```
+
+Behavior visible from source:
+- user-based rate limit: max 10 redrives / 60 minutes
+- returns `202 Accepted` with job response on accepted path
+- records SUCCESS / SKIPPED / FAILURE audit outcome
+- optional `X-Trace-Id`
+
+### Per-job audit
+`GET /api/v1/analysis/jobs/{jobId}/redrive/audit`
+
+### Recent audit
+`GET /api/v1/analysis/jobs/redrive/audit?page=0&size=20`
+
+## UI Mapping Decision
+- **Analyze screen** → POST analysis + poll/read Job + GET result
+- **Jobs screen** → Job detail; failed list is available, but a general all-jobs list was **not verified in this inventory**
+- **Operations screen** → failed list + redrive + audit endpoints
+- **Overview screen** → should use metrics/health contracts later; do not synthesize fake dashboard totals from these endpoints
+
+## Important Gaps / Non-Claims
+- General paginated `GET /analysis/jobs` endpoint was not verified.
+- Runtime auth requirements were not executed.
+- Endpoint success/error payloads were not exercised.
+- No claim that Redrive actually reaches Kafka/Bifrost is allowed until E2E evidence exists.
+- No frontend implementation is authorized by this inventory alone.
+
+---
+
+# 12. README / Claim Debt
 
 ## Known Drift
 `docker-compose.yml` publishes Grafana as `3001:3000`; README still has three host-facing `3000` entries.
@@ -331,29 +371,30 @@ The v1.0 product requires a Minimal React Dashboard, but Phase 2 owns operator s
 
 ---
 
-# 12. Known Risks
+# 13. Known Risks
 
 | ID | Risk | Mitigation |
 |---|---|---|
 | R-001 | README overclaim | Claim audit + evidence |
 | R-002 | CI runtime truth unverified | execute workflow/build when runner available |
-| R-003 | Frontend source/entrypoint absent | execute frozen minimal repair slice only after authorization |
+| R-003 | Frontend source/entrypoint absent | frozen boot-shell repair only after authorization |
 | R-004 | Fallback-only E2E | Real-model mandatory |
 | R-005 | Scope explosion | Frozen Scope |
 | R-006 | Infra overbuild | Single-node PoC 종료 |
 | R-007 | Docs/config drift | Evidence-backed docs |
 | R-008 | Runtime environment unavailable | GitHub-accessible execution runner required |
-| R-009 | Connector whole-file replacement only | large-file mutations only with complete safe reconstruction |
-| R-010 | Startup banner can overstate readiness | require health evidence before UC-01 PASS |
-| R-011 | No status checks attached | never interpret missing statuses as CI PASS |
-| R-012 | Workflow lookup limitation | do not infer push-CI outcome from unsupported lookup |
-| R-013 | Frontend README describes absent tree | align after source direction is implemented |
-| R-014 | Default build reaches broken frontend | repair frontend contract before clean-build PASS |
-| R-015 | Repair slice could expand into UI rebuild | frozen 4-file boot shell; no API/features/new deps |
+| R-009 | Connector whole-file replacement only | only safe complete reconstructions |
+| R-010 | Startup banner can overstate readiness | require health evidence |
+| R-011 | No status checks attached | missing status ≠ PASS |
+| R-012 | Workflow lookup limitation | do not infer push-CI outcome |
+| R-013 | Frontend README describes absent tree | align after implementation |
+| R-014 | Default build reaches broken frontend | repair before clean-build PASS |
+| R-015 | Repair slice scope expansion | frozen 4-file shell |
+| R-016 | Jobs UI may need all-jobs listing | verify existing search/list surface before adding endpoint |
 
 ---
 
-# 13. Work Rules
+# 14. Work Rules
 
 Every iteration:
 1. `ASGARD_MASTER.md` first-read
@@ -382,29 +423,31 @@ Rules:
 
 ---
 
-# 14. Current Checkpoint — P0-B1
+# 15. Current Checkpoint — P0-B1
 
 ## Result
 **BLOCKED** — fresh-clone/runtime evidence가 없어 Gate 0 종료 불가. Frontend/default unified build는 tracked contract 기준 **BROKEN STATICALLY**.
 
 ## What Changed
 - `ASGARD_MASTER.md`
-  - observed main을 `5743d1bb0f13a55d6372a467bf9734567aac0512`로 최신화
-  - E-031 Minimal frontend repair-slice design 추가
-  - planned Core repair를 4-file boot shell로 동결
-  - repair acceptance / closure criteria 명시
+  - observed main을 `99fc68233f2ab2e48337c2ef036b7a62b33fa2db`로 최신화
+  - E-032 Core operator API inventory 추가
+  - Analysis / Job / Redrive 최소 API contract와 UI mapping을 고정
+  - general all-jobs list가 미확인임을 명시
 - Application / experimental code 변경 없음
 - Frontend 구현 없음
 
 ## What Was Executed
 - MASTER first-read
-- remote `main` inspection
-- runtime DNS check 1회 → `github.com` resolution failure persists
-- `bifrost/frontend/package.json` inspection
-- `bifrost/frontend/README.md` inspection
-- `bifrost/frontend/vite.config.js` inspection
-- dependency / command / tracked-tree contract comparison
-- repeated clone retries intentionally skipped under blocker-loop rule
+- remote `main` commit inspection
+- `AnalysisController.java` inspection
+- `AnalysisJobController.java` inspection
+- `RequestLogAnalysis.java` inspection
+- `AnalysisJobAcceptedResponse.java` inspection
+- `AnalysisJobResponse.java` inspection
+- `RedriveRequest.java` inspection
+- actual endpoint / DTO source contract comparison
+- same DNS/clone blocker command was intentionally not repeated
 
 ## What Was Not Verified
 - Fresh clone / local working tree / local↔remote sync
@@ -414,19 +457,21 @@ Rules:
 - default `build-all.ps1` runtime failure
 - Compose/E2E
 - GitHub Actions green result
+- Runtime auth and API responses
 - Real AI calls / Grafana live metrics
+- Redrive runtime Kafka/Bifrost path
 - README Grafana 3-entry mutation
 
 ## Remaining Risks
 - GitHub-accessible runtime runner 없이는 P0-B1 PASS 불가.
-- Frontend/default build는 runtime confirmation 전까지 BROKEN STATICALLY 상태다.
-- Startup banner는 실제 readiness보다 성공적으로 보일 수 있다.
-- README frontend 문서는 tracked source보다 앞서 있다.
-- README Grafana drift와 unsupported performance/compliance claims가 남아 있다.
+- Frontend/default build는 runtime confirmation 전까지 BROKEN STATICALLY.
+- Startup banner는 실제 readiness보다 성공적으로 보일 수 있음.
+- General all-jobs API가 없으면 Phase 2 Jobs 화면에서 backend gap이 발생할 수 있음.
+- README Grafana drift와 unsupported claims가 남아 있음.
 
 ## Next — single task
-**P0-B1 Runtime Preflight remains first priority:** `github.com` DNS/HTTPS가 가능한 checkout runner에서 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → `npm install` / `npm run build` → default build readiness를 실행해 static diagnosis를 runtime-confirm한다.
+**P0-B1 Runtime Preflight remains first priority:** GitHub-accessible checkout runner에서 fresh clone → HEAD/sync → Java/Python/Node/Docker versions → `npm install` / `npm run build` → default build readiness를 실행한다.
 
-**If the same environmental blocker persists again:** repair 구현으로 넘어가지 말고, Backend/Frontend integration을 위해 실제로 존재하는 Analysis/Job/Redrive API surface를 GitHub에서 정적으로 inventory하여 Phase 2 operator UI가 사용할 최소 API contract만 설계한다.
+**If the same environmental blocker persists again:** `LogController` / log ingestion-search API surface를 정적으로 inventory하여 UC-02의 실제 시작점인 "log 생성/선택 → analysis request" 계약을 닫고, 새 backend 구현 없이 Golden Path를 구성할 수 있는지 판정한다.
 
 **Concrete external prerequisite:** `github.com` DNS/HTTPS가 가능한 checkout runner.
