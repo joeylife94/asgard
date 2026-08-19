@@ -32,20 +32,38 @@ jobs:
           node-version: '20'
 
       - name: Capture runtime versions
+        shell: bash
         run: |
-          git status --short --branch
-          git rev-parse HEAD
-          java -version
-          python --version
-          node --version
-          npm --version
-          docker --version
+          set -o pipefail
+          {
+            git status --short --branch
+            git rev-parse HEAD
+            java -version
+            python --version
+            node --version
+            npm --version
+            docker --version
+          } 2>&1 | tee phase0-runtime.txt
 
       - name: Verify frontend install and build contract
         working-directory: bifrost/frontend
+        shell: bash
         run: |
-          npm install --no-audit --no-fund
-          npm run build
+          set -o pipefail
+          npm install --no-audit --no-fund 2>&1 | tee phase0-npm-install.log
+          npm run build 2>&1 | tee phase0-frontend-build.log
+
+      - name: Upload Phase 0 preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase0-preflight-evidence
+          path: |
+            phase0-runtime.txt
+            bifrost/frontend/phase0-npm-install.log
+            bifrost/frontend/phase0-frontend-build.log
+          if-no-files-found: ignore
+          retention-days: 14
 
   unit:
     name: Unit tests (Heimdall + Bifrost)
