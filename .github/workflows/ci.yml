@@ -8,6 +8,45 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  preflight:
+    name: Phase 0 preflight (runtime + frontend build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Capture runtime versions
+        run: |
+          git status --short --branch
+          git rev-parse HEAD
+          java -version
+          python --version
+          node --version
+          npm --version
+          docker --version
+
+      - name: Verify frontend install and build contract
+        working-directory: bifrost/frontend
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
   unit:
     name: Unit tests (Heimdall + Bifrost)
     runs-on: ubuntu-latest
