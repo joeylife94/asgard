@@ -8,21 +8,21 @@
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 0 — Baseline Truth
-- **Current Batch**: P0-B1 — Repository Preflight
-- **Batch Result**: BLOCKED
+- **Current Batch**: P0-B1 — Repository Preflight / Focused CI Repair
+- **Batch Result**: IN PROGRESS
 - **Status**: IN PROGRESS
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Original code baseline**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **Observed main before this checkpoint update**: `52af70296dcce14ee51aa3a5a446306e817865de`
+- **Phase 0 execution-enabling merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd` (PR #3)
 - **Updated**: 2026-08-19
-- **Final Gate**: Human Review Required
+- **Final v1.0 Gate**: **Human Review Required**
 
 ---
 
 # 1. Product Definition
 
-**기업 로그/운영 데이터를 Local LLM 또는 Cloud LLM으로 선택적으로 분석하고, Kafka 기반 비동기 Job과 장애 복구·관측 기능을 제공하는 Hybrid AI Operations Platform.**
+**Asgard는 기업 로그/운영 데이터를 Local LLM 또는 Cloud LLM으로 선택적으로 분석하고, Kafka 기반 비동기 Job과 장애 복구·관측 기능을 제공하는 Hybrid AI Operations Platform이다.**
 
 ```text
 Input → Heimdall → Analysis Job → Kafka → Bifrost
@@ -51,10 +51,10 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - 재현 가능한 실행
 
 ## Done Enough To Show
-- Fresh clone PASS
+- Fresh clone / CI-equivalent reproducible build evidence
 - Real-model E2E PASS
 - Failure → Recovery PASS
-- CI green
+- Relevant CI green for bounded release slice
 - Runtime / Grafana screenshots
 - README ↔ Evidence 일치
 - 2~3분 Demo
@@ -73,28 +73,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 3. Current State
-
-| Area | Level | Judgment |
-|---|---:|---|
-| Architecture | 8/10 | Strong |
-| Spring Backend | 8/10 | Core operator API surface exists; runtime proof pending |
-| Kafka Control Plane | 8/10 | Strong; runtime proof pending |
-| AI Routing | 6~7/10 | Runtime proof 필요 |
-| DLQ / Redrive | 7~8/10 | API/audit surface verified statically; runtime demo pending |
-| Docker Infra | 7/10 | Repro check 필요 |
-| Observability | 6~7/10 | Startup Grafana URL corrected; live evidence 필요 |
-| Frontend | 3/10 | **BROKEN STATICALLY**: tracked Vite entry/source tree absent |
-| CI/CD | 6/10 | Java 21 aligned; Phase 0 executable preflight added; run result pending |
-| E2E Reproducibility | 5~6/10 | Real model run 필요 |
-| Documentation Truth | 4.5/10 | Grafana README drift + frontend docs/source drift |
-| Wishket Proof | 5~6/10 | NOT READY |
-
-**Current Summary:** static inventory is sufficient. Phase 0 now prioritizes GitHub-visible execution evidence. Frontend/default build remains BROKEN STATICALLY until runtime confirms or repairs it in an authorized later batch.
-
----
-
-# 4. Frozen v1.0 Scope
+# 3. Frozen v1.0 Scope
 
 ## CORE — Must Pass
 - Heimdall / Bifrost
@@ -126,11 +105,11 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 5. Required Use Cases
+# 4. Required Use Cases
 
 | UC | Goal | PASS 기준 |
 |---|---|---|
-| UC-01 Startup | 제3자 실행 | clone → config → core services healthy |
+| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy |
 | UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED |
@@ -138,218 +117,197 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 6. Phase 0 — Baseline Truth
+# 5. Phase 0 — Authoritative Executed Baseline
 
-## Acceptance Criteria
-- [ ] Local working tree / local branch / local↔remote sync — **BLOCKED in current external environment**
-- [x] Remote HEAD / branch state
-- [x] Secret-risk static check
-- [x] Large-file static check
-- [ ] Installed runtime prerequisites — **EXECUTABLE VIA CI PREFLIGHT; result pending**
-- [ ] Clean build — **BROKEN STATICALLY at Frontend step; runtime confirmation pending**
-- [ ] Heimdall tests — **CI configured; run result pending**
-- [ ] Bifrost tests — **CI configured; run result pending**
-- [ ] Frontend build — **CI PREFLIGHT CONFIGURED; expected failure must be proven by run evidence**
-- [ ] Compose startup — **BLOCKED**
-- [ ] Current E2E smoke — **BLOCKED**
-- [ ] Local / Cloud AI runtime path — **BLOCKED**
-- [x] CI static audit
-- [x] CI Java 21 alignment / dependency fail-fast correction
-- [x] Unified test false-pass correction
-- [x] Startup Grafana host-port correction
-- [x] Frontend tracked-tree/failure-boundary audit
-- [x] Frontend repair slice frozen — **DESIGN ONLY; implementation not authorized in Phase 0**
-- [x] Phase 0 repo-native executable preflight added to primary CI
+## PR #3 — EXECUTED AND MERGED
 
-**Gate 0:** 거짓말 없는 Baseline 확보. Missing status / unavailable lookup is never PASS.
+PR #3 (`ci: retain Phase 0 preflight evidence`) was executed on GitHub-hosted Actions and merged to `main` as:
 
----
+`888f2c5694940fe42284466fb57a0b33b2ec73cd`
 
-# 7. Evidence Registry
+This closes the previous false assumption that Phase 0 had no GitHub-hosted execution evidence.
 
-| ID | Evidence | Status | Note |
-|---|---|---|---|
-| E-001 | Clean Build | **BROKEN STATICALLY** | default build reaches frontend; runtime confirmation pending |
-| E-002 | Heimdall Tests | PENDING | CI configured; execution result pending |
-| E-003 | Bifrost Tests | PENDING | CI configured; execution result pending |
-| E-004 | Frontend Build | **BROKEN STATICALLY** | no tracked `index.html` / `src/`; CI preflight now executes install/build |
-| E-005 | Real Local AI E2E | PENDING | runtime blocked |
-| E-006 | Local vs Cloud Routing | PENDING | runtime blocked |
-| E-007 | DLQ → Redrive → Success | PENDING | runtime blocked |
-| E-008 | Grafana Metrics | PENDING | runtime blocked |
-| E-009 | GitHub Actions Green | PENDING | no green run/check evidence |
-| E-010 | Actual Benchmark | PENDING | published numbers unsupported until rerun |
-| E-011 | Final Demo | PENDING | |
-| E-012 | HP AI Server Run | PENDING | |
-| E-013 | Remote branch state | VERIFIED | `main` inspected; branch unprotected, no required status checks |
-| E-014 | Runtime declarations | VERIFIED | Java 21 toolchain, Gradle 8.5, Python >=3.8 |
-| E-015 | Primary CI correction | VERIFIED STATICALLY | primary CI JDK 21; Bifrost install fail-fast |
-| E-016 | Frontend test contract | VERIFIED | build script exists; test script absent |
-| E-017 | README claim risk | VERIFIED | unsupported production/compliance/performance claims identified |
-| E-018 | README ↔ Compose Grafana drift | VERIFIED | Compose `3001:3000`; README still has three host-facing `3000` values |
-| E-019 | gRPC caveat | VERIFIED | starter exists; protobuf generation config commented out |
-| E-020 | Secondary CI correction | VERIFIED STATICALLY | secondary CI Java setup JDK 21 |
-| E-021 | Unified frontend test truth correction | VERIFIED STATICALLY | no false all-pass summary |
-| E-022 | README Grafana exact-location audit | VERIFIED STATICALLY | three corrections required |
-| E-023 | Startup Grafana correction | VERIFIED STATICALLY | startup script prints `localhost:3001` |
-| E-024 | README infra port audit | VERIFIED STATICALLY | Grafana is remaining infra port drift |
-| E-025 | Commit combined status lookup | VERIFIED | empty status list = absence of evidence, not green |
-| E-026 | Fresh clone blocker reproduction | VERIFIED | external execution environment could not resolve `github.com` |
-| E-027 | README mutation safety | VERIFIED | connector existing-file mutation is whole-file replacement |
-| E-028 | Workflow lookup limitation | VERIFIED | available commit workflow lookup cannot prove push-CI success |
-| E-029 | Frontend tracked-tree contract | VERIFIED STATICALLY | no tracked Vite entry/source tree |
-| E-030 | Unified build/startup failure boundary | VERIFIED STATICALLY | default build reaches frontend; startup banner lacks health proof |
-| E-031 | Minimal frontend repair slice | VERIFIED STATICALLY | frozen 4-file boot shell; not active |
-| E-032 | Core operator API inventory | VERIFIED STATICALLY | source-level only; runtime behavior pending |
-| E-033 | Phase 0 executable CI preflight | VERIFIED STATICALLY | commit `52af702...` adds checkout + JDK21/Python3.11/Node20/runtime capture + frontend `npm install`/`npm run build` |
-| E-034 | Preflight-trigger commit status lookup | UNVERIFIED EXECUTION | combined statuses empty; no GitHub Actions run/check result available through current lookup |
+### Proven by PR #3 execution
+- [x] GitHub-hosted execution path exists and runs repository workflows.
+- [x] Heimdall unit tests passed in the PR-visible primary CI unit job.
+- [x] Frontend dependency installation reached the Vite build boundary.
+- [x] Frontend build failed because `bifrost/frontend/index.html` is absent.
+- [x] Bifrost test collection exposed missing `Dict` / `Any` typing imports as a concrete scope-relevant failure.
+- [x] Secondary Heimdall Build & Test exposed broad pre-existing checkstyle debt.
+
+### Interpretation rules
+- The missing frontend entrypoint is a **separate frozen Core repair boundary**. Do not hide it by disabling the build.
+- The Bifrost `Dict` / `Any` collection failure is a **focused Phase 0 repair candidate** because it blocks executable unit evidence.
+- Broad Heimdall checkstyle debt is **pre-existing** and must not be mass-fixed merely to manufacture a green pipeline.
+- A RED workflow is not automatically a blocker for a bounded PR if the intended acceptance is green and the remaining RED is demonstrably unrelated/pre-existing or belongs to another frozen repair boundary.
 
 ---
 
-# 8. Execution-First Baseline Decisions
+# 6. Current Focus — PR #4 Bifrost Typing Slice
 
-1. No additional endpoint inventories, frontend redesign notes, or repeated README audits unless a new contradiction changes execution decisions.
-2. `.github/workflows/ci.yml` now has a `preflight` job that makes two Phase 0 criteria falsifiable on GitHub-hosted Ubuntu:
-   - runtime versions: Git/Java/Python/Node/npm/Docker
-   - frontend dependency install and Vite build
-3. Primary unit job independently executes Heimdall and Bifrost tests; preflight failure does not suppress the unit job.
-4. Frontend repair remains unauthorized while P0-B1 is active.
-5. Missing commit status is not CI evidence. Actual workflow/job/check result is required before promotion.
-6. If CI result cannot be observed with available tooling, do not manufacture more static work; record the exact observation prerequisite and stop that loop.
+## Supervisor-observed exact head
+`422a664961e054102e042f0e96a70aabacf02ba5`
+
+## Executed evidence already observed
+- Primary `CI` run `32226966755`
+  - **Heimdall/Bifrost unit job: GREEN**
+  - **Frontend preflight: RED** at the expected missing-entrypoint boundary
+- `CI/CD Pipeline` run `32226965403`
+  - **Bifrost: GREEN**
+  - **Heimdall Build & Test: RED**
+
+## Required decision for this slice
+1. Inspect the first concrete failing Heimdall build step/log from PR #4 exact head.
+2. Classify it as either:
+   - **pre-existing broad checkstyle debt**, or
+   - **new scope-relevant regression introduced by PR #4**.
+3. If pre-existing/unrelated and PR #4's Bifrost typing acceptance is proven, do **not** mass-fix Heimdall style debt.
+4. Resolve only remaining scope-safe review/diff issues.
+5. Merge PR #4 with an **expected-head guard** when bounded acceptance is satisfied and no unresolved review/security/human-decision blocker remains.
+6. Update this MASTER on `main` with the resulting main SHA and evidence.
 
 ---
 
-# 9. Frontend Contract — BROKEN STATICALLY
+# 7. Frontend Contract — EXECUTED FAILURE, REPAIR FROZEN
 
-- `package.json`: `dev = vite`, `build = vite build`
-- no tracked root `index.html`
-- no tracked `src/`
-- default unified build reaches frontend
-- startup checks package existence, not frontend health
+PR #3 proved the frontend installation reaches Vite build and fails because the tracked frontend lacks `index.html`.
 
-## Frozen Later Repair — NOT ACTIVE
-Minimum file set:
+Known tracked-tree gap:
+- no `bifrost/frontend/index.html`
+- no tracked `bifrost/frontend/src/` boot tree sufficient for Vite startup
+
+## Frozen next repair batch — not active until Bifrost slice is resolved
+Minimum file set only:
 - `bifrost/frontend/index.html`
 - `bifrost/frontend/src/main.jsx`
 - `bifrost/frontend/src/App.jsx`
 - `bifrost/frontend/src/index.css`
 
-Runtime acceptance after authorization:
+### Allowed scope
+- boot shell only
+- no fake metrics
+- no fake jobs
+- no API feature expansion
+- no design-system work
+
+### Required runtime acceptance
 - [ ] `npm install`
 - [ ] `npm run build` exit 0
 - [ ] `npm run dev` root reachable
-- [ ] default `build-all.ps1` passes frontend step
+- [ ] default repository build path passes frontend step
 
 ---
 
-# 10. README / Claim Debt
+# 8. Evidence Registry
 
-Known drift: Compose publishes Grafana as `3001:3000`; README still has three host-facing `3000` entries.
-
-Do not publish as fact until measured/verified:
-- `production-ready`
-- `GDPR-compliant`
-- `80%+ test coverage`
-- `10,000+ req/s`
-- `50K+ Kafka msg/s`
-- `70% MTTR reduction`
-- `60% cost reduction`
-- `40-60% CI/CD reduction`
-- Real Local/Cloud routing behavior
-- Runtime gRPC flow
+| ID | Evidence | Status | Note |
+|---|---|---|---|
+| E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 executed Actions successfully enough to expose concrete failures |
+| E-002 | PR #3 merge | VERIFIED | main merge SHA `888f2c5694940fe42284466fb57a0b33b2ec73cd` |
+| E-003 | Heimdall primary unit tests | VERIFIED ON PR #3 | passed |
+| E-004 | Frontend Vite build | FAILED EXECUTED | missing `bifrost/frontend/index.html` |
+| E-005 | Bifrost collection | FAILED EXECUTED ON PR #3 | missing `Dict` / `Any` imports |
+| E-006 | Heimdall secondary build/checkstyle | FAILED EXECUTED | broad pre-existing checkstyle debt; no mass-fix authorization |
+| E-007 | PR #4 primary unit job | VERIFIED GREEN | run `32226966755` |
+| E-008 | PR #4 frontend preflight | VERIFIED RED | expected frozen frontend boundary |
+| E-009 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32226965403` |
+| E-010 | PR #4 secondary Heimdall | RED — CLASSIFICATION REQUIRED | inspect first concrete failing step/log |
+| E-011 | Real Local AI E2E | PENDING | |
+| E-012 | Local vs Cloud Routing | PENDING | |
+| E-013 | DLQ → Redrive → Success | PENDING | |
+| E-014 | Grafana live metrics | PENDING | |
+| E-015 | Final Demo | PENDING | |
+| E-016 | HP AI Server reference run | PENDING | |
 
 ---
 
-# 11. Known Risks
+# 9. Known Debt / Risks
 
-| ID | Risk | Mitigation |
+| ID | Risk | Required handling |
 |---|---|---|
-| R-001 | README overclaim | publish evidence-backed claims only |
-| R-002 | CI runtime truth not observable yet | obtain actual Actions run/job/check evidence |
-| R-003 | Frontend source/entrypoint absent | frozen repair only after Phase 0 authorization changes |
-| R-004 | Fallback-only E2E | Real-model mandatory |
-| R-005 | Scope explosion | Frozen Scope |
-| R-006 | Infra overbuild | Single-node PoC 종료 |
-| R-007 | Docs/config drift | Evidence-backed docs |
-| R-008 | External checkout DNS/runtime unavailable | use GitHub-hosted CI where observable; otherwise require accessible runner |
-| R-009 | Connector whole-file replacement | avoid unsafe partial-document mutations |
-| R-010 | Startup banner can overstate readiness | require health evidence |
-| R-011 | Missing status/check | missing ≠ PASS |
-| R-012 | Workflow lookup limitation | do not infer push-CI outcome |
-| R-013 | Default build reaches broken frontend | runtime-confirm then repair in authorized batch |
+| R-001 | Frontend entrypoint absent | repair only in frozen 4-file boot-shell batch |
+| R-002 | Broad Heimdall checkstyle debt | classify as pre-existing; do not mass-fix in focused slices |
+| R-003 | README overclaim | publish evidence-backed claims only |
+| R-004 | Fallback-only E2E risk | real-model evidence mandatory |
+| R-005 | Scope explosion | keep Frozen Scope |
+| R-006 | Missing workflow status | missing ≠ PASS/FAIL; prefer PR-visible exact-head execution |
+| R-007 | Docs/config drift | repair only when it changes execution truth |
+
+Known README debt retained for later proof-hardening:
+- Grafana host-facing port drift (`3000` vs Compose `3001`)
+- unsupported production/compliance/performance claims
 
 ---
 
-# 12. Work Rules
+# 10. PR Lifecycle Rule
 
-Every iteration:
-1. `ASGARD_MASTER.md` first-read
-2. Current Phase / Batch 확인
-3. Repo / CI state inspection
-4. Next smallest non-redundant executable step
-5. Actual verification when available
-6. Evidence
-7. PASS / FAIL / BLOCKED
-8. MASTER update only when authoritative state materially changes
-9. One exact Next task
+For every focused PR:
+1. Read this MASTER first.
+2. Inspect active Phase/Batch and PR exact head.
+3. Prefer pull_request-visible workflows/checks.
+4. If RED, inspect the first concrete failing job/step/log.
+5. Fix only failures caused by or blocking the active bounded slice.
+6. Do not mass-fix unrelated/pre-existing debt to manufacture green.
+7. If intended acceptance is GREEN, diff is in scope, and no unresolved review/security/human-decision blocker remains, merge with `expected_head_sha`.
+8. Update MASTER on `main` with executed evidence and resulting main SHA.
+9. Continue to the next smallest acceptance gap.
 
-Required completion report:
+**Ordinary bounded intermediate PR merges do not require human approval.**
+
+**Human Review remains the FINAL v1.0 gate.**
+
+---
+
+# 11. Work Rules
+
+Required completion report every iteration:
 - **What Changed**
 - **What Was Executed**
 - **What Was Not Verified**
 - **Remaining Risks**
+- **Result**: PASS / FAIL / BLOCKED / IN PROGRESS
+- **Next**: one exact task
 
 Rules:
-- Agent self-report ≠ final evidence
-- Evidence 없는 완료 금지
+- Agent self-report ≠ proof
+- Executed evidence beats static inference
 - Missing CI status ≠ PASS
-- 동일 blocker 반복 금지
-- Phase 0 implementation prohibition 유지
-- Experimental scope 금지
-- Human Review가 최종 Gate
+- Same blocker loop prohibited
+- Experimental scope prohibited before Core completion
+- MASTER must be synchronized before new product change
 
 ---
 
-# 13. Current Checkpoint — P0-B1
+# 12. Current Checkpoint
 
 ## Result
-**BLOCKED** — Gate 0를 닫을 actual execution evidence가 아직 부족하다. Frontend/default build는 **BROKEN STATICALLY**, CI preflight execution result는 **UNVERIFIED**.
+**IN PROGRESS** — Phase 0 execution is no longer globally blocked. PR #3 proved GitHub-hosted execution. The active bounded decision is PR #4 Bifrost typing slice classification/merge readiness.
 
 ## What Changed
-- `.github/workflows/ci.yml`
-  - `Phase 0 preflight (runtime + frontend build)` job 추가
-  - JDK 21 / Python 3.11 / Node 20 setup
-  - Git/Java/Python/Node/npm/Docker version capture
-  - `bifrost/frontend`에서 `npm install --no-audit --no-fund` + `npm run build`
-- `ASGARD_MASTER.md`
-  - static-loop fallback 제거
-  - Phase 0를 execution-first 상태로 갱신
-  - E-033/E-034 추가
-- Application / frontend source / experimental code 변경 없음
+- Reconciled stale MASTER with already-executed PR #3 evidence.
+- Recorded PR #3 merge SHA `888f2c5694940fe42284466fb57a0b33b2ec73cd`.
+- Recorded executed frontend failure at missing `index.html` boundary.
+- Recorded executed Bifrost `Dict` / `Any` collection failure.
+- Recorded Heimdall broad checkstyle debt as pre-existing and out of scope for mass cleanup.
+- Recorded supervisor-observed PR #4 exact-head workflow evidence.
 
-## What Was Actually Executed
-- MASTER first-read
-- primary CI workflow inspection
-- repository update: CI preflight commit `52af70296dcce14ee51aa3a5a446306e817865de`
-- commit metadata/patch verification
-- combined commit status lookup: empty status list
-- direct generic Actions listing attempts were unsupported by the available GitHub fetch surface; no run result inferred
+## What Was Executed
+- Root MASTER first-read on main.
+- Main branch/merge SHA verification.
+- PR #3 merged-state verification.
+- PR #3 pull_request workflow-run verification.
 
-## What Was Not Verified
-- Actual GitHub Actions preflight run/job/check conclusion
-- Captured runtime version output
-- `npm install` / `npm run build` runtime result
-- Heimdall/Bifrost unit test runtime result
-- Fresh local clone / local↔remote sync
-- Compose/E2E / real AI / Grafana live metrics
-- Frontend dev-server reachability
+## What Was Not Verified Yet
+- PR #4 first failing Heimdall secondary build step/log classification in this synchronized ledger state.
+- PR #4 current exact head/review-thread state after any later branch changes.
+- Final PR #4 merge readiness.
+- Frontend repair runtime acceptance.
+- Compose/E2E/real AI/Grafana live evidence.
 
 ## Remaining Risks
-- CI configuration can be correct while the workflow still fails before reaching the intended step.
-- The expected frontend failure remains static until an actual CI/local command proves it.
-- Current connector status lookup does not expose a push Actions run/check result; empty statuses cannot be treated as execution evidence.
+- PR #4 may have moved from the supervisor-observed SHA.
+- PR #4 may contain an unresolved review/diff issue unrelated to Bifrost typing acceptance.
+- Frontend remains an executed failure and must be repaired in its own frozen batch.
 
-## Next — single task
-**Obtain the actual GitHub Actions workflow/job result for commit `52af70296dcce14ee51aa3a5a446306e817865de`; if the preflight failed, capture the failing step/log and promote the corresponding Phase 0 criterion from static suspicion to runtime evidence.**
-
-**Concrete prerequisite if unavailable:** a GitHub Actions run/check lookup or GitHub-accessible execution runner that exposes command output. Until that exists, do not add more static inventory or implementation in P0-B1.
+## NEXT
+**Re-read this committed MASTER, then inspect PR #4 current exact head, reviews, diff, and exact-head workflow evidence. Classify the first concrete failing Heimdall Build & Test step. If remaining RED is pre-existing/unrelated and the Bifrost slice is proven, resolve only scope-safe review issues and merge PR #4 with an expected-head guard.**
