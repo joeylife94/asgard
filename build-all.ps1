@@ -73,11 +73,12 @@ Invoke-BuildStep -Name "Heimdall" -Script {
     
     # Build command
     $gradleCmd = ".\gradlew.bat"
-    $buildArgs = @(":heimdall:clean", ":heimdall:build")
-    
     if ($SkipTests) {
-        $buildArgs += "-x", "test"
-        Write-Host "   ⚠️  Skipping tests" -ForegroundColor Yellow
+        $buildArgs = @(":heimdall:clean", ":heimdall:assemble")
+        Write-Host "   ⚠️  Skipping tests and verification gates; assembling artifact only" -ForegroundColor Yellow
+    }
+    else {
+        $buildArgs = @(":heimdall:clean", ":heimdall:build")
     }
     
     if (-not $Verbose) {
