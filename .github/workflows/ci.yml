@@ -65,6 +65,101 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  uc01_frontend_dev:
+    name: UC-01 frontend dev root reachability
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: bifrost/frontend
+        run: npm install --no-audit --no-fund
+
+      - name: Start dev server and verify root
+        working-directory: bifrost/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -- --host 127.0.0.1 > p0-b3-vite-dev.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ -o p0-b3-root.html; then
+              echo "Frontend root reachable on attempt $attempt"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "Frontend root did not become reachable"
+          cat p0-b3-vite-dev.log
+          exit 1
+
+      - name: Upload UC-01 frontend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b3-frontend-dev-evidence
+          path: |
+            bifrost/frontend/p0-b3-vite-dev.log
+            bifrost/frontend/p0-b3-root.html
+          if-no-files-found: ignore
+          retention-days: 14
+
+  uc01_default_build:
+    name: UC-01 default build path (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Execute default repository build path
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          .\build-all.ps1 -SkipTests *>&1 | Tee-Object -FilePath p0-b3-build-all.log
+          $buildExit = $LASTEXITCODE
+          $frontendReached = Select-String -Path p0-b3-build-all.log -Pattern 'Frontend build completed successfully' -Quiet
+          if (-not $frontendReached) {
+            Write-Error 'Default build path did not reach a successful frontend build step.'
+            exit 1
+          }
+          if ($buildExit -ne 0) {
+            exit $buildExit
+          }
+
+      - name: Upload UC-01 default-build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b3-default-build-evidence
+          path: p0-b3-build-all.log
+          if-no-files-found: ignore
+          retention-days: 14
+
   unit:
     name: Unit tests (Heimdall + Bifrost)
     runs-on: ubuntu-latest
