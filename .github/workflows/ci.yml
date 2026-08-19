@@ -199,7 +199,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose up -d postgres zookeeper kafka redis prometheus grafana
+          docker compose up -d postgres zookeeper kafka redis elasticsearch prometheus grafana
           docker compose ps | tee p0-b4-compose-ps.txt
 
           for attempt in {1..30}; do
@@ -233,6 +233,18 @@ jobs:
             fi
             if [ "$attempt" -eq 30 ]; then
               docker compose logs redis
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error http://127.0.0.1:9200/_cluster/health -o p0-b4-elasticsearch.json; then
+              echo "Elasticsearch reachable on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              docker compose logs elasticsearch
               exit 1
             fi
             sleep 2
