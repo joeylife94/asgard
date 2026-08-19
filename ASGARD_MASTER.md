@@ -11,16 +11,16 @@
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B3 — UC-01 Frontend Startup / Default Build Verification
 - **Batch Result**: IN PROGRESS
-- **Status**: EXECUTION PENDING ON PR #9
+- **Status**: PARTIAL EXECUTION VERIFIED; PR #9 STILL RUNNING
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Original code baseline**: `bca6567919cbcac3f9039268c09526b25179f370`
-- **PR #3 execution merge**: `888f2c5694940fe42284466fb57a0b33b2ec73cd`
-- **PR #4 bounded repair merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
-- **PR #7 frontend boot-shell merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
-- **Issue #8**: OPEN — P0-B3 UC-01 executable verification
-- **PR #9**: OPEN — `test: verify UC-01 frontend startup proof`
-- **PR #9 exact head at creation**: `1f50afc4ff2c4590178bfce14f250866339bd9e6`
+- **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
+- **P0-B2 merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
+- **Issue #8**: OPEN
+- **PR #9**: OPEN
+- **PR #9 exact head**: `1f50afc4ff2c4590178bfce14f250866339bd9e6`
+- **Primary CI run**: `32273762721`
+- **Secondary CI/CD run**: `32273762445`
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -41,45 +41,9 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 2. v1.0 Boundary
+# 2. Frozen v1.0 Boundary
 
-## Done Enough To Use
-- 실제 Local AI 분석
-- 선택적 Cloud AI 분석
-- Kafka async Job
-- Persistence / Idempotency
-- DLQ / Redrive / Audit
-- Auth / Rate Limit
-- Minimal Dashboard
-- Prometheus / Grafana
-- 재현 가능한 실행
-
-## Done Enough To Show
-- reproducible build/runtime evidence
-- Real-model E2E PASS
-- Failure → Recovery PASS
-- relevant CI green for bounded slices
-- runtime / Grafana screenshots
-- README ↔ Evidence 일치
-- 2~3분 Demo
-
-## Explicit Non-Goals
-- Multi-tenancy 완성
-- HA / Multi-region
-- Kubernetes production
-- Autoscaling
-- Full RBAC / Enterprise Secret Manager
-- 실제 SLA/SLO 운영
-- Security certification
-- 법률적 GDPR 인증
-- 대형 Admin UI
-- 신규 AI 기능 대량 추가
-
----
-
-# 3. Frozen v1.0 Scope
-
-## CORE — Must Pass
+## Core Must Pass
 - Heimdall / Bifrost
 - PostgreSQL / Kafka
 - Local AI Provider
@@ -92,24 +56,20 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - Minimal React Dashboard
 - CI / E2E Demo
 
-## SUPPORTING — Keep only when used by Core
-- Circuit Breaker
-- Smart Cache
-- Quality Metrics
-- Redis / Elasticsearch / Tracing
-
-## EXPERIMENTAL — Does not block v1.0
-- Feedback expansion
-- A/B Testing expansion
-- Advanced Routing expansion
-- Additional Providers
-- Interview-specific features
-
-**Rule:** Experimental expansion is prohibited before Core completion.
+## Explicit Non-Goals
+- Multi-tenancy completion
+- HA / multi-region
+- Kubernetes production
+- autoscaling
+- full RBAC / enterprise secret manager
+- production SLA/SLO
+- security certification / legal GDPR certification
+- large admin UI
+- experimental feature expansion before Core completion
 
 ---
 
-# 4. Required Use Cases
+# 3. Required Use Cases
 
 | UC | Goal | PASS 기준 |
 |---|---|---|
@@ -121,114 +81,86 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 5. Closed Phase 0 Slices
+# 4. Closed Phase 0 Evidence
 
 ## P0-B1 — PASS / MERGED
-
-PR #4:
-- final exact head: `1d301377a5951962cb3afd4e653a1975b8a2267a`
-- merged main SHA: `fa3f129783387fbeafae537e8a22b4629faf6d42`
-
-Executed evidence:
-- primary CI `32262136812`: Heimdall + Bifrost unit job GREEN.
-- secondary CI/CD `32262136715`: Bifrost install/lint/pytest/coverage GREEN.
+- PR #4 merged at `fa3f129783387fbeafae537e8a22b4629faf6d42`.
+- primary Heimdall + Bifrost unit job GREEN.
+- secondary Bifrost install/lint/pytest/coverage GREEN.
 - dependency security GREEN.
-- secondary Heimdall RED is pre-existing `:heimdall:checkstyleMain`: 41 files / 109 warnings / 2 info.
-
-Bounded fixes:
-- restored missing `Any` / `Dict` Bifrost imports.
-- secondary CI installs Bifrost with `pip install -e .`.
-- accidental feedback-lane documentation regression removed before merge.
+- secondary Heimdall RED classified as pre-existing `:heimdall:checkstyleMain`: 41 files / 109 warnings / 2 info.
+- bounded Bifrost typing imports and editable-install CI correction merged.
 
 ## P0-B2 — PASS / MERGED
-
-Issue #6: CLOSED. PR #7: MERGED.
-- final exact head: `4c5404642cb68594538396f00d89558fea7c655f`
-- merged main SHA: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
-
-Merged scope:
-- `bifrost/frontend/index.html`
-- `bifrost/frontend/src/main.jsx`
-- `bifrost/frontend/src/App.jsx`
-- `bifrost/frontend/src/index.css`
-- bounded `.github/workflows/ci-cd.yml` install correction
-
-Executed evidence:
-- primary CI `32262906086`: SUCCESS.
-- secondary Frontend: install/build/artifact SUCCESS.
-- secondary Bifrost: SUCCESS.
-- dependency security: SUCCESS.
-- secondary Heimdall: same pre-existing checkstyle debt, not a PR #7 regression.
-
-Acceptance:
-- [x] frontend install executable
-- [x] frontend production build executable
-- [x] no fake operational data
-- [x] four-file product repair scope preserved
-- [ ] frontend `npm run dev` root reachability — carried to P0-B3
-- [ ] root default `build-all.ps1` frontend path — carried to P0-B3
+- Issue #6 CLOSED; PR #7 merged at `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`.
+- frontend boot tree restored with four product files only.
+- exact-head production frontend build GREEN.
+- secondary Bifrost and dependency security GREEN.
+- same pre-existing Heimdall checkstyle debt remained unrelated.
+- `npm run dev` root reachability and root `build-all.ps1` frontend-path execution intentionally carried forward as proof debt.
 
 ---
 
-# 6. Active Phase 0 Slice — P0-B3
+# 5. Active Phase 0 Slice — P0-B3
 
 ## Issue / PR
-- **Issue #8**: OPEN
-- **PR #9**: OPEN
+- **Issue #8**: `P0-B3: verify UC-01 frontend startup and default build path`
+- **PR #9**: `test: verify UC-01 frontend startup proof`
 - **Branch**: `agent/p0-b3-uc01-startup-proof`
-- **Exact head at creation**: `1f50afc4ff2c4590178bfce14f250866339bd9e6`
+- **Exact head**: `1f50afc4ff2c4590178bfce14f250866339bd9e6`
 
 ## Goal
-Close the smallest remaining UC-01 proof debt without product expansion:
-1. execute frontend dev-server `/` reachability;
-2. execute the repository default root build path without `-SkipFrontend` and prove whether it reaches a successful frontend build.
+Close only the two remaining frontend/startup proof debts from P0-B2:
+1. execute Vite dev-server root reachability;
+2. execute root `build-all.ps1 -SkipTests` without `-SkipFrontend` and determine whether the default path reaches a successful frontend build.
 
 ## Authorized Scope
-Only the minimum CI/proof harness required to execute those two checks.
+`.github/workflows/ci.yml` only, unless exact-head executed evidence exposes a concrete Issue #8-scoped defect.
 
-Current PR #9 change:
-- `.github/workflows/ci.yml` only.
-- Ubuntu job: install frontend deps → start Vite dev server → HTTP GET `/` → upload evidence.
-- Windows job: JDK 21 / Python 3.11 / Node 20 → execute `build-all.ps1 -SkipTests` without `-SkipFrontend` → require successful frontend build marker → upload evidence.
+## Current Exact-Head Evidence
+
+Primary CI run `32273762721`:
+- **UC-01 frontend dev root reachability: GREEN**.
+- frontend dependency install: success.
+- Vite dev server start: success.
+- HTTP GET `http://127.0.0.1:3000/`: success on attempt 2.
+- evidence artifact uploaded successfully (`p0-b3-frontend-dev-evidence`).
+- Phase 0 preflight frontend install/build: GREEN.
+- default Windows build-path job: still IN PROGRESS at last observation.
+- unit job: still IN PROGRESS at last observation.
+
+Secondary CI/CD run `32273762445`:
+- IN PROGRESS at last observation.
 
 ## Acceptance Criteria
-- [ ] `npm install` succeeds in `bifrost/frontend` under exact-head GitHub execution.
-- [ ] `npm run dev` starts and HTTP GET `/` succeeds.
-- [ ] root `build-all.ps1 -SkipTests` executes without `-SkipFrontend`.
+- [x] `npm install` succeeds in `bifrost/frontend` under exact-head GitHub execution.
+- [x] `npm run dev` starts successfully.
+- [x] HTTP GET `/` returns success under exact-head GitHub execution.
+- [ ] root `build-all.ps1 -SkipTests` execution result observed.
 - [ ] default build path reaches and completes frontend build step.
-- [x] no product UI expansion introduced by the proof harness.
-- [x] no Heimdall broad checkstyle cleanup added.
+- [x] no product UI expansion.
+- [x] no broad Heimdall cleanup.
 
-## Important Boundary
-If the Windows default build path stops before frontend because of the already-known Heimdall `checkstyleMain` debt, record that as executed default-path boundary evidence. **Do not broaden Issue #8 into mass checkstyle cleanup merely to manufacture green.**
+## Boundary Rule
+If the Windows default build path stops before frontend because of already-known Heimdall `checkstyleMain` debt, record that as executed root-build boundary evidence. Do **not** broaden Issue #8 into mass checkstyle cleanup merely to manufacture green.
 
-## Current Result
-
-**IN PROGRESS — exact-head PR execution not yet observed.**
+## Result
+**IN PROGRESS — E-016 is now verified; E-017 remains pending exact-head execution result.**
 
 ---
 
-# 7. Evidence Registry
+# 6. Evidence Registry
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
 | E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 |
-| E-002 | PR #3 merge | VERIFIED | `888f2c...` |
-| E-003 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 |
-| E-004 | PR #4 primary unit tests | VERIFIED GREEN | run `32262136812` |
-| E-005 | PR #4 secondary Bifrost | VERIFIED GREEN | run `32262136715` |
-| E-006 | Phase 0 runtime versions | VERIFIED | Java 21.0.12 / Python 3.11.16 / Node 20.20.2 / npm 10.8.2 / Docker 28.0.4 |
-| E-007 | Frontend pre-repair build | FAILED EXECUTED | missing `index.html` |
-| E-008 | Heimdall secondary build | VERIFIED RED / PRE-EXISTING | checkstyle debt |
-| E-009 | Issue #6 lifecycle | VERIFIED / CLOSED | issue-first lifecycle |
-| E-010 | PR #7 frontend repair | VERIFIED / MERGED | bounded boot shell |
-| E-011 | PR #7 primary CI | VERIFIED GREEN | run `32262906086` |
-| E-012 | PR #7 secondary Frontend | VERIFIED GREEN | run `32262906127` |
-| E-013 | PR #7 secondary Bifrost | VERIFIED GREEN | run `32262906127` |
-| E-014 | PR #7 dependency security | VERIFIED GREEN | run `32262906127` |
-| E-015 | PR #7 Heimdall failure classification | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
-| E-016 | Frontend dev-server root reachability | EXECUTION PENDING | Issue #8 / PR #9 |
-| E-017 | Root default build path | EXECUTION PENDING | Issue #8 / PR #9 |
+| E-002 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 |
+| E-003 | Phase 0 runtime versions | VERIFIED | Java 21 / Python 3.11 / Node 20 / npm 10 / Docker 28 |
+| E-004 | Heimdall secondary checkstyle debt | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
+| E-005 | P0-B2 frontend repair | VERIFIED / MERGED | PR #7 |
+| E-006 | P0-B2 frontend production build | VERIFIED GREEN | PR #7 |
+| E-016 | Frontend dev-server root reachability | VERIFIED GREEN | PR #9 run `32273762721`; root reachable attempt 2 |
+| E-017 | Root default build path | EXECUTION IN PROGRESS | PR #9 Windows job |
 | E-018 | Real Local AI E2E | PENDING | |
 | E-019 | Local vs Cloud Routing | PENDING | |
 | E-020 | DLQ → Redrive → Success | PENDING | |
@@ -238,55 +170,48 @@ If the Windows default build path stops before frontend because of the already-k
 
 ---
 
-# 8. Known Debt / Risks
+# 7. Known Debt / Risks
 
 | ID | Risk | Required handling |
 |---|---|---|
-| R-001 | P0-B3 exact-head execution pending | inspect PR-visible workflows before any merge |
-| R-002 | Root default build may stop at pre-existing Heimdall checkstyle | classify boundary; do not mass-fix outside a separately authorized gap |
-| R-003 | Broad Heimdall checkstyle debt | no unrelated mass-fix |
-| R-004 | README overclaim | publish evidence-backed claims only |
-| R-005 | Fallback-only E2E | real-model evidence mandatory |
-| R-006 | Scope explosion | keep Frozen Scope |
-| R-007 | Agent self-report without remote/executed proof | never treat as proof |
-
-Known later proof-hardening debt:
-- README Grafana port drift (`3000` vs Compose `3001`)
-- unsupported production/compliance/performance claims
+| R-001 | PR #9 Windows default-build result still pending | re-fetch exact-head job before any merge |
+| R-002 | root build may stop at pre-existing Heimdall checkstyle | classify boundary; no unrelated mass-fix |
+| R-003 | broad Heimdall checkstyle debt | separate future work only if MASTER authorizes |
+| R-004 | README overclaim / Grafana port drift | proof-hardening later |
+| R-005 | fallback-only E2E risk | real-model evidence mandatory |
+| R-006 | scope explosion | keep Frozen Scope |
+| R-007 | agent self-report without executed proof | never count as PASS |
 
 ---
 
-# 9. Work Item / PR Lifecycle
+# 8. Work Item / PR Lifecycle
 
 1. Read MASTER first.
 2. Active focused PR first.
-3. Otherwise search for one existing open Issue matching the exact next MASTER-authorized gap.
-4. If none exists, create exactly one bounded Issue before new implementation/proof work.
-5. Issue body: Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
+3. Otherwise find one existing Issue matching the next exact acceptance gap.
+4. If none exists, create one bounded Issue before new work.
+5. Issue requires Goal / Scope / Acceptance Criteria / Verification / Non-goals / Evidence Required.
 6. One active implementation Issue by default.
 7. CI/review corrections inside the active gap stay in the same Issue/PR.
-8. PR links Issue and records Changed / Actually Executed / Verified / Not Verified / Risks.
-9. RED → inspect first concrete failing evidence; fix only smallest active-slice defect.
-10. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
-11. Issue closes only after required verification + merged acceptance.
-12. Reconcile MASTER on `main` before selecting another gap.
-13. Re-evaluate Human Review/FREEZE before another Issue.
+8. RED → first concrete failing evidence → smallest in-scope fix only.
+9. GREEN bounded acceptance + clean review/security state → merge with expected-head guard.
+10. Issue closes after executed acceptance + merge.
+11. Reconcile MASTER on `main` before another Issue.
+12. Re-evaluate Human Review/FREEZE before another Issue.
 
-**Ordinary bounded intermediate PR merges do not require human approval.**
-
-**Human Review remains the FINAL v1.0 gate.**
+**Ordinary bounded intermediate PR merges do not require human approval. Human Review remains the FINAL v1.0 gate.**
 
 ---
 
-# 10. Required Completion Report
+# 9. Required Completion Report
 
 Every iteration records:
-- **What Changed**
-- **What Was Executed**
-- **What Was Not Verified**
-- **Remaining Risks**
-- **Result**
-- **Next**
+- What Changed
+- What Was Executed
+- What Was Not Verified
+- Remaining Risks
+- Result
+- Next
 
 Rules:
 - Agent self-report ≠ proof
@@ -298,47 +223,45 @@ Rules:
 
 ---
 
-# 11. Current Checkpoint
+# 10. Current Checkpoint
 
 ## Result
-
 **P0-B1 PASS / P0-B2 PASS / P0-B3 IN PROGRESS.**
 
-Issue #8 and PR #9 now exist for the exact two proof debts intentionally left open after P0-B2. No product implementation was added in this slice; only executable verification was added.
+The frontend dev-server proof debt is now closed with executed evidence. Root default build-path evidence remains active on the same PR.
 
 ## What Changed
-- Re-read current merged MASTER and confirmed P0-B2 PASS.
-- Searched current open Issues; no exact UC-01 proof Issue existed.
-- Created Issue #8 before new work.
+- Read authoritative MASTER first.
+- Confirmed no matching existing open UC-01 Issue; created Issue #8.
 - Created branch `agent/p0-b3-uc01-startup-proof`.
-- Added bounded PR-visible CI proof for frontend dev root reachability and Windows root build path.
+- Added bounded GitHub-hosted UC-01 proof jobs only.
 - Opened PR #9 linked with `Closes #8`.
-- Reconciled MASTER on `main` to P0-B3 IN PROGRESS.
+- Reconciled MASTER to P0-B3.
+- Observed PR #9 exact-head primary CI and captured concrete successful frontend dev-server evidence.
 
 ## What Was Executed
-- Current repository MASTER read.
-- Open-Issue search.
-- Issue #8 creation.
-- Branch creation.
-- CI proof-harness commit `1f50afc4ff2c4590178bfce14f250866339bd9e6`.
-- PR #9 creation.
-- PR metadata re-fetch confirming exact head `1f50afc4...` and mergeable state.
+- exact-head PR #9 workflow lookup.
+- primary workflow job inspection.
+- concrete `UC-01 frontend dev root reachability` log inspection.
+- `npm install` succeeded.
+- Vite dev server launched.
+- first curl failed while server initialized; second curl succeeded against `127.0.0.1:3000/`.
+- evidence artifact upload succeeded.
 
 ## What Was Not Verified
-- PR #9 exact-head workflow result.
-- `npm run dev` root reachability.
-- default root `build-all.ps1` reaching frontend.
-- Compose startup / full UC-01 closure.
+- final Windows default-build result.
+- final primary unit-job result.
+- final secondary CI/CD result.
+- Compose/full-stack startup / UC-01 full service-health closure.
 - real Local AI E2E.
 - Local vs Cloud routing execution.
-- DLQ → Redrive → Success execution.
+- DLQ → Redrive → Success.
 - Grafana live evidence.
 
 ## Remaining Risks
-- The Windows default build path may fail before frontend at already-known Heimdall checkstyle debt.
-- A workflow defect may appear in the newly added proof jobs; only concrete active-slice defects may be fixed.
-- UC-01 full service-health closure remains outside this small proof slice.
+- root build may stop before frontend at already-classified Heimdall checkstyle debt.
+- newly added Windows proof harness may expose an Issue #8-scoped workflow defect.
+- UC-01 full service-health closure remains outside this bounded slice.
 
 ## NEXT
-
-**Fetch current PR #9 exact head and PR-visible workflow/review state. If RED, inspect the first concrete failing P0-B3 step and fix only the smallest Issue #8-scoped defect. If frontend dev reachability is GREEN and the default build path stops only at already-classified unrelated Heimdall checkstyle debt, record that distinction and evaluate whether P0-B3 can close as partial executed proof or whether the root build contract itself requires a separately authorized repair. Do not broaden Issue #8 into product UI or broad checkstyle cleanup.**
+**Re-fetch current PR #9 exact head and workflow/review state. Inspect the Windows `UC-01 default build path` result first. If RED, inspect the concrete failing step/log and distinguish an Issue #8 proof-harness defect from the pre-existing Heimdall checkstyle boundary. Fix only a concrete Issue #8-scoped defect. If bounded acceptance is satisfied and review/security state is clean, merge with expected-head guard, close Issue #8, and reconcile MASTER before selecting another gap.**
