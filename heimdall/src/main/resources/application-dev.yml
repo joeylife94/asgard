@@ -12,6 +12,12 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
 grpc:
   server:
     port: ${GRPC_PORT:9091}
