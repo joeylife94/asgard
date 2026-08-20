@@ -5,6 +5,12 @@ on:
     branches: [ main ]
     paths:
       - '.github/workflows/p1-b1-local-ai.yml'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'gradle/**'
+      - 'scripts/**'
       - 'heimdall/**'
       - 'bifrost/**'
       - 'docker-compose.yml'
