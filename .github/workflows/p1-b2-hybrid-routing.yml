@@ -1,0 +1,199 @@
+name: P1-B2 Hybrid Routing Proof
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/p1-b2-hybrid-routing.yml'
+      - 'bifrost/**'
+  workflow_dispatch: {}
+
+jobs:
+  uc03_hybrid_routing:
+    name: UC-03 real LOCAL and CLOUD routing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      BIFROST_BEDROCK_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+      BIFROST_BEDROCK_MODEL: ${{ secrets.BIFROST_BEDROCK_MODEL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Bifrost with Bedrock capability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r bifrost/requirements.txt
+          python -m pip install 'boto3>=1.34.0'
+          python -m pip install -e bifrost
+
+      - name: Start real Ollama model
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name p1-b2-ollama -p 11434:11434 ollama/ollama:latest
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b2-ollama-tags-before.json; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs p1-b2-ollama
+              exit 1
+            fi
+            sleep 2
+          done
+          docker exec p1-b2-ollama ollama pull smollm:135m | tee p1-b2-ollama-pull.log
+          curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b2-ollama-tags-after.json
+          grep -q 'smollm:135m' p1-b2-ollama-tags-after.json
+
+      - name: Record deterministic routing decisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from bifrost.router import get_router
+
+          local_input = 'ERROR login failed user email alice@example.com password=SuperSecret123 request=p1-b2-sensitive'
+          cloud_input = 'INFO scheduler completed nightly batch successfully duration_ms=18 job=p1-b2-general'
+          router = get_router()
+          local = router.route(local_input)
+          cloud = router.route(cloud_input)
+          evidence = {
+              'local_input': local_input,
+              'local_decision': local,
+              'cloud_input': cloud_input,
+              'cloud_decision': cloud,
+          }
+          with open('p1-b2-routing-decisions.json', 'w', encoding='utf-8') as f:
+              json.dump(evidence, f, indent=2, ensure_ascii=False)
+          assert local['track'] == 'local', local
+          assert local['sensitivity'] in ('high', 'medium'), local
+          assert cloud['track'] == 'cloud', cloud
+          assert cloud['sensitivity'] == 'low', cloud
+          PY
+
+      - name: Start Bifrost API
+        shell: bash
+        env:
+          BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+        run: |
+          set -euo pipefail
+          python -m bifrost.main serve > p1-b2-bifrost.log 2>&1 &
+          echo $! > p1-b2-bifrost.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8000/health > p1-b2-bifrost-health.json; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat p1-b2-bifrost.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Execute real LOCAL routed analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > p1-b2-local-request.json <<'JSON'
+          {
+            "log_content": "ERROR login failed user email alice@example.com password=SuperSecret123 request=p1-b2-sensitive",
+            "model": "smollm:135m",
+            "service_name": "auth-service",
+            "environment": "proof",
+            "tags": ["uc-03", "local"]
+          }
+          JSON
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            --data @p1-b2-local-request.json \
+            http://127.0.0.1:8000/analyze > p1-b2-local-response.json
+          python - <<'PY'
+          import json
+          r = json.load(open('p1-b2-local-response.json'))
+          assert r['model'] == 'smollm:135m', r
+          assert r['response'].strip(), r
+          assert r['model'] != 'fallback', r
+          PY
+
+      - name: Verify real CLOUD prerequisite
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+            printf '%s\n' \
+              'UC-03 CLOUD BLOCKED: GitHub Actions AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY secrets are not available to this PR run.' \
+              'Required prerequisite: repository Actions credentials with bedrock:InvokeModel permission for the configured model/region.' \
+              > p1-b2-cloud-prerequisite.txt
+            cat p1-b2-cloud-prerequisite.txt
+            exit 2
+          fi
+          : "${AWS_DEFAULT_REGION:=us-east-1}"
+          : "${BIFROST_BEDROCK_REGION:=$AWS_DEFAULT_REGION}"
+          : "${BIFROST_BEDROCK_MODEL:=anthropic.claude-3-sonnet-20240229-v1:0}"
+          export AWS_DEFAULT_REGION BIFROST_BEDROCK_REGION BIFROST_BEDROCK_MODEL
+          python - <<'PY'
+          import json, os
+          evidence = {
+              'aws_region': os.environ['BIFROST_BEDROCK_REGION'],
+              'bedrock_model': os.environ['BIFROST_BEDROCK_MODEL'],
+              'credential_presence': 'present',
+          }
+          json.dump(evidence, open('p1-b2-cloud-config.json', 'w'), indent=2)
+          PY
+
+      - name: Execute real CLOUD routed analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODEL="${BIFROST_BEDROCK_MODEL:-anthropic.claude-3-sonnet-20240229-v1:0}"
+          cat > p1-b2-cloud-request.json <<JSON
+          {
+            "log_content": "INFO scheduler completed nightly batch successfully duration_ms=18 job=p1-b2-general",
+            "model": "$MODEL",
+            "service_name": "scheduler",
+            "environment": "proof",
+            "tags": ["uc-03", "cloud"]
+          }
+          JSON
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            --data @p1-b2-cloud-request.json \
+            http://127.0.0.1:8000/analyze > p1-b2-cloud-response.json
+          python - <<'PY'
+          import json
+          r = json.load(open('p1-b2-cloud-response.json'))
+          assert r['model'] != 'fallback', r
+          assert r['response'].strip(), r
+          PY
+
+      - name: Upload UC-03 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-b2-hybrid-routing-evidence
+          path: |
+            p1-b2-routing-decisions.json
+            p1-b2-ollama-tags-after.json
+            p1-b2-bifrost-health.json
+            p1-b2-local-request.json
+            p1-b2-local-response.json
+            p1-b2-cloud-prerequisite.txt
+            p1-b2-cloud-config.json
+            p1-b2-cloud-request.json
+            p1-b2-cloud-response.json
+            p1-b2-bifrost.log
+          if-no-files-found: ignore
