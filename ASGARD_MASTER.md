@@ -9,16 +9,16 @@
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 1 — Golden Path
-- **Current Batch**: NOT STARTED — next bounded work item must be created from the Phase 1 acceptance gap
-- **Phase 0 Result**: PASS
-- **Status**: UC-01 VERIFIED / Issue #11 CLOSED / PR #12 MERGED
+- **Current Batch**: P1-B1 — UC-02 Real Local AI Golden Path
+- **Batch Result**: IN PROGRESS
+- **Status**: Issue #13 OPEN / implementation branch created / executable proof not yet run
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
-- **P0-B2 merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
-- **P0-B3 merge**: `74da74c71625b9bca111b2e1c1bbbb933c82077a`
+- **Active Issue**: #13 — `P1-B1: prove UC-02 real Local AI golden path`
+- **Active Branch**: `agent/p1-b1-local-ai-golden-path`
+- **Active PR**: NONE YET
+- **Phase 0 Result**: PASS
 - **P0-B4 / PR #12 merge**: `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`
-- **Issue #11**: CLOSED / COMPLETED
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -72,7 +72,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
 | UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | **PASS** |
-| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | PENDING |
+| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | **IN PROGRESS — Issue #13** |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
 | UC-05 Observability | 운영 가시성 | jobs/latency/routes/DLQ/redrive/health 확인 | PENDING |
@@ -80,9 +80,6 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 ---
 
 # 4. Phase 0 — PASS
-
-## Goal
-Establish a truthful, executable baseline and prove the repository can build and start its required core stack under reviewable execution.
 
 ## P0-B1 — PASS / MERGED
 - PR #4 merged at `fa3f129783387fbeafae537e8a22b4629faf6d42`.
@@ -103,81 +100,82 @@ Establish a truthful, executable baseline and prove the repository can build and
 - PR #9 proof harness merged at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`.
 - PR #10 merged at `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
 - frontend dev-server root reachability GREEN.
-- root `build-all.ps1 -SkipTests` reaches/completes Frontend GREEN.
-- `-SkipTests` uses `:heimdall:assemble`; normal build remains `:heimdall:build`.
+- root `build-all.ps1 -SkipTests` frontend path GREEN.
 
 ## P0-B4 — PASS / MERGED
 - Issue #11 CLOSED / COMPLETED.
-- PR #12 exact head: `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`.
-- PR #12 merged at `8f79c1aaf7a145abb4721c5f7799059b8c4195aa` using expected-head guard.
+- PR #12 exact head `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`.
+- PR #12 merged at `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`.
 - primary `CI` run `32320165761`: **SUCCESS**.
-- exact-head full-core job: **SUCCESS**.
-- Phase 0 preflight: GREEN.
-- unit tests Heimdall + Bifrost: GREEN.
-- frontend dev root: GREEN.
-- default Windows build path: GREEN.
-- infrastructure readiness: PostgreSQL / Kafka / Redis / Elasticsearch / Prometheus / Grafana `3001` GREEN.
-- application evidence artifact:
-  - Heimdall `/actuator/health` → `UP`.
-  - Bifrost `/health` → `healthy`.
-  - Frontend root → reachable HTML.
-- stale Elasticsearch review thread resolved after exact-head evidence confirmed the correction.
-
-### Secondary CI classification
-- `CI/CD Pipeline` run `32320165695`: overall FAILURE.
-- Bifrost build/lint/pytest/coverage: GREEN.
-- dependency security: GREEN.
-- Heimdall `Build with Gradle` failed at the already-classified `:heimdall:checkstyleMain` boundary.
-- exact log again reports **41 files / 109 warnings / 2 info**.
-- this is the same pre-existing broad style debt and is **not** treated as a PR #12 / UC-01 regression.
-- no mass Checkstyle cleanup is authorized by Phase 0 closure.
+- Phase 0 preflight / unit tests / frontend dev-root / default Windows build: GREEN.
+- full-core job: GREEN.
+- infrastructure: PostgreSQL / Kafka / Redis / Elasticsearch / Prometheus / Grafana `3001` GREEN.
+- Heimdall `/actuator/health` → `UP`.
+- Bifrost `/health` → `healthy`.
+- Frontend root → reachable HTML.
+- secondary `CI/CD Pipeline` run `32320165695` RED only at the already-classified pre-existing Heimdall `checkstyleMain` debt; Bifrost/security GREEN.
 
 ## Phase 0 Closure
-**PASS.** The repository now has executable evidence for buildability, frontend boot, default build path, unit tests, and full core-stack startup/health. Remaining v1.0 gaps are product-flow proofs, not baseline-startup uncertainty.
+**PASS.** Remaining v1.0 gaps are product-flow proofs, not baseline-startup uncertainty.
 
 ---
 
-# 5. Phase 1 — GOLDEN PATH
+# 5. Phase 1 — P1-B1 Real Local AI Golden Path
+
+## Work Item
+- **Issue #13**: OPEN
+- **Branch**: `agent/p1-b1-local-ai-golden-path`
+- **PR**: NONE YET
 
 ## Goal
-Close the first real product-flow proof with actual AI execution.
+Prove the first real Asgard product flow with actual local-model execution.
 
 ## Required Flow
 
 ```text
-Input / Log
+Deterministic sample log/input
 → Heimdall
-→ Analysis Job
+→ real Analysis Job
 → Kafka request
 → Bifrost consumption
-→ Real Local AI inference
-→ Result
-→ Persistence
+→ REAL Local AI model inference
+→ result through real integration path
+→ persistence
 → Job SUCCEEDED
 ```
 
-## Phase 1 Acceptance Boundary
-- [ ] one deterministic sample input/log is fixed.
-- [ ] an Analysis Job is created through the real Heimdall flow.
-- [ ] the request crosses Kafka to Bifrost.
-- [ ] **real Local AI** is invoked; fallback/mock-only execution is not PASS.
+## Acceptance Criteria
+- [ ] deterministic sample input/log is fixed and reviewable.
+- [ ] Heimdall creates a real Analysis Job.
+- [ ] Kafka request publication/consumption is evidenced.
+- [ ] Bifrost invokes a **real Local AI model**.
+- [ ] mock/fallback-only execution is rejected as PASS evidence.
 - [ ] result returns through the real integration path.
 - [ ] result is persisted.
 - [ ] final Job state is `SUCCEEDED`.
-- [ ] route/provider/latency evidence is captured where available.
-- [ ] the flow is repeatable under reviewable execution.
-- [ ] no Cloud-routing, DLQ/Redrive, dashboard expansion, README hardening, or unrelated cleanup is pulled into this batch unless executed evidence proves it is a direct blocker.
+- [ ] route/provider/latency evidence is captured where existing surfaces expose it.
+- [ ] flow is repeatable under PR-visible or equivalently reviewable execution.
+- [ ] no out-of-scope expansion.
 
-## Phase 1 Non-Goals
+## In Scope
+- minimum proof harness/config/code corrections required by executed UC-02 evidence.
+- one deterministic input.
+- one real local provider/model path.
+- only the first concrete failing boundary at a time.
+
+## Out of Scope
 - Cloud-vs-Local routing proof / UC-03.
-- failure recovery / UC-04.
+- Cloud provider setup beyond explicitly keeping P1-B1 local-only.
+- DLQ/Redrive / UC-04.
 - Grafana metric correctness / UC-05.
-- final portfolio packaging.
-- HP AI Server optimization.
-- broad Checkstyle cleanup.
+- UI expansion.
+- README/portfolio hardening.
+- HP AI Server optimization/reference deployment.
+- broad Heimdall Checkstyle cleanup.
+- unrelated architecture refactors.
 
-## Phase 1 Rule
-A Local AI adapter, configuration, or code path existing in source is not enough. **Real model inference + end-to-end job/result evidence is required.**
+## Verification Rule
+Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs proving Job ID/state, Kafka handoff, real model/provider invocation, returned result, persistence, and final `SUCCEEDED`.
 
 ---
 
@@ -185,23 +183,20 @@ A Local AI adapter, configuration, or code path existing in source is not enough
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
-| E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 onward |
-| E-002 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 |
-| E-003 | Phase 0 runtime versions | VERIFIED | Java 21 / Python 3.11 / Node 20 / npm 10 / Docker 28 |
+| E-001 | GitHub-hosted baseline execution | VERIFIED | Phase 0 |
 | E-004 | Heimdall Checkstyle debt | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
-| E-005 | P0-B2 frontend repair | VERIFIED / MERGED | PR #7 |
-| E-006 | Frontend production build | VERIFIED GREEN | PR #7 |
-| E-016 | Frontend dev-server root | VERIFIED GREEN | PR #9 / current CI |
-| E-017 | Root default SkipTests build path | VERIFIED GREEN | PR #10 / current CI |
-| E-024 | UC-01 full core-stack health | **VERIFIED GREEN / MERGED** | PR #12 / CI `32320165761` |
-| E-025 | P0-B4 infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Elasticsearch/Prometheus/Grafana |
+| E-005 | Frontend boot repair/build | VERIFIED / MERGED | PR #7 |
+| E-016 | Frontend dev-server root | VERIFIED GREEN | Phase 0 |
+| E-017 | Root SkipTests build path | VERIFIED GREEN | Phase 0 |
+| E-024 | UC-01 full core-stack health | VERIFIED GREEN / MERGED | PR #12 / CI `32320165761` |
+| E-025 | Infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Elasticsearch/Prometheus/Grafana |
 | E-035 | Heimdall full-stack health | VERIFIED GREEN | `/actuator/health` = UP |
 | E-038 | Bifrost full-stack health | VERIFIED GREEN | `/health` = healthy |
 | E-039 | Full-stack Frontend root | VERIFIED GREEN | root HTML captured |
-| E-018 | Real Local AI E2E | **NEXT GAP** | Phase 1 |
-| E-019 | Local vs Cloud Routing | PENDING | Phase 2/UC-03 |
-| E-020 | DLQ → Redrive → Success | PENDING | later / UC-04 |
-| E-021 | Grafana live metrics | PENDING | later / UC-05 |
+| E-018 | Real Local AI E2E | **IN PROGRESS** | Issue #13 |
+| E-019 | Local vs Cloud Routing | PENDING | UC-03 |
+| E-020 | DLQ → Redrive → Success | PENDING | UC-04 |
+| E-021 | Grafana live metrics | PENDING | UC-05 |
 | E-022 | Final Demo | PENDING | final proof packaging |
 | E-023 | HP AI Server reference run | PENDING | reference deployment |
 
@@ -213,12 +208,13 @@ A Local AI adapter, configuration, or code path existing in source is not enough
 |---|---|---|
 | R-001 | duplicate `idx_severity` schema index name | HOLD; repeatedly non-fatal; fix only if future executable evidence makes it a blocker |
 | R-002 | broad Heimdall Checkstyle debt | VERIFIED PRE-EXISTING; no mass-fix without separate authorization |
-| R-003 | anonymous gRPC reader may be inappropriate for future real gRPC product endpoints | current product flow has no real gRPC endpoint; replace with explicit policy if one is introduced |
-| R-004 | root `start-all.ps1` banner is not health evidence | proof uses endpoint/readiness evidence instead |
-| R-005 | root `start-all.ps1` Bifrost launch may not represent the proven CI `serve` invocation | evaluate only if next executable flow uses this script and it becomes a direct blocker |
+| R-003 | anonymous gRPC reader may be inappropriate for future real gRPC endpoints | replace with explicit policy only if actual product gRPC endpoint is introduced |
+| R-004 | root startup banner is not health evidence | use endpoint/readiness evidence |
+| R-005 | root `start-all.ps1` Bifrost launch differs from proven CI `serve` invocation | evaluate only if P1-B1 executable path uses it and it becomes a direct blocker |
 | R-006 | README overclaim / Grafana port drift | proof-hardening later |
-| R-007 | fallback-only AI E2E risk | Phase 1 explicitly requires real Local AI inference |
-| R-008 | agent self-report | never PASS without executed evidence |
+| R-007 | fallback-only AI E2E risk | P1-B1 requires concrete real-model invocation evidence |
+| R-008 | GitHub-hosted runner may need a bounded local-model runtime/model strategy | do not weaken real-model acceptance; record exact prerequisite if no safe reviewable execution is possible |
+| R-009 | agent self-report | never PASS without executed evidence |
 
 ---
 
@@ -226,55 +222,48 @@ A Local AI adapter, configuration, or code path existing in source is not enough
 
 1. MASTER first.
 2. Active focused PR first.
-3. Search for an existing open Issue matching the next authorized acceptance gap.
-4. If none exists and real work remains, create exactly one bounded Issue before implementation.
-5. One active implementation Issue by default.
-6. Same-gap CI/review corrections remain in the same Issue/PR.
-7. RED → first concrete failure → smallest in-scope fix.
-8. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
-9. Issue closes only after acceptance + merge.
-10. Reconcile MASTER on `main` before another Issue.
-11. Human Review remains the final v1.0 gate.
+3. One active implementation Issue by default.
+4. Same-gap CI/review corrections remain in the same Issue/PR.
+5. RED → first concrete failure → smallest in-scope fix.
+6. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
+7. Issue closes only after acceptance + merge.
+8. Reconcile MASTER on `main` before another Issue.
+9. Human Review remains the final v1.0 gate.
 
 ---
 
 # 9. Current Checkpoint
 
 ## Result
-**PHASE 0 PASS / UC-01 PASS / PHASE 1 READY.**
+**PHASE 0 PASS / UC-01 PASS / P1-B1 IN PROGRESS.**
 
 ## What Changed
-- PR #12 exact-head primary CI completed SUCCESS.
-- full core-stack application reachability completed SUCCESS.
-- exact artifact proves Heimdall `UP`, Bifrost `healthy`, and Frontend root reachable.
-- secondary Heimdall RED was re-confirmed as the identical pre-existing broad Checkstyle debt.
-- outdated Elasticsearch review thread resolved.
-- PR #12 merged with expected-head guard at `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`.
-- Issue #11 closed automatically as completed.
-- Phase 0 closed PASS and execution contract advanced to Phase 1.
+- PR #12 exact-head primary CI completed SUCCESS and Issue #11 closed after merge.
+- Phase 0 and UC-01 were closed PASS from executed evidence.
+- no matching open Issue existed for the next authorized Phase 1 gap.
+- Issue #13 was created as the sole active implementation work item.
+- branch `agent/p1-b1-local-ai-golden-path` was created from synchronized `main`.
 
 ## What Was Executed
-- exact-head `CI` run `32320165761`: SUCCESS.
-- exact-head `CI/CD Pipeline` run `32320165695`: FAILURE only because Heimdall `checkstyleMain` remains pre-existing debt; Bifrost/security GREEN.
-- full-core evidence artifact `9389538671` inspected:
-  - Heimdall health = `UP`.
-  - Bifrost health = `healthy`.
-  - Frontend root HTML captured.
-- PR #12 merged and Issue #11 closure verified.
+- `CI` run `32320165761`: SUCCESS.
+- full-core artifact proved Heimdall `UP`, Bifrost `healthy`, Frontend root reachable.
+- `CI/CD Pipeline` run `32320165695`: pre-existing Heimdall Checkstyle RED; Bifrost/security GREEN.
+- PR #12 merge and Issue #11 completed closure verified.
+- Issue #13 creation and Phase 1 branch creation completed.
 
 ## What Was Not Verified
 - real Local AI inference E2E.
-- Analysis Job → Kafka → Bifrost → real model → persisted result → SUCCEEDED flow.
-- Local vs Cloud routing behavior.
+- Analysis Job → Kafka → Bifrost → real model → persisted result → `SUCCEEDED`.
+- Local vs Cloud routing.
 - DLQ/Redrive recovery.
 - live Grafana metric correctness.
 - HP AI Server reference run.
 - final demo/portfolio package.
 
 ## Remaining Risks
-- Phase 1 may expose configuration or integration defects that startup health alone cannot reveal.
-- Local AI evidence must not silently fall back to mock/fallback behavior.
-- pre-existing Checkstyle debt remains visible but out of the current product-proof critical path.
+- P1-B1 may expose integration/configuration defects not visible in health checks.
+- Local AI proof must not silently pass via mock or fallback.
+- current execution environment for a real model must remain reviewable and bounded.
 
 ## NEXT
-**Re-read this synchronized MASTER, search open Issues for an exact match to the Phase 1 Real Local AI Golden Path gap, and if none exists create exactly one bounded Issue covering only: deterministic sample input → real Heimdall Analysis Job → Kafka → Bifrost → real Local AI inference → persisted result → `SUCCEEDED`. Do not include Cloud routing, recovery, observability hardening, UI expansion, README cleanup, or broad style work.**
+**Under Issue #13 only, inspect the existing real Heimdall Analysis Job → Kafka → Bifrost → local-provider integration far enough to create the smallest executable P1-B1 proof slice. Do not create another Issue. The first PR should prove or falsify the real Local AI Golden Path; any RED must be handled one concrete boundary at a time.**
