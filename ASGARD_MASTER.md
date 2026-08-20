@@ -8,20 +8,17 @@
 
 - **Target**: Asgard v1.0 — Wishket Proof
 - **Target Level**: Usable Production-like PoC
-- **Current Phase**: Phase 0 — Baseline Truth
-- **Current Batch**: P0-B4 — UC-01 Full Core-Service Startup / Health Verification
-- **Batch Result**: IN PROGRESS
-- **Status**: PR #12 OPEN — Redis auth boundary corrected and verified past; Bifrost launch correction under exact-head execution
+- **Current Phase**: Phase 1 — Golden Path
+- **Current Batch**: NOT STARTED — next bounded work item must be created from the Phase 1 acceptance gap
+- **Phase 0 Result**: PASS
+- **Status**: UC-01 VERIFIED / Issue #11 CLOSED / PR #12 MERGED
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
 - **P0-B2 merge**: `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`
 - **P0-B3 merge**: `74da74c71625b9bca111b2e1c1bbbb933c82077a`
-- **Issue #11**: OPEN — `P0-B4: verify UC-01 full core-service startup and health`
-- **PR #12**: OPEN — `test: verify UC-01 full core-service startup and health`
-- **Last executed RED head**: `abce79e183894f117fe0cc6fb590298a58813ee8`
-- **Current PR #12 head**: `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`
-- **Current exact-head CI**: `CI 32320165761` IN PROGRESS; `CI/CD Pipeline 32320165695` QUEUED at reconciliation time
+- **P0-B4 / PR #12 merge**: `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`
+- **Issue #11**: CLOSED / COMPLETED
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -74,7 +71,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
-| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | IN PROGRESS — infra + Heimdall proven on latest executed head; Bifrost next boundary under correction |
+| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | **PASS** |
 | UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | PENDING |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
@@ -82,17 +79,22 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ---
 
-# 4. Closed Phase 0 Evidence
+# 4. Phase 0 — PASS
+
+## Goal
+Establish a truthful, executable baseline and prove the repository can build and start its required core stack under reviewable execution.
 
 ## P0-B1 — PASS / MERGED
 - PR #4 merged at `fa3f129783387fbeafae537e8a22b4629faf6d42`.
 - primary Heimdall + Bifrost unit job GREEN.
 - secondary Bifrost install/lint/pytest/coverage GREEN.
 - dependency security GREEN.
-- Heimdall `checkstyleMain` debt classified pre-existing: **41 files / 109 warnings / 2 info**.
+- Java 21 CI contract aligned.
+- broad Heimdall Checkstyle debt classified as pre-existing: **41 files / 109 warnings / 2 info**.
 
 ## P0-B2 — PASS / MERGED
-- Issue #6 CLOSED; PR #7 merged at `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`.
+- Issue #6 CLOSED.
+- PR #7 merged at `b3d7c4bcf20d5376c6fa9d24ba25028f841a2067`.
 - minimal four-file frontend boot tree restored.
 - exact-head production frontend build GREEN.
 
@@ -100,131 +102,82 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 - Issue #8 CLOSED.
 - PR #9 proof harness merged at `0f12fcfe7b7b9b4944f7d4d6974de456c8695114`.
 - PR #10 merged at `74da74c71625b9bca111b2e1c1bbbb933c82077a`.
-- `CI/CD Pipeline` run `32279712933`: SUCCESS.
-- `CI` run `32279712788`: SUCCESS.
-- Vite dev-server/root reachability: GREEN.
-- root `build-all.ps1 -SkipTests` reaches/completes Frontend: GREEN.
+- frontend dev-server root reachability GREEN.
+- root `build-all.ps1 -SkipTests` reaches/completes Frontend GREEN.
 - `-SkipTests` uses `:heimdall:assemble`; normal build remains `:heimdall:build`.
+
+## P0-B4 — PASS / MERGED
+- Issue #11 CLOSED / COMPLETED.
+- PR #12 exact head: `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`.
+- PR #12 merged at `8f79c1aaf7a145abb4721c5f7799059b8c4195aa` using expected-head guard.
+- primary `CI` run `32320165761`: **SUCCESS**.
+- exact-head full-core job: **SUCCESS**.
+- Phase 0 preflight: GREEN.
+- unit tests Heimdall + Bifrost: GREEN.
+- frontend dev root: GREEN.
+- default Windows build path: GREEN.
+- infrastructure readiness: PostgreSQL / Kafka / Redis / Elasticsearch / Prometheus / Grafana `3001` GREEN.
+- application evidence artifact:
+  - Heimdall `/actuator/health` → `UP`.
+  - Bifrost `/health` → `healthy`.
+  - Frontend root → reachable HTML.
+- stale Elasticsearch review thread resolved after exact-head evidence confirmed the correction.
+
+### Secondary CI classification
+- `CI/CD Pipeline` run `32320165695`: overall FAILURE.
+- Bifrost build/lint/pytest/coverage: GREEN.
+- dependency security: GREEN.
+- Heimdall `Build with Gradle` failed at the already-classified `:heimdall:checkstyleMain` boundary.
+- exact log again reports **41 files / 109 warnings / 2 info**.
+- this is the same pre-existing broad style debt and is **not** treated as a PR #12 / UC-01 regression.
+- no mass Checkstyle cleanup is authorized by Phase 0 closure.
+
+## Phase 0 Closure
+**PASS.** The repository now has executable evidence for buildability, frontend boot, default build path, unit tests, and full core-stack startup/health. Remaining v1.0 gaps are product-flow proofs, not baseline-startup uncertainty.
 
 ---
 
-# 5. Active Phase 0 Slice — P0-B4
-
-## Work Item
-- **Issue #11**: OPEN
-- **PR #12**: OPEN
-- **Branch**: `agent/p0-b4-uc01-core-health-proof`
+# 5. Phase 1 — GOLDEN PATH
 
 ## Goal
-Execute the actual core stack and collect concrete service readiness/reachability evidence for UC-01.
+Close the first real product-flow proof with actual AI execution.
 
-## In Scope
-- reproducible PR-visible proof runtime.
-- Heimdall / Bifrost health.
-- PostgreSQL / Kafka readiness.
-- Frontend root reachability in the full-stack job.
-- Prometheus / Grafana host `3001` reachability.
-- Redis readiness because current startup contract configures Redis.
-- Elasticsearch readiness because current Heimdall dev startup contract enables Elasticsearch.
-- only minimum product/config/proof corrections justified by executed startup evidence.
-
-## Out of Scope
-- UC-02/03/04/05 behavior.
-- UI expansion.
-- README hardening.
-- broad Heimdall Checkstyle cleanup.
-- unrelated infrastructure.
-
-## Executed Failure Sequence
-
-### A. Initial runtime — missing Elasticsearch
-- PostgreSQL, Kafka, Redis, Prometheus and Grafana `3001` readiness proved.
-- Heimdall failed because enabled Elasticsearch access hit `localhost:9200` with connection refused.
-- correction: start repository Elasticsearch and prove `_cluster/health`.
-
-### B. Elasticsearch-corrected runtime — missing gRPC authentication reader
-Head `d2d96f47a394e7ce4cc6a798a368b6b83cd28a7a`, `CI` run `32291645192`:
-- infrastructure GREEN.
-- Heimdall RED during context startup because no `GrpcAuthenticationReader` bean existed.
-- duplicate PostgreSQL `idx_severity` was non-fatal and remains HOLD.
-
-### C. Rejected correction — remove gRPC starter
-Head `f7abfa7e565711bf7a39539c7865293532905828`, `CI` run `32296242418`:
-- `:heimdall:compileJava` failed because `GrpcServerConfig.java` directly requires starter classes.
-- removal rejected; starter restored.
-
-### D. Explicit gRPC authentication reader — executed RED
-Head `ae306fad143d5be1f71d6d25354f6af3c7a7d344`, `CI` run `32296456441`:
-- infrastructure GREEN.
-- first application boundary was Heimdall gRPC bind failure: Prometheus host `9090` already occupied the port.
-- correction: dev-profile gRPC isolated to `${GRPC_PORT:9091}`.
-
-### E. Dev gRPC isolation — executed RED on Redis health
-Head `279261aad0046df8cce59e5f7fabf242921fdb21`:
-- `CI` run `32315948212`: **FAILURE**.
-- `CI/CD Pipeline` run `32315948241`: **FAILURE**.
-- Phase 0 preflight: GREEN.
-- frontend dev-root job: GREEN.
-- unit tests: GREEN.
-- default Windows build path: GREEN.
-- infrastructure proof: PostgreSQL/Kafka/Redis/Elasticsearch/Prometheus/Grafana GREEN.
-- Heimdall application successfully started Tomcat on `8080` and gRPC on `9091`, but `/actuator/health` repeatedly returned `503` because Spring Boot's actual `RedisConnectionFactory` had no password.
-- artifact error: `RedisCommandExecutionException: NOAUTH HELLO ...`.
-
-Correction justified by execution:
-- existing env contract already supplies `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`.
-- `application.yml` exposed those only under `heimdall.data.redis`, while Spring Boot auto-configured Redis uses `spring.data.redis.*`.
-- dev profile now binds `spring.data.redis.host/port/password` to the existing `REDIS_*` environment contract.
-
-### F. Redis binding correction — executed RED; Heimdall now GREEN
-Head `abce79e183894f117fe0cc6fb590298a58813ee8`, `CI` run `32319692632`:
-- Phase 0 preflight: GREEN.
-- frontend dev-root: GREEN.
-- unit tests Heimdall + Bifrost: GREEN.
-- default Windows build path: GREEN.
-- infrastructure readiness: GREEN.
-- artifact proves Heimdall:
-  - Tomcat started on `8080`.
-  - gRPC started on `9091`.
-  - `/actuator/health` produced `{"status":"UP","groups":["liveness","readiness"]}`.
-- **first remaining Issue #11 blocker promoted from HOLD**: Bifrost did not start.
-- exact Bifrost process output:
+## Required Flow
 
 ```text
-Usage: python -m bifrost.main serve [OPTIONS]
-Error: Got unexpected extra arguments (127.0.0.1 8000)
+Input / Log
+→ Heimdall
+→ Analysis Job
+→ Kafka request
+→ Bifrost consumption
+→ Real Local AI inference
+→ Result
+→ Persistence
+→ Job SUCCEEDED
 ```
 
-The verifier checks Heimdall first, then Bifrost, so this run proves Bifrost is now the first concrete remaining acceptance boundary. Frontend full-stack verification remains after Bifrost.
+## Phase 1 Acceptance Boundary
+- [ ] one deterministic sample input/log is fixed.
+- [ ] an Analysis Job is created through the real Heimdall flow.
+- [ ] the request crosses Kafka to Bifrost.
+- [ ] **real Local AI** is invoked; fallback/mock-only execution is not PASS.
+- [ ] result returns through the real integration path.
+- [ ] result is persisted.
+- [ ] final Job state is `SUCCEEDED`.
+- [ ] route/provider/latency evidence is captured where available.
+- [ ] the flow is repeatable under reviewable execution.
+- [ ] no Cloud-routing, DLQ/Redrive, dashboard expansion, README hardening, or unrelated cleanup is pulled into this batch unless executed evidence proves it is a direct blocker.
 
-### G. Current correction — use Bifrost serve defaults
-Current PR #12 head: `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`.
+## Phase 1 Non-Goals
+- Cloud-vs-Local routing proof / UC-03.
+- failure recovery / UC-04.
+- Grafana metric correctness / UC-05.
+- final portfolio packaging.
+- HP AI Server optimization.
+- broad Checkstyle cleanup.
 
-Smallest correction justified by executed evidence:
-- proof harness changed only Bifrost launch from `python -m bifrost.main serve --host 127.0.0.1 --port 8000` to `python -m bifrost.main serve`.
-- repository CLI already defines `serve` defaults as host `0.0.0.0`, port `8000`; no product/UI/UC-02 expansion.
-- no claim that Bifrost is healthy until exact-head execution completes.
-
-Current PR-visible execution at reconciliation time:
-- `CI` run `32320165761`: IN PROGRESS.
-- `CI/CD Pipeline` run `32320165695`: QUEUED.
-
-## Acceptance Criteria
-- [x] reviewable checkout/configuration/proof command.
-- [x] actual PR-visible core-stack execution exists.
-- [x] Heimdall health verified on exact executed head `abce79e...`.
-- [ ] current exact-head Bifrost health verified in full-stack job.
-- [x] PostgreSQL readiness verified.
-- [x] Kafka readiness verified.
-- [ ] current exact-head Frontend root verified in full-stack job.
-- [x] Prometheus reachability verified.
-- [x] Grafana `3001` reachability verified.
-- [x] Redis readiness verified.
-- [x] Elasticsearch readiness verified.
-- [x] no out-of-scope expansion.
-
-## Result
-**IN PROGRESS — Redis authentication is now correctly bound in dev and executed evidence proves Heimdall `UP`. The next first concrete boundary is Bifrost launch; the minimal serve-default correction is under exact-head execution. P0-B4 is not PASS.**
+## Phase 1 Rule
+A Local AI adapter, configuration, or code path existing in source is not enough. **Real model inference + end-to-end job/result evidence is required.**
 
 ---
 
@@ -232,33 +185,25 @@ Current PR-visible execution at reconciliation time:
 
 | ID | Evidence | Status | Note |
 |---|---|---|---|
-| E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 |
+| E-001 | GitHub-hosted Phase 0 execution | VERIFIED | PR #3 onward |
 | E-002 | P0-B1 bounded repair | VERIFIED / MERGED | PR #4 |
 | E-003 | Phase 0 runtime versions | VERIFIED | Java 21 / Python 3.11 / Node 20 / npm 10 / Docker 28 |
-| E-004 | Heimdall checkstyle debt | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
+| E-004 | Heimdall Checkstyle debt | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
 | E-005 | P0-B2 frontend repair | VERIFIED / MERGED | PR #7 |
-| E-006 | P0-B2 frontend production build | VERIFIED GREEN | PR #7 |
-| E-016 | Frontend dev-server root reachability | VERIFIED GREEN | PR #9 |
-| E-017 | Root default SkipTests build path | VERIFIED GREEN / MERGED | PR #10 |
-| E-018 | Real Local AI E2E | PENDING | |
-| E-019 | Local vs Cloud Routing | PENDING | |
-| E-020 | DLQ → Redrive → Success | PENDING | |
-| E-021 | Grafana live metrics | PENDING | |
-| E-022 | Final Demo | PENDING | |
-| E-023 | HP AI Server reference run | PENDING | |
-| E-024 | UC-01 full core-stack health | IN PROGRESS | PR #12 |
+| E-006 | Frontend production build | VERIFIED GREEN | PR #7 |
+| E-016 | Frontend dev-server root | VERIFIED GREEN | PR #9 / current CI |
+| E-017 | Root default SkipTests build path | VERIFIED GREEN | PR #10 / current CI |
+| E-024 | UC-01 full core-stack health | **VERIFIED GREEN / MERGED** | PR #12 / CI `32320165761` |
 | E-025 | P0-B4 infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Elasticsearch/Prometheus/Grafana |
-| E-026 | Missing Elasticsearch dependency | VERIFIED RED / SUPERSEDED | initial PR #12 |
-| E-028 | Missing gRPC authentication reader | VERIFIED RED / SUPERSEDED | `32291645192` |
-| E-029 | gRPC starter removal | VERIFIED RED / REJECTED | compile failure |
-| E-030 | Explicit gRPC authentication reader | VERIFIED PAST BLOCKER | reached gRPC server start |
-| E-031 | gRPC/Prometheus `9090` collision | VERIFIED RED / SUPERSEDED | artifact `32296456441` |
-| E-032 | Dev gRPC port isolation | VERIFIED PAST BLOCKER | gRPC starts on `9091` |
-| E-033 | Redis auth/config mismatch | VERIFIED RED / SUPERSEDED | run `32315948212` |
-| E-034 | Dev Spring Redis binding | VERIFIED PAST BLOCKER | head `abce79e...` Heimdall health UP |
-| E-035 | Heimdall full-stack health | VERIFIED GREEN | artifact `32319692632` |
-| E-036 | Bifrost proof launch args | VERIFIED RED | artifact `32319692632` |
-| E-037 | Bifrost serve-default correction | PUSHED / EXECUTION PENDING | head `1f3459d...` |
+| E-035 | Heimdall full-stack health | VERIFIED GREEN | `/actuator/health` = UP |
+| E-038 | Bifrost full-stack health | VERIFIED GREEN | `/health` = healthy |
+| E-039 | Full-stack Frontend root | VERIFIED GREEN | root HTML captured |
+| E-018 | Real Local AI E2E | **NEXT GAP** | Phase 1 |
+| E-019 | Local vs Cloud Routing | PENDING | Phase 2/UC-03 |
+| E-020 | DLQ → Redrive → Success | PENDING | later / UC-04 |
+| E-021 | Grafana live metrics | PENDING | later / UC-05 |
+| E-022 | Final Demo | PENDING | final proof packaging |
+| E-023 | HP AI Server reference run | PENDING | reference deployment |
 
 ---
 
@@ -266,16 +211,14 @@ Current PR-visible execution at reconciliation time:
 
 | ID | Risk | Handling |
 |---|---|---|
-| R-001 | Heimdall dev startup required Elasticsearch | included/proven ready in P0-B4 harness |
-| R-002 | duplicate `idx_severity` schema index name | HOLD; non-fatal in executed runs; fix only if future evidence makes it blocker |
-| R-003 | broad Heimdall checkstyle debt | no mass-fix in P0-B4 |
-| R-004 | startup banner is not health proof | endpoint/readiness evidence required |
-| R-005 | anonymous gRPC reader may be inappropriate for future real gRPC product endpoints | replace with explicit policy when actual gRPC endpoints exist |
-| R-006 | gRPC/Prometheus dev port collision | SUPERSEDED; gRPC proven on `9091` |
-| R-007 | Bifrost explicit host/port CLI invocation rejected | ACTIVE correction uses repository `serve` defaults; execution pending |
-| R-008 | README overclaim / Grafana port drift | proof-hardening later |
-| R-009 | fallback-only E2E risk | real-model proof required later |
-| R-010 | agent self-report | never PASS without executed evidence |
+| R-001 | duplicate `idx_severity` schema index name | HOLD; repeatedly non-fatal; fix only if future executable evidence makes it a blocker |
+| R-002 | broad Heimdall Checkstyle debt | VERIFIED PRE-EXISTING; no mass-fix without separate authorization |
+| R-003 | anonymous gRPC reader may be inappropriate for future real gRPC product endpoints | current product flow has no real gRPC endpoint; replace with explicit policy if one is introduced |
+| R-004 | root `start-all.ps1` banner is not health evidence | proof uses endpoint/readiness evidence instead |
+| R-005 | root `start-all.ps1` Bifrost launch may not represent the proven CI `serve` invocation | evaluate only if next executable flow uses this script and it becomes a direct blocker |
+| R-006 | README overclaim / Grafana port drift | proof-hardening later |
+| R-007 | fallback-only AI E2E risk | Phase 1 explicitly requires real Local AI inference |
+| R-008 | agent self-report | never PASS without executed evidence |
 
 ---
 
@@ -283,46 +226,55 @@ Current PR-visible execution at reconciliation time:
 
 1. MASTER first.
 2. Active focused PR first.
-3. One active Issue by default.
-4. Same-gap corrections remain in same Issue/PR.
-5. RED → first concrete failure → smallest in-scope fix.
-6. Exact-head GREEN + bounded diff + clean review/security → merge expected-head.
-7. Issue closes only after acceptance + merge.
-8. Reconcile MASTER on main before new Issue.
-9. Human Review remains final v1.0 gate only.
+3. Search for an existing open Issue matching the next authorized acceptance gap.
+4. If none exists and real work remains, create exactly one bounded Issue before implementation.
+5. One active implementation Issue by default.
+6. Same-gap CI/review corrections remain in the same Issue/PR.
+7. RED → first concrete failure → smallest in-scope fix.
+8. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
+9. Issue closes only after acceptance + merge.
+10. Reconcile MASTER on `main` before another Issue.
+11. Human Review remains the final v1.0 gate.
 
 ---
 
 # 9. Current Checkpoint
 
 ## Result
-**P0-B1 PASS / P0-B2 PASS / P0-B3 PASS / P0-B4 IN PROGRESS.**
+**PHASE 0 PASS / UC-01 PASS / PHASE 1 READY.**
 
 ## What Changed
-- reconciled stale `279261aad...` RUNNING state to executed FAILURE.
-- downloaded/inspected run `32315948212` core-health artifact and proved Redis authentication was the first blocker after gRPC port isolation.
-- bound Spring Boot dev Redis properties to the existing `REDIS_*` environment contract.
-- executed head `abce79e...` proved Heimdall health GREEN and promoted the prior Bifrost CLI observation from HOLD to the first concrete blocker.
-- changed only the proof launch to `python -m bifrost.main serve` so the CLI's existing default host/port are used.
-- current PR #12 head is `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b` with exact-head workflows started.
+- PR #12 exact-head primary CI completed SUCCESS.
+- full core-stack application reachability completed SUCCESS.
+- exact artifact proves Heimdall `UP`, Bifrost `healthy`, and Frontend root reachable.
+- secondary Heimdall RED was re-confirmed as the identical pre-existing broad Checkstyle debt.
+- outdated Elasticsearch review thread resolved.
+- PR #12 merged with expected-head guard at `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`.
+- Issue #11 closed automatically as completed.
+- Phase 0 closed PASS and execution contract advanced to Phase 1.
 
 ## What Was Executed
-- `CI` `32315948212`: FAILURE on head `279261aad...`; infrastructure GREEN, Heimdall RED with Redis `NOAUTH` health failure.
-- `CI/CD Pipeline` `32315948241`: FAILURE on head `279261aad...`.
-- `CI` `32319692632`: FAILURE on head `abce79e...`; preflight/frontend-dev/unit/default-build GREEN, infra GREEN, Heimdall health GREEN, Bifrost launch RED.
-- core-health artifact `9389420201` inspected: `p0-b4-heimdall-health.json` = UP; `p0-b4-bifrost.log` = unexpected explicit host/port arguments.
-- branch corrections committed: `abce79e183894f117fe0cc6fb590298a58813ee8`, then `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`.
+- exact-head `CI` run `32320165761`: SUCCESS.
+- exact-head `CI/CD Pipeline` run `32320165695`: FAILURE only because Heimdall `checkstyleMain` remains pre-existing debt; Bifrost/security GREEN.
+- full-core evidence artifact `9389538671` inspected:
+  - Heimdall health = `UP`.
+  - Bifrost health = `healthy`.
+  - Frontend root HTML captured.
+- PR #12 merged and Issue #11 closure verified.
 
 ## What Was Not Verified
-- current-head Bifrost health after serve-default correction.
-- current-head Frontend root in the full-stack job.
-- current-head final workflow conclusions/review/security state.
-- real Local AI E2E, routing, recovery, live metrics, reference deployment, final demo.
+- real Local AI inference E2E.
+- Analysis Job → Kafka → Bifrost → real model → persisted result → SUCCEEDED flow.
+- Local vs Cloud routing behavior.
+- DLQ/Redrive recovery.
+- live Grafana metric correctness.
+- HP AI Server reference run.
+- final demo/portfolio package.
 
 ## Remaining Risks
-- Bifrost may expose another bounded startup/configuration defect after the invocation correction.
-- duplicate `idx_severity` remains HOLD because it has stayed non-fatal.
-- root startup script behavior is not treated as health evidence; P0-B4 requires endpoint proof.
+- Phase 1 may expose configuration or integration defects that startup health alone cannot reveal.
+- Local AI evidence must not silently fall back to mock/fallback behavior.
+- pre-existing Checkstyle debt remains visible but out of the current product-proof critical path.
 
 ## NEXT
-**Inspect PR #12 exact-head `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b` runs `32320165761` and `32320165695`. RED → inspect only the first concrete Issue #11-scoped failure and apply the smallest justified correction. Fully GREEN Issue #11 acceptance + bounded diff + clean review/security → merge PR #12 with expected-head guard, ensure Issue #11 closes only after acceptance/merge, then reconcile MASTER on `main` and re-evaluate UC-01/Phase 0 closure before any new Issue.**
+**Re-read this synchronized MASTER, search open Issues for an exact match to the Phase 1 Real Local AI Golden Path gap, and if none exists create exactly one bounded Issue covering only: deterministic sample input → real Heimdall Analysis Job → Kafka → Bifrost → real Local AI inference → persisted result → `SUCCEEDED`. Do not include Cloud routing, recovery, observability hardening, UI expansion, README cleanup, or broad style work.**
