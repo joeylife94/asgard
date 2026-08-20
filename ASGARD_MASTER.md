@@ -10,17 +10,18 @@
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 1 — Golden Path
 - **Current Batch**: P1-B1 — UC-02 Real Local AI Golden Path
-- **Batch Result**: IN PROGRESS
-- **Status**: Issue #13 OPEN / PR #14 OPEN / exact-head real-model proof running
+- **Batch Result**: **PASS / MERGED**
+- **Status**: UC-01 PASS / UC-02 PASS / closure evaluation before next work item
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: #13 — `P1-B1: prove UC-02 real Local AI golden path`
-- **Active Branch**: `agent/p1-b1-local-ai-golden-path`
-- **Active PR**: #14 — `test: prove UC-02 real Local AI golden path`
-- **Active PR Head**: `f4354d8a5f29c3f0d9f4a6a1711297514ade0fdc`
-- **Active P1-B1 Run**: `32323281881` — IN PROGRESS
+- **Active Issue**: NONE
+- **Active PR**: NONE
+- **P1-B1 Issue**: #13 — CLOSED / COMPLETED
+- **P1-B1 PR**: #14 — MERGED
+- **P1-B1 PR Exact Head**: `eb307ba581609790245f8e6d8fa9a53ce7b12e52`
+- **P1-B1 Merge SHA**: `ee24e6990d19c0be618baf1698bff275a8b27134`
+- **P1-B1 Exact-head Proof Run**: `32323663891` — SUCCESS
 - **Phase 0 Result**: PASS
-- **P0-B4 / PR #12 merge**: `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -74,7 +75,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
 | UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | **PASS** |
-| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | **IN PROGRESS — Issue #13 / PR #14** |
+| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | **PASS — Issue #13 / PR #14** |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
 | UC-05 Observability | 운영 가시성 | jobs/latency/routes/DLQ/redrive/health 확인 | PENDING |
@@ -106,95 +107,78 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 ## P0-B4 — PASS / MERGED
 - Issue #11 CLOSED / COMPLETED.
-- PR #12 exact head `1f3459dd5e12bf85b5eccfe41d1eca05bbf6231b`.
 - PR #12 merged at `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`.
-- primary `CI` run `32320165761`: **SUCCESS**.
-- Phase 0 preflight / unit tests / frontend dev-root / default Windows build: GREEN.
-- full-core job: GREEN.
-- infrastructure: PostgreSQL / Kafka / Redis / Elasticsearch / Prometheus / Grafana `3001` GREEN.
-- Heimdall `/actuator/health` → `UP`.
-- Bifrost `/health` → `healthy`.
-- Frontend root → reachable HTML.
-- secondary `CI/CD Pipeline` run `32320165695` RED only at the already-classified pre-existing Heimdall `checkstyleMain` debt; Bifrost/security GREEN.
+- primary `CI` run `32320165761`: SUCCESS.
+- full-core startup/health GREEN: PostgreSQL / Kafka / Redis / Elasticsearch / Prometheus / Grafana `3001` / Heimdall / Bifrost / Frontend.
+- secondary pipeline RED remained only at the already-classified pre-existing Heimdall `checkstyleMain` debt.
 
 ## Phase 0 Closure
 **PASS.** Remaining v1.0 gaps are product-flow proofs, not baseline-startup uncertainty.
 
 ---
 
-# 5. Phase 1 — P1-B1 Real Local AI Golden Path
+# 5. Phase 1 — P1-B1 Real Local AI Golden Path — PASS
 
 ## Work Item
-- **Issue #13**: OPEN
-- **Branch**: `agent/p1-b1-local-ai-golden-path`
-- **PR #14**: OPEN
-- **Exact Head**: `f4354d8a5f29c3f0d9f4a6a1711297514ade0fdc`
-- **Exact-head P1-B1 workflow**: run `32323281881` — IN PROGRESS
+- **Issue #13**: CLOSED / COMPLETED
+- **PR #14**: MERGED
+- **Exact Head**: `eb307ba581609790245f8e6d8fa9a53ce7b12e52`
+- **Merge SHA**: `ee24e6990d19c0be618baf1698bff275a8b27134`
+- **Exact-head P1-B1 workflow**: run `32323663891` — **SUCCESS**
+- **Exact-head primary CI**: run `32323664031` — **SUCCESS**
+- **Exact-head secondary CI/CD**: run `32323663888` — RED only at pre-existing Heimdall `checkstyleMain`; Bifrost and dependency security GREEN.
 
-## Goal
-Prove the first real Asgard product flow with actual local-model execution.
-
-## Required Flow
+## Proven Flow
 
 ```text
-Deterministic sample log/input
-→ Heimdall
+Deterministic ERROR log
+→ Heimdall authenticated log ingestion
 → real Analysis Job
-→ Kafka request
-→ Bifrost consumption
-→ REAL Local AI model inference
-→ result through real integration path
-→ persistence
-→ Job SUCCEEDED
+→ Kafka analysis.request
+→ Bifrost consumer / HeimdallIntegrationService
+→ real Ollama smollm:135m inference
+→ Kafka analysis.result
+→ Heimdall AnalysisResult persistence
+→ final Job SUCCEEDED
 ```
 
-## Current Executable Proof Slice
-PR #14 adds one bounded GitHub-hosted workflow only. It:
-- builds Heimdall and installs Bifrost from the PR head;
-- starts PostgreSQL / Kafka / Redis / Elasticsearch using the existing repository Compose contract;
-- starts a real Ollama runtime in Docker;
-- pulls the official real model `smollm:135m`;
-- starts Bifrost with `KAFKA_ENABLED=true`, `HEIMDALL_ENABLED=true`, `BIFROST_OLLAMA_MODEL=smollm:135m`, and `BIFROST_OLLAMA_ALLOW_FALLBACK=false`;
-- authenticates to Heimdall and ingests one deterministic ERROR log;
-- creates a real Heimdall Analysis Job;
-- polls the real Job endpoint until `SUCCEEDED` or first concrete failure;
-- queries the persisted Heimdall analysis result and requires its model to contain `smollm` and not equal `fallback`;
-- captures Kafka request/result topics, Job ID/state, persisted result, Ollama model evidence, and service logs as an artifact.
-
-The selected CI model is intentionally small to keep hosted execution bounded. Official Ollama registry evidence identifies `smollm:135m` as a real 135M model (~92 MB), not a mock or deterministic substitute.
+## Exact-head Evidence
+- deterministic log: `payment-service upstream gateway timeout ... transaction=p1-b1-deterministic`.
+- intended manual Job ID: `4aa60d74-cf9f-41aa-b6a6-eb04a4681247`.
+- Job final state: `SUCCEEDED`.
+- Job `logId`: `1`.
+- persisted `analysisId`: `2`.
+- persisted model: `smollm:135m`.
+- Kafka `analysis.result` for intended Job: `model_used=smollm:135m`, `latency_ms=121045`, status `SUCCEEDED`.
+- Bifrost health before execution: Ollama `ok`, Kafka `enabled`, Heimdall integration `enabled`.
+- Ollama `/api/tags`: `smollm:135m`, family `llama`, parameter size `134.52M`, quantization `Q4_0`, size `91739413` bytes.
+- fallback disabled via `BIFROST_OLLAMA_ALLOW_FALLBACK=false`; persisted result assertion rejects model `fallback`.
+- exact-head evidence artifact: `p1-b1-real-local-ai-evidence`, artifact `9390712782`, digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`.
+- previous exact-head-equivalent proof run `32323281881` was also GREEN before the trigger-filter-only review correction, demonstrating repeatability.
 
 ## Acceptance Criteria
-- [x] deterministic sample input/log is fixed and reviewable in PR #14.
-- [ ] Heimdall creates a real Analysis Job — runtime proof pending.
-- [ ] Kafka request publication/consumption is evidenced — runtime proof pending.
-- [ ] Bifrost invokes a **real Local AI model** — runtime proof pending.
-- [x] mock/fallback-only execution is explicitly rejected by the proof harness (`BIFROST_OLLAMA_ALLOW_FALLBACK=false` + persisted model assertion).
-- [ ] result returns through the real integration path — runtime proof pending.
-- [ ] result is persisted — runtime proof pending.
-- [ ] final Job state is `SUCCEEDED` — runtime proof pending.
-- [ ] route/provider/latency evidence is captured where existing surfaces expose it.
-- [ ] flow is repeatable under PR-visible or equivalently reviewable execution.
-- [x] no out-of-scope expansion in current diff (one proof workflow file).
+- [x] deterministic sample input/log is fixed and reviewable.
+- [x] Heimdall creates a real Analysis Job.
+- [x] Kafka request publication/consumption is evidenced.
+- [x] Bifrost invokes a **real Local AI model**.
+- [x] mock/fallback-only execution is rejected as PASS evidence.
+- [x] result returns through the real integration path.
+- [x] result is persisted.
+- [x] final Job state is `SUCCEEDED`.
+- [x] provider/model and latency evidence is captured from the existing Kafka result surface.
+- [x] flow repeated successfully under PR-visible execution.
+- [x] no out-of-scope product expansion; PR changes only the bounded proof workflow.
 
-## In Scope
-- minimum proof harness/config/code corrections required by executed UC-02 evidence.
-- one deterministic input.
-- one real local provider/model path.
-- only the first concrete failing boundary at a time.
+## Review / Merge Gate
+- automated review found one workflow-trigger correctness gap: root Gradle/wrapper and compose-mounted `scripts/**` inputs were omitted.
+- PR #14 corrected only that path filter in the same Issue/PR.
+- review thread was resolved only after verifying remote exact head.
+- new exact-head P1-B1 run and primary CI were GREEN.
+- secondary RED was inspected and remained the same pre-existing 41-file / 109-warning / 2-info Heimdall Checkstyle debt.
+- PR #14 merged with expected-head guard; Issue #13 auto-closed as completed.
 
-## Out of Scope
-- Cloud-vs-Local routing proof / UC-03.
-- Cloud provider setup beyond explicitly keeping P1-B1 local-only.
-- DLQ/Redrive / UC-04.
-- Grafana metric correctness / UC-05.
-- UI expansion.
-- README/portfolio hardening.
-- HP AI Server optimization/reference deployment.
-- broad Heimdall Checkstyle cleanup.
-- unrelated architecture refactors.
-
-## Verification Rule
-Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs proving Job ID/state, Kafka handoff, real model/provider invocation, returned result, persistence, and final `SUCCEEDED`.
+## Residual Observation
+Log ingestion also creates an automatic analysis request for the same log. In both proof executions this produced an additional real-model job alongside the explicitly idempotent manual proof Job. This did **not** invalidate UC-02 because the intended manual Job independently traversed request → model → result → persistence → `SUCCEEDED`, but the duplicate/automatic behavior should be considered when later evaluating product semantics or routing. Do not fix it unless a future active acceptance gap makes it a blocker.
 
 ---
 
@@ -207,13 +191,14 @@ Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs
 | E-005 | Frontend boot repair/build | VERIFIED / MERGED | PR #7 |
 | E-016 | Frontend dev-server root | VERIFIED GREEN | Phase 0 |
 | E-017 | Root SkipTests build path | VERIFIED GREEN | Phase 0 |
-| E-024 | UC-01 full core-stack health | VERIFIED GREEN / MERGED | PR #12 / CI `32320165761` |
-| E-025 | Infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Elasticsearch/Prometheus/Grafana |
+| E-024 | UC-01 full core-stack health | VERIFIED GREEN / MERGED | PR #12 |
 | E-035 | Heimdall full-stack health | VERIFIED GREEN | `/actuator/health` = UP |
 | E-038 | Bifrost full-stack health | VERIFIED GREEN | `/health` = healthy |
 | E-039 | Full-stack Frontend root | VERIFIED GREEN | root HTML captured |
-| E-018 | Real Local AI E2E | **IN PROGRESS** | Issue #13 / PR #14 / run `32323281881` |
-| E-040 | Real local model proof contract | EXECUTION PENDING | `smollm:135m`; fallback disabled; PR #14 |
+| E-018 | Real Local AI E2E | **VERIFIED GREEN / MERGED** | Issue #13 / PR #14 / run `32323663891` |
+| E-040 | Real local model identity | **VERIFIED** | `smollm:135m`; fallback disabled; artifact `9390712782` |
+| E-041 | UC-02 Kafka handoff + latency | **VERIFIED** | intended Job request/result; 121045 ms exact-head run |
+| E-042 | UC-02 persistence + final state | **VERIFIED** | analysisId 2 / Job SUCCEEDED |
 | E-019 | Local vs Cloud Routing | PENDING | UC-03 |
 | E-020 | DLQ → Redrive → Success | PENDING | UC-04 |
 | E-021 | Grafana live metrics | PENDING | UC-05 |
@@ -228,13 +213,14 @@ Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs
 |---|---|---|
 | R-001 | duplicate `idx_severity` schema index name | HOLD; repeatedly non-fatal; fix only if future executable evidence makes it a blocker |
 | R-002 | broad Heimdall Checkstyle debt | VERIFIED PRE-EXISTING; no mass-fix without separate authorization |
-| R-003 | anonymous gRPC reader may be inappropriate for future real gRPC endpoints | replace with explicit policy only if actual product gRPC endpoint is introduced |
+| R-003 | anonymous gRPC reader may be inappropriate for future real gRPC endpoints | replace only if actual product gRPC endpoint is introduced |
 | R-004 | root startup banner is not health evidence | use endpoint/readiness evidence |
-| R-005 | root `start-all.ps1` Bifrost launch differs from proven CI `serve` invocation | evaluate only if P1-B1 executable path uses it and it becomes a direct blocker |
+| R-005 | root `start-all.ps1` Bifrost launch differs from proven CI `serve` invocation | evaluate only if a future active gap uses it and it becomes a blocker |
 | R-006 | README overclaim / Grafana port drift | proof-hardening later |
-| R-007 | fallback-only AI E2E risk | current PR explicitly disables fallback and asserts persisted model identity |
-| R-008 | GitHub-hosted CPU/Ollama execution may expose runtime/network constraints | run `32323281881`; RED must identify first concrete blocker; do not substitute mock |
-| R-009 | agent self-report | never PASS without executed evidence |
+| R-007 | fallback-only AI E2E risk | CLOSED for UC-02 by real model identity + fallback-disabled exact-head proof |
+| R-008 | hosted CPU local inference latency can vary materially | observed ~0.7 s in first proof and ~121 s in exact-head repeat; do not claim stable performance from these proof runs |
+| R-009 | log ingestion auto-analysis creates an additional job beside explicit manual analysis | HOLD; record semantics before future product-facing claims |
+| R-010 | agent self-report | never PASS without executed evidence |
 
 ---
 
@@ -255,34 +241,36 @@ Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs
 # 9. Current Checkpoint
 
 ## Result
-**PHASE 0 PASS / UC-01 PASS / P1-B1 IN PROGRESS / PR #14 EXECUTING.**
+**PHASE 0 PASS / UC-01 PASS / UC-02 PASS / P1-B1 CLOSED.**
 
 ## What Changed
-- confirmed Issue #13 remains the sole active implementation work item.
-- confirmed there was no active PR for Issue #13.
-- fast-forwarded `agent/p1-b1-local-ai-golden-path` to current `main` before implementation.
-- inspected the real integration path: Heimdall AnalysisOrchestrator publishes `analysis.request`; Bifrost Kafka consumer calls `HeimdallIntegrationService`; local mode invokes `OllamaClient`; Bifrost publishes `analysis.result`; Heimdall exposes Job and persisted AnalysisResult endpoints.
-- added one bounded PR-visible proof workflow only.
-- opened PR #14 at exact head `f4354d8a5f29c3f0d9f4a6a1711297514ade0fdc`.
+- fast-forwarded the existing Issue #13 branch to current `main` before implementation.
+- added one bounded PR-visible UC-02 proof workflow.
+- opened PR #14 and executed a real Ollama model through the existing Heimdall/Kafka/Bifrost integration.
+- fixed one automated-review workflow trigger gap without product-code expansion.
+- merged PR #14 with expected-head guard at `ee24e6990d19c0be618baf1698bff275a8b27134`.
+- Issue #13 closed as completed.
 
 ## What Was Executed
-- PR #14 creation triggered exact-head workflows.
-- `P1-B1 Real Local AI Golden Path` run `32323281881` started successfully.
-- checkout, JDK setup, and Python setup are GREEN; `Prepare Heimdall and Bifrost` is currently executing.
-- primary `CI` run `32323281862` is also IN PROGRESS; secondary `CI/CD Pipeline` run `32323281844` was queued at checkpoint time.
+- initial real-model proof run `32323281881`: GREEN.
+- final exact-head proof run `32323663891`: GREEN.
+- exact-head primary CI run `32323664031`: GREEN.
+- exact-head secondary Bifrost build/test and dependency security: GREEN.
+- exact-head secondary Heimdall build: RED only at existing `:heimdall:checkstyleMain` debt (41 files / 109 warnings / 2 info).
+- final exact-head proof artifact inspected directly: real `smollm:135m`, Kafka handoff, persisted analysis, Job `SUCCEEDED`.
 
 ## What Was Not Verified
-- real Ollama model pull/inference completion.
-- real Analysis Job creation.
-- Kafka request/result handoff during UC-02.
-- persisted real-model result.
-- final Job `SUCCEEDED`.
-- route/provider/latency evidence beyond the proof contract.
+- UC-03 Local-vs-Cloud routing.
+- UC-04 DLQ/Redrive recovery.
+- UC-05 live Grafana metric correctness.
+- HP AI Server reference run.
+- final demo/portfolio package.
+- performance consistency of hosted CPU local inference.
 
 ## Remaining Risks
-- the first exact-head runtime may expose a configuration/network/serialization defect not visible statically.
-- hosted CPU inference may be slower than prior health-only jobs; workflow timeout is bounded at 30 minutes.
-- no fallback/mock substitution is allowed if real Ollama execution fails.
+- do not publish stable latency/performance claims from P1-B1; two valid real-model proofs showed materially different latency.
+- auto-analysis on ingestion creates an extra analysis job in addition to the explicit manual request.
+- pre-existing Heimdall Checkstyle debt remains unrelated and intentionally unmodified.
 
 ## NEXT
-**Inspect PR #14 exact-head workflow run `32323281881` first. If RED, inspect the first concrete failing step/log and fix only that Issue #13 boundary in the same PR. If the UC-02 job is GREEN, verify the uploaded artifact proves Job ID/state, Kafka handoff, real `smollm:135m` model identity, persisted result, and final `SUCCEEDED`; then inspect review/security state before merge.**
+**Closure evaluation before any new Issue. The next frozen v1.0 use case is UC-03 Hybrid Routing, but do not create or implement it until the next run re-reads this synchronized MASTER, confirms no active PR/Issue remains, and creates exactly one bounded Issue for the smallest routing proof gap.**
