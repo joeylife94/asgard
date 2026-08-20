@@ -11,7 +11,7 @@
 - **Current Phase**: Phase 0 — Baseline Truth
 - **Current Batch**: P0-B4 — UC-01 Full Core-Service Startup / Health Verification
 - **Batch Result**: IN PROGRESS
-- **Status**: PR #12 OPEN — EXPLICIT gRPC AUTH READER CORRECTION PUSHED; EXACT-HEAD CI RUNNING
+- **Status**: PR #12 OPEN — prior exact-head RED; dev gRPC/Prometheus port collision corrected; new exact-head CI RUNNING
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **P0-B1 merge**: `fa3f129783387fbeafae537e8a22b4629faf6d42`
@@ -19,11 +19,9 @@
 - **P0-B3 merge**: `74da74c71625b9bca111b2e1c1bbbb933c82077a`
 - **Issue #11**: OPEN — `P0-B4: verify UC-01 full core-service startup and health`
 - **PR #12**: OPEN — `test: verify UC-01 full core-service startup and health`
-- **Initial tested PR #12 head**: `e874550e018e89b889ae9b3a7b6a6eb1542e2e63`
-- **Elasticsearch-corrected head**: `d2d96f47a394e7ce4cc6a798a368b6b83cd28a7a`
-- **Rejected gRPC dependency-removal head**: `f7abfa7e565711bf7a39539c7865293532905828`
-- **Current PR #12 head**: `ae306fad143d5be1f71d6d25354f6af3c7a7d344`
-- **Current exact-head CI**: `CI 32296456441` + `CI/CD Pipeline 32296456440` — RUNNING
+- **Prior tested PR #12 head**: `ae306fad143d5be1f71d6d25354f6af3c7a7d344`
+- **Current PR #12 head**: `279261aad0046df8cce59e5f7fabf242921fdb21`
+- **Current exact-head CI**: `CI 32315948212` + `CI/CD Pipeline 32315948241` — RUNNING
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
 
@@ -76,7 +74,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
-| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | IN PROGRESS — infra including Elasticsearch proven; Heimdall gRPC security startup correction under exact-head execution |
+| UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | IN PROGRESS — infra proven; current full-stack application health under exact-head execution |
 | UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | PENDING |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
@@ -137,81 +135,73 @@ Execute the actual core stack and collect concrete service readiness/reachabilit
 - broad Heimdall Checkstyle cleanup.
 - unrelated infrastructure.
 
-## Initial Exact-Head Evidence — `e874550...`
+## Executed Failure Sequence
 
-`CI` run `32290803193`, core-health job `96190902370`:
-- bootJar/dependency preparation: GREEN.
-- PostgreSQL: GREEN, attempt 2.
-- Kafka: GREEN, attempt 2.
-- Redis: GREEN, attempt 1.
-- Prometheus: GREEN, attempt 1.
-- Grafana `/api/health` on `3001`: GREEN, attempt 1.
-- application launch step: executed.
-- Heimdall `/actuator/health`: RED after 60 attempts.
+### A. Initial runtime — missing Elasticsearch
+Initial PR-visible full-stack execution proved PostgreSQL, Kafka, Redis, Prometheus and Grafana `3001` readiness, then Heimdall failed because enabled Elasticsearch access hit `localhost:9200` with connection refused.
 
-Captured Heimdall log proved Spring/Tomcat/JPA/PostgreSQL initialization proceeded, then application-context startup aborted because the enabled Elasticsearch repository/service attempted `localhost:9200` and received `Connection refused`.
+Correction: include the repository's existing Elasticsearch service and prove `_cluster/health` before application startup.
 
-## Elasticsearch Correction / Executed Evidence — `d2d96f47...`
-
-Changed only the Issue #11 proof harness:
-- existing Compose `elasticsearch` service added to infrastructure startup.
-- explicit readiness loop added for `http://127.0.0.1:9200/_cluster/health` before Heimdall startup.
-
-Exact-head `CI` run `32291645192`: **FAILURE**.
-Supporting `CI/CD Pipeline` run `32291645245`: **FAILURE**.
-
-Core-health job evidence after adding Elasticsearch:
-- boot/dependency preparation: GREEN.
+### B. Elasticsearch-corrected runtime — missing gRPC authentication reader
+Head `d2d96f47a394e7ce4cc6a798a368b6b83cd28a7a`, `CI` run `32291645192`:
 - PostgreSQL: GREEN.
 - Kafka: GREEN.
 - Redis: GREEN.
-- Elasticsearch `_cluster/health`: GREEN.
+- Elasticsearch: GREEN.
 - Prometheus: GREEN.
 - Grafana `3001`: GREEN.
-- Heimdall `/actuator/health`: RED after 60 attempts.
+- Heimdall: RED during application-context startup.
 
-The fatal Heimdall startup error was no longer Elasticsearch. Application startup advanced through PostgreSQL/JPA, then `GrpcServerSecurityAutoConfiguration` failed because no `GrpcAuthenticationReader` bean exists:
+Fatal boundary: `GrpcServerSecurityAutoConfiguration` could not create its security interceptor because no `GrpcAuthenticationReader` bean existed.
+
+The duplicate PostgreSQL `idx_severity` observation was non-fatal in this run and remains HOLD.
+
+### C. Rejected correction — remove gRPC starter
+Head `f7abfa7e565711bf7a39539c7865293532905828`, `CI` run `32296242418`:
+- removal caused `:heimdall:compileJava` failure because existing `GrpcServerConfig.java` directly requires gRPC starter classes.
+- removal was rejected and starter restored.
+
+### D. Explicit gRPC authentication reader — executed RED
+Head `ae306fad143d5be1f71d6d25354f6af3c7a7d344`:
+- `CI` run `32296456441`: **FAILURE**.
+- `CI/CD Pipeline` run `32296456440`: **FAILURE**.
+- Phase 0 preflight: GREEN.
+- frontend dev-root job: GREEN.
+- infrastructure readiness inside full-stack job: GREEN for PostgreSQL, Kafka, Redis, Elasticsearch, Prometheus, Grafana.
+- `Start Heimdall, Bifrost, and Frontend`: step completed.
+- **first failing step**: `Verify application reachability`.
+
+Downloaded exact-run artifact `p0-b4-core-health-evidence` proves the first acceptance boundary:
 
 ```text
-BeanCreationException
-→ shadedNettyGrpcServerFactory
-→ GrpcServerSecurityAutoConfiguration
-→ authenticatingServerInterceptor
-→ No qualifying bean of type GrpcAuthenticationReader
-→ APPLICATION FAILED TO START
+Heimdall startup
+→ gRPC server start
+→ bind 0.0.0.0:9090
+→ Address already in use
+→ Failed to start bean 'shadedNettyGrpcServerLifecycle'
+→ application context aborts
+→ Heimdall /actuator/health never becomes reachable
 ```
 
-The duplicate PostgreSQL `idx_severity` DDL observation also appeared, but Hibernate continued past it and the later gRPC failure terminated startup. Therefore `idx_severity` remains HOLD and is not the current blocker.
+Port owner conflict is deterministic in the proof stack: Prometheus is already required and proven reachable on host `9090`, while the Heimdall gRPC server also defaults to `9090`.
 
-## Rejected Correction / Executed Evidence — `f7abfa7...`
+Supporting artifact observations, not yet authorized as the active correction:
+- Bifrost process log shows its current proof command rejects the supplied `--host 127.0.0.1 --port 8000` arguments.
+- Frontend process log shows Vite started and reported local root `http://127.0.0.1:3000/`, but the full-stack verification step exits at Heimdall first; therefore full-stack Frontend acceptance remains unchecked for this exact head.
 
-First attempt removed `net.devh:grpc-spring-boot-starter` after repository search did not surface active gRPC service/client implementations.
+### E. Current correction — dev gRPC port isolation
+Current PR #12 head: `279261aad0046df8cce59e5f7fabf242921fdb21`.
 
-Exact-head `CI` run `32296242418` then provided immediate negative evidence:
-- Phase 0 frontend preflight: GREEN.
-- frontend dev root: GREEN.
-- Heimdall unit job: RED at `:heimdall:compileJava`.
-- compile error proved `heimdall/src/main/java/com/heimdall/config/GrpcServerConfig.java` directly imports/uses `io.grpc.ServerInterceptor` and `GrpcGlobalServerInterceptor`.
+Smallest correction justified by executed evidence:
+- `heimdall/src/main/resources/application-dev.yml` now sets `grpc.server.port: ${GRPC_PORT:9091}`.
+- this changes the **dev profile only** and preserves an environment override.
+- Prometheus remains on required host port `9090`.
+- no production profile, web/JWT auth, UI, README, UC-02 behavior, Checkstyle, or unrelated infrastructure changed.
 
-Therefore dependency removal was rejected and the starter was restored. This failed attempt is retained as evidence; it is not the current correction.
-
-## Current Correction — `ae306fad...`
-
-`GrpcServerConfig.java` was inspected directly. It defines a global gRPC logging interceptor but no authentication reader. The grpc-spring implementation requires a `GrpcAuthenticationReader` when its Spring Security integration is active.
-
-Smallest correction now under execution:
-- restored the gRPC starter required to compile the existing interceptor configuration.
-- added an explicit `GrpcAuthenticationReader` bean using `AnonymousAuthenticationReader("heimdall-grpc-anonymous")`.
-- the bean documents that no actual gRPC service is currently implemented and must be replaced together with a real service authentication policy if gRPC product endpoints are introduced.
-- no web/JWT security weakening, UI, README, UC-02 behavior or Checkstyle changes.
-
-Current PR-visible exact-head execution:
-- `CI` run `32296456441`: RUNNING.
-- `CI/CD Pipeline` run `32296456440`: RUNNING.
-- no PASS is recorded until current exact-head runtime completes.
-
-### Separate Observation — HOLD
-Duplicate PostgreSQL index-name error/warning for `idx_severity` remains recorded but not authorized for proactive repair. Address only if a future exact-head run proves it is the next concrete P0-B4 blocker.
+Current PR-visible execution:
+- `CI` run `32315948212`: RUNNING.
+- `CI/CD Pipeline` run `32315948241`: RUNNING.
+- no PASS is recorded until this exact head completes.
 
 ## Acceptance Criteria
 - [x] reviewable checkout/configuration/proof command.
@@ -224,11 +214,11 @@ Duplicate PostgreSQL index-name error/warning for `idx_severity` remains recorde
 - [x] Prometheus reachability verified.
 - [x] Grafana `3001` reachability verified.
 - [x] Redis readiness verified.
-- [x] Elasticsearch readiness verified on `d2d96f47...`.
+- [x] Elasticsearch readiness verified.
 - [x] no out-of-scope expansion.
 
 ## Result
-**IN PROGRESS — post-Elasticsearch runtime exposed missing gRPC authentication-reader configuration. An over-broad dependency-removal attempt was rejected by compile evidence; the starter is restored and the narrow explicit-reader correction is now executing. P0-B4 is not PASS.**
+**IN PROGRESS — the explicit gRPC authentication reader moved Heimdall to the next concrete startup boundary: gRPC port `9090` collided with the already-required Prometheus host port `9090`. Dev gRPC now uses `9091`; exact-head execution is running. P0-B4 is not PASS.**
 
 ---
 
@@ -251,12 +241,14 @@ Duplicate PostgreSQL index-name error/warning for `idx_severity` remains recorde
 | E-022 | Final Demo | PENDING | |
 | E-023 | HP AI Server reference run | PENDING | |
 | E-024 | UC-01 full core-stack health | IN PROGRESS | PR #12 |
-| E-025 | P0-B4 infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Prometheus/Grafana |
+| E-025 | P0-B4 infra readiness | VERIFIED GREEN | Postgres/Kafka/Redis/Elasticsearch/Prometheus/Grafana |
 | E-026 | Missing Elasticsearch dependency failure | VERIFIED RED / SUPERSEDED | initial PR #12 run |
-| E-027 | Elasticsearch readiness/correction | VERIFIED GREEN | head `d2d96f47...` |
-| E-028 | Heimdall gRPC security startup failure | VERIFIED RED | run `32291645192` |
+| E-027 | Elasticsearch readiness/correction | VERIFIED GREEN | PR #12 |
+| E-028 | Missing gRPC authentication reader | VERIFIED RED / SUPERSEDED | run `32291645192` |
 | E-029 | gRPC starter removal | VERIFIED RED / REJECTED | compile failure on `f7abfa7...` |
-| E-030 | Explicit gRPC authentication reader | PUSHED / EXECUTION PENDING | head `ae306fad...` |
+| E-030 | Explicit gRPC authentication reader | VERIFIED PAST PREVIOUS BLOCKER | head `ae306fad...` reached gRPC server start |
+| E-031 | Heimdall gRPC/Prometheus port collision | VERIFIED RED | artifact from run `32296456441` |
+| E-032 | Dev gRPC port isolation | PUSHED / EXECUTION PENDING | head `279261aad...` |
 
 ---
 
@@ -264,14 +256,16 @@ Duplicate PostgreSQL index-name error/warning for `idx_severity` remains recorde
 
 | ID | Risk | Handling |
 |---|---|---|
-| R-001 | Heimdall dev startup required Elasticsearch | Elasticsearch now included/proven ready in P0-B4 harness |
-| R-002 | duplicate `idx_severity` schema index name observed | HOLD; non-fatal on `d2d96f47...`; fix only if future run proves blocker |
+| R-001 | Heimdall dev startup required Elasticsearch | included/proven ready in P0-B4 harness |
+| R-002 | duplicate `idx_severity` schema index name observed | HOLD; non-fatal in prior execution; fix only if future run proves blocker |
 | R-003 | broad Heimdall checkstyle debt | no mass-fix in P0-B4 |
 | R-004 | startup banner is not health proof | endpoint/readiness evidence required |
-| R-005 | gRPC security auto-config lacked an authentication reader | explicit reader under exact-head execution; anonymous policy is temporary until real gRPC services exist |
-| R-006 | README overclaim / Grafana port drift | proof-hardening later |
-| R-007 | fallback-only E2E risk | real-model proof required later |
-| R-008 | agent self-report | never PASS without executed evidence |
+| R-005 | anonymous gRPC reader could become inappropriate if real gRPC product endpoints are introduced | current scope has no product gRPC service; replace with explicit auth policy when real gRPC endpoints exist |
+| R-006 | dev gRPC and Prometheus both previously defaulted to host `9090` | dev gRPC isolated to `9091`; current execution pending |
+| R-007 | Bifrost proof command rejected host/port CLI args on prior exact head | HOLD until current run proves it is the next first concrete blocker |
+| R-008 | README overclaim / Grafana port drift | proof-hardening later |
+| R-009 | fallback-only E2E risk | real-model proof required later |
+| R-010 | agent self-report | never PASS without executed evidence |
 
 ---
 
@@ -295,29 +289,30 @@ Duplicate PostgreSQL index-name error/warning for `idx_severity` remains recorde
 **P0-B1 PASS / P0-B2 PASS / P0-B3 PASS / P0-B4 IN PROGRESS.**
 
 ## What Changed
-- `d2d96f47...` runtime failure reconciled: Elasticsearch GREEN; fatal blocker moved to gRPC security authentication-reader creation.
-- duplicate `idx_severity` confirmed non-fatal in that execution and kept on HOLD.
-- first gRPC-starter removal attempt was executed and rejected because `GrpcServerConfig.java` requires starter classes to compile.
-- starter restored and explicit `GrpcAuthenticationReader` added on current PR #12 head `ae306fad...`.
-- new exact-head workflows triggered.
+- stale RUNNING state for head `ae306fad...` was reconciled to executed FAILURE.
+- exact-run evidence artifact was downloaded and inspected.
+- first concrete current boundary was proven as Heimdall gRPC bind failure on `9090`, conflicting with required Prometheus host `9090`.
+- only the dev-profile gRPC default was moved to `9091`, preserving `GRPC_PORT` override.
+- current PR #12 head advanced to `279261aad0046df8cce59e5f7fabf242921fdb21` and new exact-head workflows started.
 
 ## What Was Executed
-- `CI` run `32291645192`: completed FAILURE on `d2d96f47...`; infra including Elasticsearch GREEN; Heimdall failed at gRPC security bean creation.
-- `CI` run `32296242418` on `f7abfa7...`: Heimdall compile failure proved dependency removal invalid.
-- current-head workflow execution started: `32296456441`, `32296456440`.
+- `CI` run `32296456441`: completed FAILURE on `ae306fad...`.
+- `CI/CD Pipeline` run `32296456440`: completed FAILURE on `ae306fad...`.
+- core-health artifact from `32296456441` inspected: infra readiness GREEN; first reachability boundary Heimdall RED due gRPC `9090` bind collision.
+- branch mutation committed: `279261aad0046df8cce59e5f7fabf242921fdb21`.
+- new exact-head workflows: `32315948212`, `32315948241` started.
 
 ## What Was Not Verified
-- current-head compile/unit outcome after starter restoration + reader bean.
-- current-head Heimdall health.
+- current-head Heimdall health after dev gRPC port isolation.
 - current-head Bifrost health in full-stack job.
 - current-head Frontend root in full-stack job.
 - current-head overall workflow conclusions/review state.
 - real Local AI E2E, routing, recovery, live metrics, reference deployment, final demo.
 
 ## Remaining Risks
-- explicit anonymous gRPC reader is only appropriate while no real gRPC product service exists; it must not silently become the production auth policy for future gRPC endpoints.
-- correction may reveal another real UC-01 startup boundary.
+- correction may expose the next real UC-01 startup boundary.
+- prior artifact already shows a Bifrost CLI invocation error, but it is not repaired until current execution proves it is the first remaining acceptance blocker.
 - duplicate `idx_severity` remains HOLD until executable evidence makes it fatal.
 
 ## NEXT
-**Inspect PR #12 exact-head `ae306fad143d5be1f71d6d25354f6af3c7a7d344` runs `32296456441` and `32296456440`. If RED, inspect only the first concrete Issue #11-scoped failure and apply the smallest justified correction. If all Issue #11 acceptance is GREEN and review/security state is clean, merge PR #12 with expected-head guard, ensure Issue #11 closes only after acceptance/merge, then reconcile MASTER on main before selecting new work.**
+**Inspect PR #12 exact-head `279261aad0046df8cce59e5f7fabf242921fdb21` runs `32315948212` and `32315948241`. If RED, inspect only the first concrete Issue #11-scoped failure and apply the smallest justified correction. If all Issue #11 acceptance is GREEN and review/security state is clean, merge PR #12 with expected-head guard, ensure Issue #11 closes only after acceptance/merge, then reconcile MASTER on main before selecting new work.**
