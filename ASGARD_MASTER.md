@@ -10,15 +10,17 @@
 - **Target Level**: Usable Production-like PoC
 - **Current Phase**: Phase 1 — Golden Path
 - **Current Batch**: P1-B2 — UC-03 Hybrid Routing
-- **Batch Result**: **IN PROGRESS**
-- **Status**: UC-01 PASS / UC-02 PASS / UC-03 IN PROGRESS
+- **Batch Result**: **HOLD / BLOCKED — CLOUD prerequisite**
+- **Status**: UC-01 PASS / UC-02 PASS / UC-03 LOCAL VERIFIED, CLOUD BLOCKED
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Active Issue**: #15 — OPEN
-- **Active PR**: #16 — DRAFT / exact-head execution in progress
+- **Active PR**: #16 — DRAFT / HOLD
 - **P1-B2 Branch**: `agent/p1-b2-hybrid-routing-proof`
 - **P1-B2 PR Exact Head**: `8324ae36051c4fedf4937539a3f231bb823c01ff`
-- **P1-B2 Proof Run**: `32326966643` — IN PROGRESS
+- **P1-B2 Proof Run**: `32326966643` — FAILURE at CLOUD prerequisite only
+- **P1-B2 Evidence Artifact**: `9391752221`
+- **P1-B2 Evidence Digest**: `sha256:ca441898c13407a268fa3891ca9faa53f8b4677971e7c961f7bff4d5437ddc73`
 - **Phase 0 Result**: PASS
 - **Updated**: 2026-08-20
 - **Final v1.0 Gate**: **Human Review Required**
@@ -74,7 +76,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 |---|---|---|---|
 | UC-01 Startup | third-party executable startup | clone/configure → core services healthy | **PASS** |
 | UC-02 Analysis | real AI analysis | Job → Kafka → real AI → result → SUCCEEDED | **PASS — Issue #13 / PR #14** |
-| UC-03 Routing | hybrid route | sensitive→LOCAL / general→CLOUD with real providers | **IN PROGRESS — Issue #15 / PR #16** |
+| UC-03 Routing | hybrid route | sensitive→LOCAL / general→CLOUD with real providers | **HOLD — LOCAL VERIFIED / CLOUD credential prerequisite** |
 | UC-04 Recovery | failure recovery | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
 | UC-05 Observability | operating visibility | jobs/latency/routes/DLQ/redrive/health | PENDING |
 
@@ -152,19 +154,18 @@ Log ingestion automatically creates another analysis request beside the explicit
 
 ---
 
-# 6. Phase 1 — P1-B2 UC-03 Hybrid Routing — IN PROGRESS
+# 6. Phase 1 — P1-B2 UC-03 Hybrid Routing — HOLD / BLOCKED
 
 ## Closure Evaluation
 Closure evaluation after UC-02 found real v1.0 work remaining: Hybrid Routing, Recovery, Observability and final proof packaging are still Core/PENDING. The project is **not** at Human Review / FREEZE.
 
 ## Work Item
 - **Issue #15**: OPEN — `P1-B2: prove UC-03 Hybrid Routing with real LOCAL and CLOUD execution`.
-- **PR #16**: DRAFT — bounded proof harness only.
+- **PR #16**: DRAFT / HOLD.
 - **Branch**: `agent/p1-b2-hybrid-routing-proof`.
 - **Exact Head**: `8324ae36051c4fedf4937539a3f231bb823c01ff`.
-- **Exact-head P1-B2 run**: `32326966643` — IN PROGRESS.
-- exact-head primary `CI` run `32326966681` — IN PROGRESS at last inspection.
-- exact-head `CI/CD Pipeline` run `32326966665` — IN PROGRESS at last inspection.
+- **Exact-head P1-B2 run**: `32326966643` — FAILURE at `Verify real CLOUD prerequisite`.
+- **Evidence artifact**: `9391752221`, digest `sha256:ca441898c13407a268fa3891ca9faa53f8b4677971e7c961f7bff4d5437ddc73`.
 
 ## Frozen Routing Contract
 The current product-facing automatic privacy route is the existing Bifrost `/analyze` path using `PrivacyRouter`:
@@ -176,31 +177,45 @@ LOW sensitivity           → cloud → real AWS Bedrock
 
 Do not redesign routing policy in this batch.
 
-## Deterministic Proof Inputs
+## Deterministic Inputs
 - LOCAL/sensitive: `ERROR login failed user email alice@example.com password=SuperSecret123 request=p1-b2-sensitive`.
 - CLOUD/general: `INFO scheduler completed nightly batch successfully duration_ms=18 job=p1-b2-general`.
 
-## Acceptance Criteria
-- [ ] sensitive input classified HIGH/MEDIUM and routed `local`.
-- [ ] real local Ollama provider executes; fallback/mock is not PASS.
-- [ ] general input classified LOW and routed `cloud`.
-- [ ] real existing Bedrock provider executes using actually available safe credentials/capability; no mocks.
-- [ ] route decision and provider/model evidence captured for both cases.
-- [ ] final result/response captured for both cases.
-- [ ] exact-head PR-visible verification executed and evidence preserved.
-- [ ] bounded diff only; no UC-04/05, UI, README, HP AI Server, duplicate-job or broad Checkstyle work.
-
-## Current Executed Evidence
-At the last exact-head job inspection for run `32326966643`:
-- checkout / Python setup / Bifrost + boto3 install: GREEN.
-- real Ollama container/model preparation: GREEN.
-- deterministic privacy routing decision assertions: GREEN.
+## Executed Evidence — exact head `8324ae3...`
+- Bifrost + boto3 install: GREEN.
+- real Ollama container + `smollm:135m` pull: GREEN.
+- deterministic privacy-route assertions: GREEN.
 - Bifrost API startup: GREEN.
-- real LOCAL `/analyze` execution: still RUNNING at last inspection.
-- CLOUD credential prerequisite / Bedrock invocation: not reached yet.
+- sensitive route decision: `track=local`, `sensitivity=high`; email and password patterns detected.
+- general route decision: `track=cloud`, `sensitivity=low`; no sensitive pattern detected.
+- real LOCAL `/analyze`: GREEN.
+- LOCAL persisted response: `id=1`, `model=smollm:135m`, `cached=false`, non-empty real model output.
+- LOCAL proof duration observed ~122 s on hosted CPU. **Do not publish as a stable performance claim.**
+- CLOUD prerequisite step: **RED**.
+- CLOUD Bedrock invocation step: SKIPPED because prerequisite failed.
 
-## Credential Rule
-No cloud credential or provider capability may be invented. The PR workflow checks Actions `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` and requires `bedrock:InvokeModel` capability. If absent, the proof must remain BLOCKED/HOLD with an explicit prerequisite artifact; mocks are prohibited.
+## Concrete Blocker
+Artifact `p1-b2-cloud-prerequisite.txt` records:
+
+```text
+UC-03 CLOUD BLOCKED: GitHub Actions AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY secrets are not available to this PR run.
+Required prerequisite: repository Actions credentials with bedrock:InvokeModel permission for the configured model/region.
+```
+
+This is an external credential/capability prerequisite, not a code failure. Mocks or fabricated credentials are prohibited.
+
+## Acceptance Criteria
+- [x] sensitive input classified HIGH/MEDIUM and routed `local`.
+- [x] real local Ollama provider executes; fallback/mock is not PASS.
+- [x] general input classified LOW and routed `cloud`.
+- [ ] real existing Bedrock provider executes with actually available credentials/capability.
+- [x] route decision and local provider/model evidence captured.
+- [ ] cloud provider/model result evidence captured.
+- [x] exact-head PR-visible verification executed and evidence preserved.
+- [x] bounded diff only; no UC-04/05, UI, README, HP AI Server, duplicate-job or broad Checkstyle work.
+
+## HOLD Rule
+P1-B2 remains enabled and on HOLD/BLOCKED. Do not close Issue #15 or merge PR #16 as UC-03 PASS until real Bedrock execution is evidenced. Do not start UC-04/05 while this active acceptance gap remains.
 
 ---
 
@@ -221,7 +236,9 @@ No cloud credential or provider capability may be invented. The PR workflow chec
 | E-040 | Real local model identity | VERIFIED | `smollm:135m`; fallback disabled |
 | E-041 | UC-02 Kafka handoff + latency | VERIFIED | intended Job request/result |
 | E-042 | UC-02 persistence + final state | VERIFIED | Job SUCCEEDED |
-| E-019 | Local vs Cloud Routing | **IN PROGRESS** | Issue #15 / PR #16 / run `32326966643` |
+| E-019 | Local vs Cloud Routing | **PARTIAL VERIFIED / CLOUD BLOCKED** | Issue #15 / PR #16 / run `32326966643` |
+| E-043 | UC-03 LOCAL privacy route + real provider | **VERIFIED GREEN** | high→local / `smollm:135m` / artifact `9391752221` |
+| E-044 | UC-03 CLOUD real provider execution | **BLOCKED** | Actions AWS credentials absent in PR run |
 | E-020 | DLQ → Redrive → Success | PENDING | UC-04 |
 | E-021 | Grafana live metrics | PENDING | UC-05 |
 | E-022 | Final Demo | PENDING | final proof packaging |
@@ -243,7 +260,7 @@ No cloud credential or provider capability may be invented. The PR workflow chec
 | R-008 | hosted CPU inference latency varies materially | no stable performance claims |
 | R-009 | ingestion auto-analysis creates extra job | HOLD |
 | R-010 | agent self-report | never PASS without executed evidence |
-| R-011 | AWS/Bedrock credential or model entitlement may be unavailable in PR execution | if proven absent/denied, record exact prerequisite and remain HOLD/BLOCKED; do not mock |
+| R-011 | AWS/Bedrock credentials unavailable to PR Actions | ACTIVE BLOCKER; require safe Actions credentials with `bedrock:InvokeModel`; do not mock |
 
 ---
 
@@ -264,33 +281,36 @@ No cloud credential or provider capability may be invented. The PR workflow chec
 # 10. Current Checkpoint
 
 ## Result
-**PHASE 0 PASS / UC-01 PASS / UC-02 PASS / UC-03 IN PROGRESS.**
+**PHASE 0 PASS / UC-01 PASS / UC-02 PASS / UC-03 HOLD — LOCAL VERIFIED, CLOUD BLOCKED.**
 
 ## What Changed
-- re-read synchronized MASTER and confirmed no relevant active PR/Issue existed after UC-02.
-- performed closure evaluation; real Core work remains, so Final Human Review gate is not reached.
+- re-read synchronized MASTER and current open work state.
+- performed closure evaluation and confirmed real v1.0 work remains.
 - created exactly one bounded Issue #15 before UC-03 implementation.
 - created branch `agent/p1-b2-hybrid-routing-proof` from synchronized `main`.
 - added one proof-only workflow and opened draft PR #16.
-- corrected the Issue contract to use the actual existing automatic privacy-routing integration (`PrivacyRouter` + `/analyze`) rather than inventing a new routing design.
+- aligned the Issue to the actual existing privacy-routing integration (`PrivacyRouter` + `/analyze`).
+- updated PR #16 with executed evidence and the exact cloud prerequisite.
 
 ## What Was Executed
-- current repository open PR/Issue state checked.
-- static routing contract verified from current source: HIGH/MEDIUM→local; LOW→cloud.
-- exact-head P1-B2 workflow run `32326966643` started.
-- installation, Ollama model startup, deterministic route assertions and Bifrost API startup reached GREEN before this checkpoint.
+- exact-head run `32326966643` completed.
+- routing assertions: sensitive high→local, general low→cloud — GREEN.
+- real Ollama `smollm:135m` startup/pull — GREEN.
+- real LOCAL `/analyze` — GREEN; persisted id `1`, real non-empty result, model `smollm:135m`.
+- CLOUD prerequisite check — RED because AWS credential secrets are unavailable to the PR run.
+- evidence artifact `9391752221` inspected directly.
 
 ## What Was Not Verified
-- final real LOCAL `/analyze` result on PR #16 exact head.
-- presence/validity of Actions AWS credentials.
 - real Bedrock invocation/result.
-- final exact-head PR #16 acceptance/review state.
+- whether credentials exist in another environment but are withheld from pull-request Actions.
+- Bedrock IAM/model entitlement once credentials are made available.
 - UC-04 / UC-05 / final proof package / HP AI Server reference run.
 
 ## Remaining Risks
-- AWS credentials may be absent or may lack Bedrock model entitlement; no substitution is allowed.
-- local hosted CPU inference can be slow; do not interpret duration as a performance target.
+- UC-03 cannot PASS without a real cloud execution.
+- no source-code correction is justified by the current failure; it is an external credential prerequisite.
+- local hosted CPU duration is variable and must not become a published performance claim.
 - pre-existing Checkstyle and duplicate-job holds remain out of scope.
 
 ## Exact Next Action
-**Inspect PR #16 exact-head run `32326966643`. If RED, use the first concrete Issue #15 failure only. If LOCAL is GREEN but CLOUD credentials/capability are unavailable, preserve that exact evidence and keep P1-B2 HOLD/BLOCKED while the task remains enabled. If both real routes are proven and review/security is clean, mark PR ready, merge with expected-head guard, close Issue #15 only after merge, reconcile this MASTER, then perform closure evaluation before any further Issue.**
+**Keep Issue #15 and PR #16 open. Provide GitHub Actions-accessible AWS credentials with `bedrock:InvokeModel` permission for an allowed Bedrock model/region, then re-run PR #16 exact-head workflow `P1-B2 Hybrid Routing Proof`. If the cloud step reaches Bedrock and fails, inspect only that first concrete Issue #15 failure (region/model/IAM/config). If real CLOUD returns successfully and review/security is clean, mark PR ready, merge with expected-head guard, close Issue #15 only after merge, reconcile this MASTER, then perform closure evaluation before any further Issue.**
