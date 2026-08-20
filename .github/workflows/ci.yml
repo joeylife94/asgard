@@ -296,7 +296,7 @@ jobs:
           java -jar "$HEIMDALL_JAR" > p0-b4-heimdall.log 2>&1 &
           echo $! > p0-b4-heimdall.pid
 
-          python -m bifrost.main serve --host 127.0.0.1 --port 8000 > p0-b4-bifrost.log 2>&1 &
+          python -m bifrost.main serve > p0-b4-bifrost.log 2>&1 &
           echo $! > p0-b4-bifrost.pid
 
           (cd bifrost/frontend && npm run dev -- --host 127.0.0.1 > ../../p0-b4-frontend.log 2>&1) &
