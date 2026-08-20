@@ -11,12 +11,14 @@
 - **Current Phase**: Phase 1 — Golden Path
 - **Current Batch**: P1-B1 — UC-02 Real Local AI Golden Path
 - **Batch Result**: IN PROGRESS
-- **Status**: Issue #13 OPEN / implementation branch created / executable proof not yet run
+- **Status**: Issue #13 OPEN / PR #14 OPEN / exact-head real-model proof running
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Active Issue**: #13 — `P1-B1: prove UC-02 real Local AI golden path`
 - **Active Branch**: `agent/p1-b1-local-ai-golden-path`
-- **Active PR**: NONE YET
+- **Active PR**: #14 — `test: prove UC-02 real Local AI golden path`
+- **Active PR Head**: `f4354d8a5f29c3f0d9f4a6a1711297514ade0fdc`
+- **Active P1-B1 Run**: `32323281881` — IN PROGRESS
 - **Phase 0 Result**: PASS
 - **P0-B4 / PR #12 merge**: `8f79c1aaf7a145abb4721c5f7799059b8c4195aa`
 - **Updated**: 2026-08-20
@@ -72,7 +74,7 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 | UC | Goal | PASS 기준 | Current |
 |---|---|---|---|
 | UC-01 Startup | 제3자 실행 | clone/configure → core services healthy | **PASS** |
-| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | **IN PROGRESS — Issue #13** |
+| UC-02 Analysis | 실제 AI 분석 | Job → Kafka → real AI → result → SUCCEEDED | **IN PROGRESS — Issue #13 / PR #14** |
 | UC-03 Routing | Hybrid route | Sensitive→LOCAL / General→CLOUD 재현 | PENDING |
 | UC-04 Recovery | 장애 복구 | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
 | UC-05 Observability | 운영 가시성 | jobs/latency/routes/DLQ/redrive/health 확인 | PENDING |
@@ -125,7 +127,9 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 ## Work Item
 - **Issue #13**: OPEN
 - **Branch**: `agent/p1-b1-local-ai-golden-path`
-- **PR**: NONE YET
+- **PR #14**: OPEN
+- **Exact Head**: `f4354d8a5f29c3f0d9f4a6a1711297514ade0fdc`
+- **Exact-head P1-B1 workflow**: run `32323281881` — IN PROGRESS
 
 ## Goal
 Prove the first real Asgard product flow with actual local-model execution.
@@ -144,18 +148,33 @@ Deterministic sample log/input
 → Job SUCCEEDED
 ```
 
+## Current Executable Proof Slice
+PR #14 adds one bounded GitHub-hosted workflow only. It:
+- builds Heimdall and installs Bifrost from the PR head;
+- starts PostgreSQL / Kafka / Redis / Elasticsearch using the existing repository Compose contract;
+- starts a real Ollama runtime in Docker;
+- pulls the official real model `smollm:135m`;
+- starts Bifrost with `KAFKA_ENABLED=true`, `HEIMDALL_ENABLED=true`, `BIFROST_OLLAMA_MODEL=smollm:135m`, and `BIFROST_OLLAMA_ALLOW_FALLBACK=false`;
+- authenticates to Heimdall and ingests one deterministic ERROR log;
+- creates a real Heimdall Analysis Job;
+- polls the real Job endpoint until `SUCCEEDED` or first concrete failure;
+- queries the persisted Heimdall analysis result and requires its model to contain `smollm` and not equal `fallback`;
+- captures Kafka request/result topics, Job ID/state, persisted result, Ollama model evidence, and service logs as an artifact.
+
+The selected CI model is intentionally small to keep hosted execution bounded. Official Ollama registry evidence identifies `smollm:135m` as a real 135M model (~92 MB), not a mock or deterministic substitute.
+
 ## Acceptance Criteria
-- [ ] deterministic sample input/log is fixed and reviewable.
-- [ ] Heimdall creates a real Analysis Job.
-- [ ] Kafka request publication/consumption is evidenced.
-- [ ] Bifrost invokes a **real Local AI model**.
-- [ ] mock/fallback-only execution is rejected as PASS evidence.
-- [ ] result returns through the real integration path.
-- [ ] result is persisted.
-- [ ] final Job state is `SUCCEEDED`.
+- [x] deterministic sample input/log is fixed and reviewable in PR #14.
+- [ ] Heimdall creates a real Analysis Job — runtime proof pending.
+- [ ] Kafka request publication/consumption is evidenced — runtime proof pending.
+- [ ] Bifrost invokes a **real Local AI model** — runtime proof pending.
+- [x] mock/fallback-only execution is explicitly rejected by the proof harness (`BIFROST_OLLAMA_ALLOW_FALLBACK=false` + persisted model assertion).
+- [ ] result returns through the real integration path — runtime proof pending.
+- [ ] result is persisted — runtime proof pending.
+- [ ] final Job state is `SUCCEEDED` — runtime proof pending.
 - [ ] route/provider/latency evidence is captured where existing surfaces expose it.
 - [ ] flow is repeatable under PR-visible or equivalently reviewable execution.
-- [ ] no out-of-scope expansion.
+- [x] no out-of-scope expansion in current diff (one proof workflow file).
 
 ## In Scope
 - minimum proof harness/config/code corrections required by executed UC-02 evidence.
@@ -193,7 +212,8 @@ Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs
 | E-035 | Heimdall full-stack health | VERIFIED GREEN | `/actuator/health` = UP |
 | E-038 | Bifrost full-stack health | VERIFIED GREEN | `/health` = healthy |
 | E-039 | Full-stack Frontend root | VERIFIED GREEN | root HTML captured |
-| E-018 | Real Local AI E2E | **IN PROGRESS** | Issue #13 |
+| E-018 | Real Local AI E2E | **IN PROGRESS** | Issue #13 / PR #14 / run `32323281881` |
+| E-040 | Real local model proof contract | EXECUTION PENDING | `smollm:135m`; fallback disabled; PR #14 |
 | E-019 | Local vs Cloud Routing | PENDING | UC-03 |
 | E-020 | DLQ → Redrive → Success | PENDING | UC-04 |
 | E-021 | Grafana live metrics | PENDING | UC-05 |
@@ -212,8 +232,8 @@ Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs
 | R-004 | root startup banner is not health evidence | use endpoint/readiness evidence |
 | R-005 | root `start-all.ps1` Bifrost launch differs from proven CI `serve` invocation | evaluate only if P1-B1 executable path uses it and it becomes a direct blocker |
 | R-006 | README overclaim / Grafana port drift | proof-hardening later |
-| R-007 | fallback-only AI E2E risk | P1-B1 requires concrete real-model invocation evidence |
-| R-008 | GitHub-hosted runner may need a bounded local-model runtime/model strategy | do not weaken real-model acceptance; record exact prerequisite if no safe reviewable execution is possible |
+| R-007 | fallback-only AI E2E risk | current PR explicitly disables fallback and asserts persisted model identity |
+| R-008 | GitHub-hosted CPU/Ollama execution may expose runtime/network constraints | run `32323281881`; RED must identify first concrete blocker; do not substitute mock |
 | R-009 | agent self-report | never PASS without executed evidence |
 
 ---
@@ -235,35 +255,34 @@ Prefer a bounded PR-visible exact-head executable proof. Preserve artifacts/logs
 # 9. Current Checkpoint
 
 ## Result
-**PHASE 0 PASS / UC-01 PASS / P1-B1 IN PROGRESS.**
+**PHASE 0 PASS / UC-01 PASS / P1-B1 IN PROGRESS / PR #14 EXECUTING.**
 
 ## What Changed
-- PR #12 exact-head primary CI completed SUCCESS and Issue #11 closed after merge.
-- Phase 0 and UC-01 were closed PASS from executed evidence.
-- no matching open Issue existed for the next authorized Phase 1 gap.
-- Issue #13 was created as the sole active implementation work item.
-- branch `agent/p1-b1-local-ai-golden-path` was created from synchronized `main`.
+- confirmed Issue #13 remains the sole active implementation work item.
+- confirmed there was no active PR for Issue #13.
+- fast-forwarded `agent/p1-b1-local-ai-golden-path` to current `main` before implementation.
+- inspected the real integration path: Heimdall AnalysisOrchestrator publishes `analysis.request`; Bifrost Kafka consumer calls `HeimdallIntegrationService`; local mode invokes `OllamaClient`; Bifrost publishes `analysis.result`; Heimdall exposes Job and persisted AnalysisResult endpoints.
+- added one bounded PR-visible proof workflow only.
+- opened PR #14 at exact head `f4354d8a5f29c3f0d9f4a6a1711297514ade0fdc`.
 
 ## What Was Executed
-- `CI` run `32320165761`: SUCCESS.
-- full-core artifact proved Heimdall `UP`, Bifrost `healthy`, Frontend root reachable.
-- `CI/CD Pipeline` run `32320165695`: pre-existing Heimdall Checkstyle RED; Bifrost/security GREEN.
-- PR #12 merge and Issue #11 completed closure verified.
-- Issue #13 creation and Phase 1 branch creation completed.
+- PR #14 creation triggered exact-head workflows.
+- `P1-B1 Real Local AI Golden Path` run `32323281881` started successfully.
+- checkout, JDK setup, and Python setup are GREEN; `Prepare Heimdall and Bifrost` is currently executing.
+- primary `CI` run `32323281862` is also IN PROGRESS; secondary `CI/CD Pipeline` run `32323281844` was queued at checkpoint time.
 
 ## What Was Not Verified
-- real Local AI inference E2E.
-- Analysis Job → Kafka → Bifrost → real model → persisted result → `SUCCEEDED`.
-- Local vs Cloud routing.
-- DLQ/Redrive recovery.
-- live Grafana metric correctness.
-- HP AI Server reference run.
-- final demo/portfolio package.
+- real Ollama model pull/inference completion.
+- real Analysis Job creation.
+- Kafka request/result handoff during UC-02.
+- persisted real-model result.
+- final Job `SUCCEEDED`.
+- route/provider/latency evidence beyond the proof contract.
 
 ## Remaining Risks
-- P1-B1 may expose integration/configuration defects not visible in health checks.
-- Local AI proof must not silently pass via mock or fallback.
-- current execution environment for a real model must remain reviewable and bounded.
+- the first exact-head runtime may expose a configuration/network/serialization defect not visible statically.
+- hosted CPU inference may be slower than prior health-only jobs; workflow timeout is bounded at 30 minutes.
+- no fallback/mock substitution is allowed if real Ollama execution fails.
 
 ## NEXT
-**Under Issue #13 only, inspect the existing real Heimdall Analysis Job → Kafka → Bifrost → local-provider integration far enough to create the smallest executable P1-B1 proof slice. Do not create another Issue. The first PR should prove or falsify the real Local AI Golden Path; any RED must be handled one concrete boundary at a time.**
+**Inspect PR #14 exact-head workflow run `32323281881` first. If RED, inspect the first concrete failing step/log and fix only that Issue #13 boundary in the same PR. If the UC-02 job is GREEN, verify the uploaded artifact proves Job ID/state, Kafka handoff, real `smollm:135m` model identity, persisted result, and final `SUCCEEDED`; then inspect review/security state before merge.**
