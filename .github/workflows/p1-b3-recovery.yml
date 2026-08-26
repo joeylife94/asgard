@@ -1,0 +1,515 @@
+name: P1-B3 UC-04 Recovery Golden Path
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/p1-b3-recovery.yml'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'gradle/**'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'docker-compose.yml'
+  workflow_dispatch: {}
+
+jobs:
+  uc04_recovery:
+    name: UC-04 failed job redrive audit retry proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Prepare Heimdall and Bifrost
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :heimdall:bootJar --no-daemon --console=plain
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r bifrost/requirements.txt
+          python -m pip install -e bifrost
+
+      - name: Start infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose up -d postgres zookeeper kafka redis elasticsearch
+
+          for attempt in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U asgard >/dev/null 2>&1; then
+              echo "PostgreSQL ready on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker compose logs postgres
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for attempt in {1..45}; do
+            if docker compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1; then
+              echo "Kafka ready on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 45 ]; then
+              docker compose logs kafka zookeeper
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:9200/_cluster/health > p1-b3-elasticsearch.json; then
+              echo "Elasticsearch ready on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              docker compose logs elasticsearch
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Start real Ollama model
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name p1-b3-ollama -p 11434:11434 ollama/ollama:latest
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b3-ollama-tags-before.json; then
+              echo "Ollama ready on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs p1-b3-ollama
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker exec p1-b3-ollama ollama pull smollm:135m | tee p1-b3-ollama-pull.log
+          curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b3-ollama-tags-after.json
+          grep -q 'smollm:135m' p1-b3-ollama-tags-after.json
+
+      - name: Start Heimdall only for deterministic failure setup
+        shell: bash
+        env:
+          SPRING_PROFILES_ACTIVE: dev
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/heimdall
+          SPRING_DATASOURCE_USERNAME: asgard
+          SPRING_DATASOURCE_PASSWORD: asgard_password
+          SPRING_KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
+          JWT_SECRET: p1-b3-ci-jwt-secret-at-least-32-bytes-long
+          HEIMDALL_SECURITY_ADMIN_USERNAME: admin
+          HEIMDALL_SECURITY_ADMIN_PASSWORD: p1-b3-admin-password
+          HEIMDALL_SECURITY_ADMIN_ROLES: ADMIN,USER
+          HEIMDALL_ANALYSIS_AUTO_REQUEST: 'false'
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: '6379'
+          REDIS_PASSWORD: redis_password
+          GRPC_PORT: '9091'
+        run: |
+          set -euo pipefail
+          HEIMDALL_JAR=$(find heimdall/build/libs -maxdepth 1 -name 'heimdall-*.jar' -type f | head -n 1)
+          test -n "$HEIMDALL_JAR"
+
+          java -jar "$HEIMDALL_JAR" > p1-b3-heimdall.log 2>&1 &
+          echo $! > p1-b3-heimdall.pid
+
+          for attempt in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:8080/actuator/health > p1-b3-heimdall-health.json; then
+              echo "Heimdall ready on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 90 ]; then
+              cat p1-b3-heimdall.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Create deterministic job and apply existing DLQ failure path
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"p1-b3-admin-password"}' \
+            http://127.0.0.1:8080/api/v1/auth/login > p1-b3-login.json
+
+          TOKEN=$(python - <<'PY'
+          import json
+          print(json.load(open('p1-b3-login.json'))['token'])
+          PY
+          )
+          test -n "$TOKEN"
+          printf '%s' "$TOKEN" > p1-b3-token.txt
+
+          cat > p1-b3-input.json <<'JSON'
+          {
+            "source": "p1-b3-recovery-proof",
+            "serviceName": "recovery-proof-service",
+            "environment": "proof",
+            "severity": "ERROR",
+            "logContent": "2026-08-26T10:00:00Z ERROR recovery-proof deterministic failure seed",
+            "metadata": {"proof": "uc-04", "deterministic": true}
+          }
+          JSON
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data @p1-b3-input.json \
+            http://127.0.0.1:8080/api/v1/logs > p1-b3-ingest.json
+
+          LOG_ID=$(python - <<'PY'
+          import json
+          print(json.load(open('p1-b3-ingest.json'))['logId'])
+          PY
+          )
+          test -n "$LOG_ID"
+          echo "$LOG_ID" > p1-b3-log-id.txt
+
+          IDEMPOTENCY_KEY='p1-b3-recovery-proof-v1'
+          INITIAL_TRACE='p1-b3-initial-trace'
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+            -H "X-Trace-Id: $INITIAL_TRACE" \
+            -d "{\"idempotencyKey\":\"$IDEMPOTENCY_KEY\",\"modelPolicy\":{\"source\":\"local\"}}" \
+            -X POST http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis > p1-b3-analysis-accepted.json
+
+          JOB_ID=$(python - <<'PY'
+          import json
+          print(json.load(open('p1-b3-analysis-accepted.json'))['jobId'])
+          PY
+          )
+          test -n "$JOB_ID"
+          echo "$JOB_ID" | tee p1-b3-job-id.txt
+
+          # Drain the initial request for the real Bifrost consumer group so the
+          # subsequent accepted execution is attributable to the redrive publish.
+          docker compose exec -T kafka kafka-console-consumer \
+            --bootstrap-server kafka:29092 \
+            --topic analysis.request \
+            --group bifrost-consumer-group \
+            --from-beginning \
+            --timeout-ms 10000 \
+            --max-messages 1 > p1-b3-initial-request-drained.txt 2>&1
+
+          python - <<'PY' > p1-b3-dlq-event.json
+          import json
+          job_id = open('p1-b3-job-id.txt').read().strip()
+          print(json.dumps({
+              'schema_version': 1,
+              'job_id': job_id,
+              'idempotency_key': 'p1-b3-recovery-proof-v1',
+              'error_code': 'UC04_DETERMINISTIC_FAILURE',
+              'error_message': 'Deterministic UC-04 failure injected through existing dlq.failed contract',
+              'trace_id': 'p1-b3-failure-trace',
+              'original_topic': 'analysis.request',
+              'original_partition': 0,
+              'original_offset': 0,
+              'payload': {'proof': 'uc-04', 'deterministic': True},
+          }))
+          PY
+
+          printf '%s:%s\n' "$JOB_ID" "$(cat p1-b3-dlq-event.json)" | \
+            docker compose exec -T kafka kafka-console-producer \
+              --bootstrap-server kafka:29092 \
+              --topic dlq.failed \
+              --property parse.key=true \
+              --property key.separator=:
+
+          final_status=''
+          for attempt in {1..30}; do
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $TOKEN" \
+              http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b3-job-failed.json
+            final_status=$(python - <<'PY'
+          import json
+          print(json.load(open('p1-b3-job-failed.json'))['status'])
+          PY
+            )
+            echo "Failure status attempt $attempt: $final_status"
+            if [ "$final_status" = 'FAILED' ]; then break; fi
+            sleep 2
+          done
+          test "$final_status" = 'FAILED'
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            'http://127.0.0.1:8080/api/v1/analysis/jobs/failed?page=0&size=20' > p1-b3-failed-list.json
+
+          python - <<'PY'
+          import json
+          job = json.load(open('p1-b3-job-failed.json'))
+          failed_page = json.load(open('p1-b3-failed-list.json'))
+          job_id = open('p1-b3-job-id.txt').read().strip()
+          assert job['status'] == 'FAILED', job
+          assert job['attemptCount'] == 0, job
+          assert job['errorCode'] == 'UC04_DETERMINISTIC_FAILURE', job
+          assert job['traceId'] == 'p1-b3-failure-trace', job
+          items = failed_page.get('content', [])
+          assert any(str(item.get('jobId')) == job_id for item in items), failed_page
+          PY
+
+      - name: Start Bifrost for redrive retry
+        shell: bash
+        env:
+          KAFKA_ENABLED: 'true'
+          HEIMDALL_ENABLED: 'true'
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
+          HEIMDALL_DATABASE_URL: postgresql://asgard:asgard_password@127.0.0.1:5432/heimdall
+          BIFROST_OLLAMA_URL: http://127.0.0.1:11434
+          BIFROST_OLLAMA_MODEL: smollm:135m
+          BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+        run: |
+          set -euo pipefail
+          python -m bifrost.main serve > p1-b3-bifrost.log 2>&1 &
+          echo $! > p1-b3-bifrost.pid
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8000/health > p1-b3-bifrost-health.json; then
+              echo "Bifrost ready on attempt $attempt"
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat p1-b3-bifrost.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+          python - <<'PY'
+          import json
+          health = json.load(open('p1-b3-bifrost-health.json'))
+          assert health['components']['ollama'] == 'ok', health
+          assert health['components']['kafka'] == 'enabled', health
+          assert health['components']['heimdall_integration'] == 'enabled', health
+          PY
+
+      - name: Redrive through existing endpoint and reach accepted final state
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(cat p1-b3-token.txt)
+          JOB_ID=$(cat p1-b3-job-id.txt)
+          REDRIVE_TRACE='p1-b3-redrive-trace'
+          REDRIVE_REASON='UC-04 deterministic recovery proof'
+
+          FIRST_CODE=$(curl --silent --show-error \
+            -o p1-b3-redrive-response.json \
+            -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -H "X-Trace-Id: $REDRIVE_TRACE" \
+            -d "{\"reason\":\"$REDRIVE_REASON\"}" \
+            -X POST http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID/redrive)
+          test "$FIRST_CODE" = '202'
+          echo "$FIRST_CODE" > p1-b3-redrive-http-code.txt
+
+          final_status=''
+          for attempt in {1..120}; do
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $TOKEN" \
+              http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b3-job-final.json
+            final_status=$(python - <<'PY'
+          import json
+          print(json.load(open('p1-b3-job-final.json'))['status'])
+          PY
+            )
+            echo "Retry status attempt $attempt: $final_status"
+            if [ "$final_status" = 'SUCCEEDED' ]; then break; fi
+            if [ "$final_status" = 'FAILED' ]; then
+              cat p1-b3-job-final.json
+              exit 1
+            fi
+            sleep 2
+          done
+          test "$final_status" = 'SUCCEEDED'
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID/redrive/audit > p1-b3-audit-after-success.json
+
+          python - <<'PY'
+          import json
+          redrive = json.load(open('p1-b3-redrive-response.json'))
+          final_job = json.load(open('p1-b3-job-final.json'))
+          audits = json.load(open('p1-b3-audit-after-success.json'))
+          assert redrive['attemptCount'] == 1, redrive
+          assert final_job['status'] == 'SUCCEEDED', final_job
+          assert final_job['attemptCount'] == 1, final_job
+          assert audits, audits
+          success = next((a for a in audits if a.get('outcome') == 'SUCCESS'), None)
+          assert success is not None, audits
+          assert success['performedBy'] == 'admin', success
+          assert success['traceId'] == 'p1-b3-redrive-trace', success
+          assert success['reason'] == 'UC-04 deterministic recovery proof', success
+          # Audit semantics must describe the state being redriven, not the
+          # mutable post-prepareRetry state.
+          assert success['previousStatus'] == 'FAILED', success
+          assert success['previousAttemptCount'] == 0, success
+          PY
+
+          grep -q 'Processing analysis request from Heimdall' p1-b3-bifrost.log
+          grep -q "$JOB_ID" p1-b3-bifrost.log
+
+      - name: Prove duplicate or unsafe redrive is visible
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(cat p1-b3-token.txt)
+          JOB_ID=$(cat p1-b3-job-id.txt)
+
+          DUPLICATE_CODE=$(curl --silent --show-error \
+            -o p1-b3-duplicate-redrive-response.json \
+            -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -H 'X-Trace-Id: p1-b3-duplicate-trace' \
+            -d '{"reason":"UC-04 duplicate redrive visibility proof"}' \
+            -X POST http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID/redrive)
+          test "$DUPLICATE_CODE" = '202'
+          echo "$DUPLICATE_CODE" > p1-b3-duplicate-http-code.txt
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b3-job-after-duplicate.json
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID/redrive/audit > p1-b3-audit-final.json
+
+          python - <<'PY' | tee p1-b3-evidence-summary.json
+          import json
+          failed = json.load(open('p1-b3-job-failed.json'))
+          final_job = json.load(open('p1-b3-job-final.json'))
+          after_duplicate = json.load(open('p1-b3-job-after-duplicate.json'))
+          audits = json.load(open('p1-b3-audit-final.json'))
+          assert after_duplicate['status'] == 'SUCCEEDED', after_duplicate
+          assert after_duplicate['attemptCount'] == 1, after_duplicate
+          success = next((a for a in audits if a.get('outcome') == 'SUCCESS'), None)
+          skipped = next((a for a in audits if a.get('outcome') == 'SKIPPED'), None)
+          assert success is not None, audits
+          assert skipped is not None, audits
+          assert skipped['performedBy'] == 'admin', skipped
+          assert skipped['traceId'] == 'p1-b3-duplicate-trace', skipped
+          assert skipped['reason'] == 'UC-04 duplicate redrive visibility proof', skipped
+          summary = {
+              'jobId': failed['jobId'],
+              'failedStatus': failed['status'],
+              'failedErrorCode': failed['errorCode'],
+              'failedTraceId': failed['traceId'],
+              'preRedriveAttemptCount': failed['attemptCount'],
+              'finalStatus': final_job['status'],
+              'finalAttemptCount': final_job['attemptCount'],
+              'successfulRedriveAudit': {
+                  'outcome': success['outcome'],
+                  'performedBy': success['performedBy'],
+                  'traceId': success['traceId'],
+                  'reason': success['reason'],
+                  'previousStatus': success['previousStatus'],
+                  'previousAttemptCount': success['previousAttemptCount'],
+              },
+              'duplicateRedriveAudit': {
+                  'outcome': skipped['outcome'],
+                  'performedBy': skipped['performedBy'],
+                  'traceId': skipped['traceId'],
+                  'reason': skipped['reason'],
+              },
+              'duplicateAttemptCountUnchanged': after_duplicate['attemptCount'] == 1,
+          }
+          print(json.dumps(summary, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Capture Kafka handoff evidence
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          docker compose exec -T kafka kafka-console-consumer \
+            --bootstrap-server kafka:29092 \
+            --topic analysis.request \
+            --from-beginning \
+            --timeout-ms 5000 \
+            --max-messages 10 > p1-b3-kafka-request.txt 2>&1
+          docker compose exec -T kafka kafka-console-consumer \
+            --bootstrap-server kafka:29092 \
+            --topic analysis.result \
+            --from-beginning \
+            --timeout-ms 5000 \
+            --max-messages 10 > p1-b3-kafka-result.txt 2>&1
+          docker compose exec -T kafka kafka-console-consumer \
+            --bootstrap-server kafka:29092 \
+            --topic dlq.failed \
+            --from-beginning \
+            --timeout-ms 5000 \
+            --max-messages 10 > p1-b3-kafka-dlq-failed.txt 2>&1
+
+      - name: Upload UC-04 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-b3-uc04-recovery-evidence
+          path: |
+            p1-b3-input.json
+            p1-b3-ingest.json
+            p1-b3-analysis-accepted.json
+            p1-b3-log-id.txt
+            p1-b3-job-id.txt
+            p1-b3-initial-request-drained.txt
+            p1-b3-dlq-event.json
+            p1-b3-job-failed.json
+            p1-b3-failed-list.json
+            p1-b3-redrive-response.json
+            p1-b3-redrive-http-code.txt
+            p1-b3-job-final.json
+            p1-b3-audit-after-success.json
+            p1-b3-duplicate-redrive-response.json
+            p1-b3-duplicate-http-code.txt
+            p1-b3-job-after-duplicate.json
+            p1-b3-audit-final.json
+            p1-b3-evidence-summary.json
+            p1-b3-kafka-request.txt
+            p1-b3-kafka-result.txt
+            p1-b3-kafka-dlq-failed.txt
+            p1-b3-ollama-pull.log
+            p1-b3-ollama-tags-after.json
+            p1-b3-heimdall-health.json
+            p1-b3-bifrost-health.json
+            p1-b3-heimdall.log
+            p1-b3-bifrost.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -f p1-b3-heimdall.pid ]; then kill "$(cat p1-b3-heimdall.pid)" 2>/dev/null || true; fi
+          if [ -f p1-b3-bifrost.pid ]; then kill "$(cat p1-b3-bifrost.pid)" 2>/dev/null || true; fi
+          docker rm -f p1-b3-ollama >/dev/null 2>&1 || true
+          docker compose down -v --remove-orphans >/dev/null 2>&1 || true
