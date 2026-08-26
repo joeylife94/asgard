@@ -1,0 +1,106 @@
+name: P1-B4 Grafana UI Diagnostic
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/p1-b4-grafana-ui-diagnostic.yml'
+      - 'docker-compose.yml'
+      - 'monitoring/grafana/**'
+  workflow_dispatch: {}
+
+jobs:
+  grafana_ui_diagnostic:
+    name: Grafana browser asset diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start Grafana stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose up -d prometheus grafana
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3001/api/health > p1-b4-grafana-diag-health.json; then break; fi
+            if [ "$attempt" -eq 60 ]; then docker compose logs grafana; exit 1; fi
+            sleep 2
+          done
+          curl --silent --show-error -D p1-b4-grafana-root-headers.txt http://127.0.0.1:3001/ > p1-b4-grafana-root.html
+          docker compose logs grafana > p1-b4-grafana-container.log 2>&1 || true
+
+      - name: Capture browser diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > p1-b4-grafana-diag.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+
+          const base = 'http://127.0.0.1:3001';
+          const events = { console: [], pageErrors: [], requestFailed: [], badResponses: [], assets: [] };
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+          const login = await context.request.post(`${base}/login`, { data: { user: 'admin', password: 'admin' } });
+          events.login = { status: login.status(), ok: login.ok() };
+
+          const page = await context.newPage();
+          page.on('console', msg => {
+            if (['error', 'warning'].includes(msg.type())) events.console.push({ type: msg.type(), text: msg.text() });
+          });
+          page.on('pageerror', err => events.pageErrors.push(String(err)));
+          page.on('requestfailed', req => events.requestFailed.push({ url: req.url(), failure: req.failure()?.errorText || '' }));
+          page.on('response', res => {
+            if (res.status() >= 400) events.badResponses.push({ url: res.url(), status: res.status() });
+          });
+
+          const nav = await page.goto(`${base}/`, { waitUntil: 'domcontentloaded' });
+          events.navigation = { status: nav?.status() ?? null, url: page.url() };
+          await page.waitForTimeout(8000);
+          fs.writeFileSync('p1-b4-grafana-diag-visible-text.txt', await page.locator('body').innerText());
+          fs.writeFileSync('p1-b4-grafana-diag-page.html', await page.content());
+          await page.screenshot({ path: 'p1-b4-grafana-diag.png', fullPage: true });
+
+          const assetUrls = await page.evaluate(() => [
+            ...Array.from(document.scripts).map(x => x.src),
+            ...Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(x => x.href),
+          ].filter(Boolean));
+          for (const url of [...new Set(assetUrls)].slice(0, 80)) {
+            try {
+              const res = await context.request.get(url);
+              events.assets.push({ url, status: res.status(), ok: res.ok() });
+            } catch (e) {
+              events.assets.push({ url, error: String(e) });
+            }
+          }
+          fs.writeFileSync('p1-b4-grafana-browser-diagnostics.json', JSON.stringify(events, null, 2));
+          await browser.close();
+          JS
+          node p1-b4-grafana-diag.mjs
+
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-b4-grafana-ui-diagnostic
+          path: |
+            p1-b4-grafana-diag-health.json
+            p1-b4-grafana-root-headers.txt
+            p1-b4-grafana-root.html
+            p1-b4-grafana-container.log
+            p1-b4-grafana-diag-visible-text.txt
+            p1-b4-grafana-diag-page.html
+            p1-b4-grafana-diag.png
+            p1-b4-grafana-browser-diagnostics.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          docker compose down -v --remove-orphans >/dev/null 2>&1 || true
