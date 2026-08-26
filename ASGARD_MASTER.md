@@ -7,17 +7,18 @@
 ## 0. Control
 
 - **Target**: Asgard v1.0 — Wishket / Freelance Proof
-- **Target Level**: READY TO SHOW bounded software Proof
+- **Target Level**: READY TO SHOW bounded software Proof candidate
 - **Product Direction**: **Local-first AI Operations Platform**
-- **Current Phase**: Phase 1 — Operational Visibility / Proof Closure
-- **Current Batch**: P1-B4 — UC-05 Observability live proof
-- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 IN PROGRESS**
+- **Current Phase**: Final Proof Acceptance
+- **Current Batch**: Human Review
+- **Current Status**: **IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: #21 — `P1-B4: prove UC-05 observability through existing Prometheus/Grafana path`
-- **Active PR**: none yet
+- **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
+- **Active Issue**: none
+- **Active PR**: none
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-08-26
+- **Updated**: 2026-08-27
 - **Final v1.0 Gate**: Human Review Required
 
 ---
@@ -63,7 +64,7 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 - Prometheus / Grafana operating visibility
 - minimal executable frontend boot shell only
 - CI / E2E evidence
-- final buyer-facing truthfulness reconciliation
+- buyer-facing truthfulness review at the final Human Review gate
 
 ## Explicitly Deferred / Not Required for v1.0
 - AWS Bedrock
@@ -81,260 +82,188 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 - production SLA/SLO
 - legal GDPR or security certification
 
-Historical code may still contain Bedrock/cloud lanes. **Existence does not make them current v1.0 requirements.** Do not delete or modernize them unless a bounded accepted Proof gap requires it.
+Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0 requirement or accepted claim.**
 
 ---
 
 # 3. Required Use Cases
 
-| UC | Goal | PASS criterion | Current |
+| UC | Goal | Accepted evidence | Current |
 |---|---|---|---|
-| UC-01 Startup | executable core stack | clone/configure → required core services healthy | **PASS** |
+| UC-01 Startup | executable core stack | required services healthy through PR-visible execution | **PASS** |
 | UC-02 Local AI Analysis | real asynchronous AI job | Job → Kafka → real Ollama → result → persistence → `SUCCEEDED` | **PASS** |
-| UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **PASS** |
+| UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path stays local; no external provider invoked | **PASS** |
 | UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED`; duplicate redrive visible | **PASS** |
-| UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **IN PROGRESS — Issue #21** |
-| Final | buyer-facing Proof | exact evidence + truthful README/Proof package + Human Review | **PENDING** |
+| UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health live metrics + existing Grafana path | **PASS** |
+| Final | buyer-facing Proof | exact evidence + truthful claims + Human Review | **HUMAN REVIEW REQUIRED** |
 
 ---
 
 # 4. Accepted Evidence
 
-## Phase 0 / UC-01 — PASS
-- PR #12 merged after full core startup/health proof.
+## UC-01 — Startup — PASS
+- Full core startup/health proof was accepted through PR #12.
 - Verified stack included PostgreSQL, Kafka, Redis, Elasticsearch, Prometheus, Grafana, Heimdall, Bifrost, and frontend reachability.
 - Frontend accepted scope is a minimal boot shell, not a full operational dashboard.
-- Pre-existing Heimdall Checkstyle debt remains known and is not silently treated as resolved: **41 files / 109 warnings / 2 info** at the recorded checkpoint.
+- Pre-existing Heimdall Checkstyle debt remains known and unresolved by design: recorded baseline **41 files / 109 warnings / 2 info**.
 
 ## UC-02 — Real Local AI Golden Path — PASS
 - Issue #13 CLOSED / COMPLETED.
 - PR #14 MERGED at `ee24e6990d19c0be618baf1698bff275a8b27134`.
-- proof run `32323663891`: SUCCESS.
+- dedicated proof run `32323663891`: SUCCESS.
 - primary CI `32323664031`: SUCCESS.
-- deterministic path executed:
-
-```text
-Log
-→ Heimdall Analysis Job
-→ Kafka request
-→ Bifrost
-→ real Ollama `smollm:135m`
-→ Kafka result
-→ Heimdall persistence
-→ Job `SUCCEEDED`
-```
-
-- artifact `9390712782`
-- digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`
+- artifact `9390712782`.
+- digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`.
+- executed path: deterministic log → Heimdall Analysis Job → Kafka → Bifrost → real Ollama `smollm:135m` → result event → persistence → Job `SUCCEEDED`.
 - fallback-only output was not accepted.
-- hosted CPU latency is variable and must not be published as a stable performance claim.
+- hosted CPU latency is variable and must not be published as stable performance.
 
 ## UC-03 — Local-first Policy Boundary — PASS
 - Issue #17 CLOSED / COMPLETED.
-- PR #18 squash-merged at `a7e079872004c6dcf73cdf36d105aabde37fbb8d`.
-- accepted exact head: `b6fc2c2f15f0d65ba6f314525740a63cc42c24ce`.
-- dedicated proof run `32945550180`: SUCCESS.
-- primary CI run `32945550197`: SUCCESS.
-- secondary CI/CD run `32945550181`: Bifrost GREEN and Dependency Security GREEN; Heimdall RED remained the known pre-existing Checkstyle debt.
-- artifact `9598234317`
-- digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`
-- executed proof used real Ollama `smollm:135m` through production `OrchestratorService` dispatch.
-- `ENABLE_CLOUD_LANE=false` proof showed default, sensitive and cloud-hint-disabled requests all executed `on_device_rag / ollama` with non-empty real results.
-- cloud answerer was not initialized and no external provider was invoked.
+- PR #18 MERGED at `a7e079872004c6dcf73cdf36d105aabde37fbb8d`.
+- accepted exact head `b6fc2c2f15f0d65ba6f314525740a63cc42c24ce`.
+- dedicated proof `32945550180`: SUCCESS.
+- primary CI `32945550197`: SUCCESS.
+- artifact `9598234317`.
+- digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`.
+- default, sensitive, and cloud-hint-disabled requests all executed `on_device_rag / ollama` through production `OrchestratorService` dispatch with non-empty real results.
+- `ENABLE_CLOUD_LANE=false`; cloud answerer was not initialized; no external provider was invoked.
 
 ## UC-04 — Recovery Golden Path — PASS
-- Issue #19 CLOSED / COMPLETED after merge.
-- PR #20 squash-merged at `37c29223044100c216372d27169eba0c3c0a0dc0`.
-- accepted exact head: `4b3bf88b31ae7392004121817832b232f4cd8e21`.
-- dedicated recovery proof run `32967543925`: **SUCCESS**.
-- primary CI run `32967543793`: **SUCCESS**.
-- secondary CI/CD run `32967543989`:
+- Issue #19 CLOSED / COMPLETED.
+- PR #20 MERGED at `37c29223044100c216372d27169eba0c3c0a0dc0`.
+- accepted exact head `4b3bf88b31ae7392004121817832b232f4cd8e21`.
+- dedicated recovery proof `32967543925`: SUCCESS.
+- primary CI `32967543793`: SUCCESS.
+- artifact `9606403831`.
+- digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`.
+- executed path: Analysis Job → deterministic failure → persisted `FAILED` → failed listing → authorized redrive → attempt `0 → 1` → Kafka retry → Bifrost → real Ollama → persisted `SUCCEEDED` → SUCCESS audit → duplicate redrive → `SKIPPED` audit with attempt unchanged.
+- accepted audit snapshot records the real pre-redrive state `FAILED / 0`.
+- one real bug was corrected: audit previously sampled already-mutated managed state instead of a true pre-redrive snapshot.
+- local Ollama timeout was raised from 120s to 300s only as hosted-CPU tolerance, **not** as a performance claim.
+
+## UC-05 — Observability — PASS
+- Issue #21 CLOSED / COMPLETED after merge.
+- PR #22 squash-merged at `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`.
+- accepted exact head `e1509b7cefdb47a057c25051c16409b030c11dee`.
+- dedicated proof run `33009550844`: **SUCCESS**.
+- primary CI run `33009550928`: **SUCCESS**.
+- supporting CI/CD run `33009550808`:
   - Bifrost build/test GREEN.
   - Dependency Security GREEN.
-  - Heimdall RED remained the already-known pre-existing Checkstyle gate and was not expanded into this bounded slice.
-- durable evidence artifact `9606403831`.
-- artifact digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`.
+  - Heimdall build RED remained the known pre-existing broad Checkstyle gate and was not expanded into UC-05.
+- evidence artifact `9622043567`.
+- digest `sha256:783c37b1bd7079edce01caa61e5ab767826d195cb4a3b800e87ee0cb0c1262a8`.
 
-Executed lifecycle proven:
+### Actually observed live through Prometheus
+- `ai_job_requested_total = 1`
+- `ai_job_success_total = 1`
+- `ai_job_failed_total = 1`
+- `ai_job_redriven_total = 1`
+- `up{job="heimdall"} = 1`
 
-```text
-Analysis Job
-→ deterministic existing DLQ failure path
-→ persisted FAILED + attributable error/trace
-→ failed-job listing
-→ authorized POST /redrive
-→ attemptCount 0 → 1
-→ Kafka retry handoff
-→ Bifrost
-→ real Ollama
-→ persisted SUCCEEDED
-→ SUCCESS audit
-→ duplicate redrive
-→ SKIPPED audit + attemptCount remains 1
-```
+### Grafana evidence
+- existing datasource was provisioned as Prometheus at `http://prometheus:9090`.
+- existing Asgard dashboard was provisioned and rendered the lifecycle panels Jobs Requested / Succeeded / Failed / Redriven.
+- Playwright screenshot execution was GREEN after pinning browser locale to `en-US`; diagnostic execution proved prior browser boot failure came from CI locale `en-US@posix`, not failed JS/CSS asset delivery.
+- final artifact screenshot/text was inspected as synthetic-safe and contained no PII/secrets.
+- final durable artifact excludes the Heimdall debug process log; the archive was inspected for credential/token patterns.
+- dashboard `increase(...)` / rate-style window panels can show `0` for this very short single-event synthetic window even though the current Prometheus counter values are `1`. Therefore UC-05 proves the existing metrics/Grafana path and visible supported panels, **not production dashboard calibration or SLO maturity**.
+- `ai_job_duplicate_result_total` remains source/config-only in UC-05 and is not claimed as live-observed.
 
-Accepted audit evidence includes:
-- operator `admin`
-- outcome `SUCCESS`
-- redrive trace and reason
-- true pre-redrive snapshot `previousStatus=FAILED`
-- true pre-redrive snapshot `previousAttemptCount=0`
-- duplicate redrive outcome `SKIPPED`
-- duplicate trace/reason captured
-- final job remains `SUCCEEDED`, attempt count unchanged at `1`
-
-The proof exposed and corrected one real product bug: redrive audit previously sampled the already-mutated managed job and could record `RUNNING / 1` instead of the true pre-redrive `FAILED / 0`. The accepted correction snapshots scalar values before mutation and passes them into SUCCESS/SKIPPED audit creation.
-
-The proof also raised the local Ollama client timeout from 120s to 300s after hosted-CPU execution exceeded the prior window. This is **not** a stable latency claim; hosted CPU remains variable.
-
-## Historical UC-03 AWS Experiment — DEFERRED, NOT ACCEPTED AS v1.0 REQUIREMENT
-- Issue #15: CLOSED / NOT PLANNED on 2026-08-26.
-- PR #16: CLOSED / NOT MERGED.
-- Historical LOCAL/routing diagnostics remain historical evidence only.
-- **NOT VERIFIED and not required for v1.0**: AWS `AssumeRoleWithWebIdentity`, STS caller identity, real Bedrock invocation/result.
+## Historical AWS Experiment — DEFERRED / NOT v1.0 ACCEPTANCE
+- Issue #15 CLOSED / NOT PLANNED.
+- PR #16 CLOSED / NOT MERGED.
+- AWS `AssumeRoleWithWebIdentity`, STS caller identity, and real Bedrock invocation/result are **not verified and not required for v1.0**.
 
 ---
 
-# 5. UC-03 — Local-first Policy Boundary
+# 5. Buyer-facing Claim Boundary
 
-## Result
-**PASS — Issue #17 completed through merged PR #18.**
-
-No further UC-03 implementation is authorized unless later executable evidence regresses this accepted contract.
-
----
-
-# 6. UC-04 — Recovery
-
-## Result
-**PASS — Issue #19 completed through merged PR #20.**
-
-## Acceptance Criteria
-- [x] deterministic persisted FAILED job through an existing bounded path.
-- [x] failure state attributable by error/trace evidence.
-- [x] failed-job listing exposes the target job.
-- [x] existing authorized redrive endpoint invoked.
-- [x] retry attempt increments and work is republished/consumed.
-- [x] retry reaches `SUCCEEDED` through real local Ollama.
-- [x] audit records operator/outcome/trace/reason and true pre-redrive status/attempt snapshot.
-- [x] duplicate redrive is explicitly surfaced as `SKIPPED` and does not increment attempt count.
-- [x] exact-head PR-visible CI and durable artifact evidence captured.
-
-No new recovery subsystem was introduced.
-
----
-
-# 7. UC-05 — Observability
-
-Existing Prometheus/Grafana assets already reference operational metrics including job requested, succeeded, failed, redriven, and duplicate-result counters.
-
-This is **NOT VERIFIED as a live buyer-facing Proof yet**.
-
-## Active Work Item
-- Issue #21 — `P1-B4: prove UC-05 observability through existing Prometheus/Grafana path`
-- Scope is proof-first: use existing metrics/Prometheus/Grafana paths and one bounded synthetic-safe lifecycle scenario; do not invent a replacement observability subsystem.
-
-## Acceptance Criteria
-- [ ] run one bounded job/recovery scenario that emits current metrics.
-- [ ] Prometheus can query the relevant metric series.
-- [ ] existing Grafana dashboard loads against the configured datasource and visibly reflects supported job lifecycle metrics.
-- [ ] screenshot/log evidence is synthetic-safe and contains no secrets/PII.
-- [ ] distinguish metrics actually observed from counters merely present in source/config.
-- [ ] no claim of production observability/SLO maturity is made.
-
----
-
-# 8. Buyer-facing Claim Boundary
-
-## Allowed after current evidence remains valid
+## Supported by accepted bounded evidence
 - event-driven Java/Python AI operations architecture
 - persistent asynchronous Analysis Job lifecycle
 - Kafka request/result handoff
 - real local Ollama inference
 - result persistence and final Job state
-- fail-closed Local-first routing boundary under accepted configuration
-- bounded FAILED/DLQ → Redrive → Audit → Retry → `SUCCEEDED` recovery behavior
-- duplicate redrive visibility through recorded `SKIPPED` audit behavior
-- bounded operational metrics/Grafana visibility only after UC-05 execution
+- fail-closed Local-first routing under the accepted configuration
+- bounded FAILED/DLQ → Redrive → Audit → Retry → `SUCCEEDED` recovery
+- duplicate redrive visibility through `SKIPPED` audit behavior
+- bounded live lifecycle metrics through Prometheus
+- existing Grafana datasource/dashboard path and visible lifecycle panels
 
 ## Prohibited / Not Verified
 - `production-ready`
 - `enterprise-grade` as an operational-readiness claim
 - legal `GDPR-compliant` certification
+- production SLA/SLO
 - stable latency / throughput / cost-saving percentages
-- `80%+ coverage` unless re-verified at the accepted head and needed for Proof
 - production Kubernetes / HA / multi-region readiness
 - cloud-provider execution
-- full operational dashboard product
+- full operational/admin dashboard product
 - unattended autonomous operations
+- stable Grafana dashboard calibration from the short synthetic UC-05 run
 
-README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portfolio text are **not authoritative** when they conflict with this Master or current evidence.
+README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portfolio text are **not authoritative** when they conflict with this Master or current accepted evidence.
 
 ---
 
-# 9. Known Risks / Holds
+# 6. Known Risks / Holds
 
 | ID | Risk | Handling |
 |---|---|---|
-| R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a current proof fails on it |
+| R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a future accepted requirement fails on it |
 | R-002 | broad Heimdall Checkstyle debt | pre-existing; no mass-fix without a required gate |
-| R-003 | startup script / proven CI invocation drift | evaluate only if a required current proof depends on it |
-| R-004 | README / old docs overclaim | final truthfulness reconciliation required |
-| R-005 | hosted CPU Ollama latency variability | no stable performance claims; 300s client timeout is tolerance, not a performance assertion |
-| R-006 | ingestion auto-analysis may create extra job | keep visible in evidence; do not hide |
-| R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker |
-| R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | current intended `PolicyRouter` local-first path is proven; refactor only if a later accepted gap requires it |
-| R-009 | agent self-report | never PASS without executed evidence |
-| R-010 | redrive audit pre-state correctness | **CLOSED for accepted UC-04 path**: exact-head runtime proof verified `FAILED / 0`; do not generalize beyond bounded evidence |
-| R-011 | historical UC-02 hosted-CPU workflow can time out under variable inference duration | supporting regression signal only; do not claim stable inference timing; investigate only if a required current acceptance gate regresses |
+| R-003 | startup script / proven CI invocation drift | evaluate only if a future required proof depends on it |
+| R-004 | README / historical docs may overclaim | **Human Review gate** decides final buyer-facing reconciliation |
+| R-005 | hosted CPU Ollama latency variability | no stable performance claims |
+| R-006 | ingestion auto-analysis may create extra job | remain explicit in evidence; do not hide |
+| R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker or accepted execution claim |
+| R-008 | duplicate routing generations | accepted `PolicyRouter` local-first path is proven; no refactor without new requirement |
+| R-009 | agent self-report | never substitute for executed evidence |
+| R-010 | redrive audit pre-state correctness | CLOSED for accepted UC-04 bounded path (`FAILED / 0` proven) |
+| R-011 | short-window Grafana delta/rate panel semantics | UC-05 live counters are proven; do not generalize screenshot values into production observability claims |
 
 ---
 
-# 10. Work Item / PR Lifecycle
+# 7. Work Item / PR Lifecycle
 
 1. MASTER first.
 2. Current repository / Issue / PR / executed evidence overrides stale checkpoint text.
 3. One bounded implementation/proof Issue at a time.
 4. Active relevant PR first.
-5. Same-gap CI/review corrections stay in the same Issue/PR.
-6. RED → first concrete failure → smallest in-scope correction.
-7. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
-8. Issue closes only after acceptance + merge; `not_planned` is allowed only for explicit scope removal such as historical Issue #15.
-9. Reconcile this Master on `main` before selecting the next gap.
-10. Re-evaluate closure before creating another Issue.
-11. Final v1.0 gate is Human Review; do not auto-declare public Proof complete.
+5. RED → first concrete failure → smallest in-scope correction.
+6. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
+7. Reconcile this Master on `main` after merge.
+8. Final v1.0 gate is Human Review; do not create another implementation Issue merely to manufacture activity.
 
 ---
 
-# 11. Current Checkpoint
+# 8. Current Checkpoint
 
 ## Result
-**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / AWS-CLOUD DEFERRED / UC-05 IN PROGRESS — Issue #21.**
+**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 PASS / AWS-CLOUD DEFERRED.**
+
+**IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED.**
 
 ## Changed
-- created Issue #21 as the sole bounded UC-05 Observability work item after confirming no relevant active PR or matching Issue existed.
-- no UC-05 product/proof implementation has been accepted yet.
+- completed UC-05 under Issue #21 / PR #22 using the existing Prometheus/Grafana subsystem.
+- accepted only the smallest scrape/security, datasource/dashboard provisioning, proof-harness, browser-locale, and artifact-safety corrections needed for executable evidence.
+- no AWS/Bedrock/OIDC work, replacement cloud provider, new observability platform, UI expansion, RAG expansion, or broad Checkstyle cleanup was introduced.
 
 ## Actually Executed / Verified
-- prior accepted UC-01 through UC-04 evidence remains unchanged.
-- current main/MASTER and open Issue/PR state were re-fetched before Issue #21 creation.
+- all required v1.0 UC-01 through UC-05 have bounded executable PASS evidence.
+- UC-05 exact-head run `33009550844` and primary CI `33009550928` are GREEN.
+- UC-05 artifact `9622043567` / `sha256:783c37b1bd7079edce01caa61e5ab767826d195cb4a3b800e87ee0cb0c1262a8` was inspected for synthetic safety and absence of secrets/PII.
+- live Prometheus observed requested/succeeded/failed/redriven counters and Heimdall health at `1` in the accepted proof.
+- existing Grafana dashboard/datasource path rendered successfully in the accepted screenshot execution.
 
-## Not Verified
-- UC-05 bounded scenario metric emission.
-- UC-05 live Prometheus metric query evidence.
-- UC-05 live Grafana dashboard evidence against configured datasource.
-- buyer-facing synthetic-safe screenshot/log package for observability.
-- final README / Proof-package truthfulness reconciliation.
-- Human Review acceptance.
-
-## Remaining Risks
-- pre-existing Heimdall Checkstyle debt remains outside current proof unless it directly blocks a required gate.
-- hosted CPU Ollama latency remains variable; no stable latency or throughput claims.
-- legacy cloud-provider code remains deferred and unproven.
-- no production-readiness, SLO, HA, cloud execution, or certification claim is authorized.
+## Not Automatically Accepted
+- final public/Wishket wording, README/Proof-package truthfulness, and screenshot selection remain Human Review decisions.
+- production readiness, SLO/SLA, stable performance, legal compliance, HA, cloud execution, and full admin UI are not proven.
 
 ## Closure Evaluation
-The v1.0 implementation/proof candidate is **not yet at Human Review** because `Prometheus / Grafana operating visibility` remains inside the frozen Core Must Pass boundary and UC-05 is now the active bounded work item under Issue #21.
+The frozen v1.0 implementation/proof criteria are complete. There is no remaining mandatory automatic implementation gap. The project is therefore at its intended **Human Review boundary**.
 
 ## Exact Next Action
-**Re-read this synchronized MASTER on `main`, inspect existing metrics/Prometheus/Grafana implementation, then create one Issue #21-linked branch/PR containing only the smallest executable UC-05 proof harness/correction needed to produce exact-head live Prometheus queries plus Grafana datasource/dashboard evidence. Do not touch deferred AWS/cloud scope or create another Issue.**
+**Human Review:** inspect the accepted evidence and buyer-facing claim boundary, then decide the final README / Wishket / Proof-package wording and whether the candidate is accepted for external presentation. Do not create another automatic implementation Issue unless Human Review identifies one concrete bounded defect or the user creates a new explicit Sales/Proof requirement.
