@@ -41,6 +41,44 @@ jobs:
           python -m pip install 'boto3>=1.34.0'
           python -m pip install -e bifrost
 
+      - name: Record safe GitHub OIDC subject claims
+        shell: bash
+        run: |
+          set -euo pipefail
+          OIDC_TOKEN="$(
+            curl --fail --silent --show-error \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["value"])'
+          )"
+          export OIDC_TOKEN
+          python - <<'PY'
+          import base64
+          import json
+          import os
+
+          token = os.environ['OIDC_TOKEN']
+          payload = token.split('.')[1]
+          payload += '=' * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload.encode('ascii')))
+          safe_keys = (
+              'sub',
+              'aud',
+              'repository',
+              'repository_id',
+              'repository_owner',
+              'repository_owner_id',
+              'environment',
+              'ref',
+              'workflow_ref',
+          )
+          safe = {key: claims.get(key) for key in safe_keys if key in claims}
+          with open('p1-b2-oidc-claims.json', 'w', encoding='utf-8') as f:
+              json.dump(safe, f, indent=2, ensure_ascii=False)
+          print(json.dumps(safe, indent=2, ensure_ascii=False))
+          PY
+          unset OIDC_TOKEN
+
       - name: Configure AWS credentials via GitHub OIDC
         if: ${{ vars.ASGARD_BEDROCK_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v6.2.3
@@ -146,7 +184,7 @@ jobs:
           if [ -z "${ASGARD_BEDROCK_ROLE_ARN:-}" ]; then
             printf '%s\n' \
               'UC-03 CLOUD BLOCKED: GitHub OIDC role is not configured for this repository.' \
-              'Required one-time prerequisite: repository variable ASGARD_BEDROCK_ROLE_ARN pointing to an AWS IAM role trusted for repo:joeylife94/asgard:environment:asgard-proof with bedrock:InvokeModel permission.' \
+              'Required one-time prerequisite: repository variable ASGARD_BEDROCK_ROLE_ARN pointing to an AWS IAM role whose trust subject exactly matches p1-b2-oidc-claims.json and whose permissions allow bedrock:InvokeModel for the accepted model/resource boundary.' \
               > p1-b2-cloud-prerequisite.txt
             cat p1-b2-cloud-prerequisite.txt
             exit 2
@@ -200,6 +238,7 @@ jobs:
         with:
           name: p1-b2-hybrid-routing-evidence
           path: |
+            p1-b2-oidc-claims.json
             p1-b2-routing-decisions.json
             p1-b2-ollama-tags-after.json
             p1-b2-bifrost-health.json
