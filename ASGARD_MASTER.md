@@ -10,12 +10,12 @@
 - **Target Level**: READY TO SHOW bounded software Proof
 - **Product Direction**: **Local-first AI Operations Platform**
 - **Current Phase**: Phase 1 — Operational Visibility / Proof Closure
-- **Current Batch**: closure evaluation after UC-04; UC-05 remains the only unproven required use case
-- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 PENDING**
+- **Current Batch**: P1-B4 — UC-05 Observability live proof
+- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 IN PROGRESS**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: none for the next gap yet
-- **Active PR**: none
+- **Active Issue**: #21 — `P1-B4: prove UC-05 observability through existing Prometheus/Grafana path`
+- **Active PR**: none yet
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-08-26
 - **Final v1.0 Gate**: Human Review Required
@@ -93,7 +93,7 @@ Historical code may still contain Bedrock/cloud lanes. **Existence does not make
 | UC-02 Local AI Analysis | real asynchronous AI job | Job → Kafka → real Ollama → result → persistence → `SUCCEEDED` | **PASS** |
 | UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **PASS** |
 | UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED`; duplicate redrive visible | **PASS** |
-| UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **PENDING** |
+| UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **IN PROGRESS — Issue #21** |
 | Final | buyer-facing Proof | exact evidence + truthful README/Proof package + Human Review | **PENDING** |
 
 ---
@@ -230,11 +230,16 @@ Existing Prometheus/Grafana assets already reference operational metrics includi
 
 This is **NOT VERIFIED as a live buyer-facing Proof yet**.
 
+## Active Work Item
+- Issue #21 — `P1-B4: prove UC-05 observability through existing Prometheus/Grafana path`
+- Scope is proof-first: use existing metrics/Prometheus/Grafana paths and one bounded synthetic-safe lifecycle scenario; do not invent a replacement observability subsystem.
+
 ## Acceptance Criteria
 - [ ] run one bounded job/recovery scenario that emits current metrics.
 - [ ] Prometheus can query the relevant metric series.
 - [ ] existing Grafana dashboard loads against the configured datasource and visibly reflects supported job lifecycle metrics.
 - [ ] screenshot/log evidence is synthetic-safe and contains no secrets/PII.
+- [ ] distinguish metrics actually observed from counters merely present in source/config.
 - [ ] no claim of production observability/SLO maturity is made.
 
 ---
@@ -304,31 +309,21 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 # 11. Current Checkpoint
 
 ## Result
-**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / AWS-CLOUD DEFERRED / UC-05 PENDING.**
+**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / AWS-CLOUD DEFERRED / UC-05 IN PROGRESS — Issue #21.**
 
 ## Changed
-- completed Issue #19 / PR #20 as the sole bounded UC-04 Recovery work item.
-- added a dedicated PR-visible UC-04 proof workflow using existing recovery paths.
-- raised the real local Ollama timeout from 120s to 300s after executable evidence showed the previous window could expire on hosted CPU.
-- corrected the redrive audit mutable-state bug by snapshotting true pre-redrive status/attempt values before retry mutation.
+- created Issue #21 as the sole bounded UC-05 Observability work item after confirming no relevant active PR or matching Issue existed.
+- no UC-05 product/proof implementation has been accepted yet.
 
 ## Actually Executed / Verified
-- PR #20 accepted exact head `4b3bf88b31ae7392004121817832b232f4cd8e21`.
-- dedicated recovery run `32967543925`: SUCCESS.
-- primary CI `32967543793`: SUCCESS.
-- deterministic FAILED persisted and listed.
-- authorized redrive returned 202 and incremented attempt count from 0 to 1.
-- retry was republished/consumed and reached persisted `SUCCEEDED` through real Ollama.
-- SUCCESS audit recorded operator, trace, reason, outcome and true pre-redrive `FAILED / 0` snapshot.
-- duplicate redrive after success was visible as `SKIPPED` and attempt count remained 1.
-- artifact `9606403831`, digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`.
-- PR #20 squash-merged to main at `37c29223044100c216372d27169eba0c3c0a0dc0`.
-- Issue #19 CLOSED / COMPLETED after merge.
+- prior accepted UC-01 through UC-04 evidence remains unchanged.
+- current main/MASTER and open Issue/PR state were re-fetched before Issue #21 creation.
 
 ## Not Verified
+- UC-05 bounded scenario metric emission.
 - UC-05 live Prometheus metric query evidence.
 - UC-05 live Grafana dashboard evidence against configured datasource.
-- buyer-facing screenshot/log package for observability.
+- buyer-facing synthetic-safe screenshot/log package for observability.
 - final README / Proof-package truthfulness reconciliation.
 - Human Review acceptance.
 
@@ -339,7 +334,7 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 - no production-readiness, SLO, HA, cloud execution, or certification claim is authorized.
 
 ## Closure Evaluation
-The v1.0 implementation/proof candidate is **not yet at Human Review** because `Prometheus / Grafana operating visibility` remains inside the frozen Core Must Pass boundary and UC-05 has not been executed as a buyer-facing live proof. Therefore one bounded UC-05 work item is still justified, but it must be selected only after this reconciliation is re-read on `main`.
+The v1.0 implementation/proof candidate is **not yet at Human Review** because `Prometheus / Grafana operating visibility` remains inside the frozen Core Must Pass boundary and UC-05 is now the active bounded work item under Issue #21.
 
 ## Exact Next Action
-**Re-read this synchronized MASTER on `main`, confirm no active relevant PR/Issue exists, then create exactly one bounded UC-05 Observability Issue before any implementation/proof change. Prove existing metrics/Grafana visibility only; do not expand into a new observability subsystem or touch deferred AWS/cloud scope.**
+**Re-read this synchronized MASTER on `main`, inspect existing metrics/Prometheus/Grafana implementation, then create one Issue #21-linked branch/PR containing only the smallest executable UC-05 proof harness/correction needed to produce exact-head live Prometheus queries plus Grafana datasource/dashboard evidence. Do not touch deferred AWS/cloud scope or create another Issue.**
