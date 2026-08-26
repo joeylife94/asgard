@@ -58,7 +58,7 @@ jobs:
           curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b2r-ollama-tags-after.json
           grep -q 'smollm:135m' p1-b2r-ollama-tags-after.json
 
-      - name: Execute UC-03 policy proof
+      - name: Execute UC-03 policy proof through production dispatch
         shell: bash
         run: |
           set -euo pipefail
@@ -66,11 +66,10 @@ jobs:
           import json
           import os
 
-          from bifrost.orchestrator.policy_router import PolicyRouter
-          from bifrost.providers.on_device.ollama_provider import OllamaProvider
+          from bifrost.orchestrator.orchestrator_service import OrchestratorService
 
           assert os.environ['ENABLE_CLOUD_LANE'].lower() == 'false'
-          router = PolicyRouter()
+          service = OrchestratorService()
 
           cases = [
               ('default', 'Summarize this service log.', None),
@@ -78,25 +77,31 @@ jobs:
               ('cloud_hint_disabled', 'Summarize this general operations event.', 'cloud'),
           ]
 
-          decisions = {}
+          evidence_cases = {}
           for name, question, hint in cases:
-              decision = router.decide(question=question, source_hint=hint)
+              decision = service.router.decide(question=question, source_hint=hint)
               assert decision.lane == 'on_device_rag', (name, decision)
               assert decision.provider == 'ollama', (name, decision)
-              decisions[name] = {'lane': decision.lane, 'provider': decision.provider}
 
-          provider = OllamaProvider()
-          result = provider.generate('Reply with one short sentence confirming local Asgard analysis.')
-          assert result.provider == 'ollama', result
-          assert result.text.strip(), result
-          assert result.provider != 'on_device_stub', result
+              # Route the actual decision through the production dispatch boundary.
+              attempt = service._sync_answer(decision.lane, question)
+              assert attempt.provider == 'ollama', (name, attempt)
+              assert attempt.answer.strip(), (name, attempt)
+              assert attempt.provider != 'on_device_stub', (name, attempt)
+              assert service.cloud is None, 'cloud answerer must remain uninitialized while cloud lane is disabled'
+
+              evidence_cases[name] = {
+                  'lane': decision.lane,
+                  'decision_provider': decision.provider,
+                  'executed_provider': attempt.provider,
+                  'result_non_empty': bool(attempt.answer.strip()),
+              }
 
           evidence = {
-              'cloud_lane_enabled': router.enable_cloud,
-              'decisions': decisions,
-              'accepted_provider': result.provider,
-              'result_non_empty': bool(result.text.strip()),
-              'external_provider_invocation_required': False,
+              'cloud_lane_enabled': service.router.enable_cloud,
+              'cases': evidence_cases,
+              'cloud_answerer_initialized': service.cloud is not None,
+              'external_provider_invoked': service.cloud is not None,
           }
           with open('p1-b2r-evidence.json', 'w', encoding='utf-8') as f:
               json.dump(evidence, f, ensure_ascii=False, indent=2)
@@ -111,7 +116,9 @@ jobs:
           test -z "${AWS_SECRET_ACCESS_KEY:-}"
           test -z "${AWS_SESSION_TOKEN:-}"
           grep -q '"cloud_lane_enabled": false' p1-b2r-evidence.json
-          grep -q '"accepted_provider": "ollama"' p1-b2r-evidence.json
+          grep -q '"cloud_answerer_initialized": false' p1-b2r-evidence.json
+          grep -q '"external_provider_invoked": false' p1-b2r-evidence.json
+          test "$(grep -c '"executed_provider": "ollama"' p1-b2r-evidence.json)" -eq 3
 
       - name: Upload UC-03 evidence
         if: always()
