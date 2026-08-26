@@ -31,6 +31,8 @@ public class RedriveAuditService {
     @Transactional
     public RedriveAuditLog recordSuccess(
         AnalysisJob job,
+        String previousStatus,
+        Integer previousAttemptCount,
         String performedBy,
         String sourceIp,
         String userAgent,
@@ -40,8 +42,8 @@ public class RedriveAuditService {
         RedriveAuditLog auditLog = RedriveAuditLog.builder()
             .jobId(job.getJobId())
             .idempotencyKey(job.getIdempotencyKey())
-            .previousStatus(job.getStatus() != null ? job.getStatus().name() : null)
-            .previousAttemptCount(job.getAttemptCount())
+            .previousStatus(previousStatus)
+            .previousAttemptCount(previousAttemptCount)
             .performedBy(performedBy)
             .performedAt(LocalDateTime.now())
             .sourceIp(sourceIp)
@@ -108,6 +110,8 @@ public class RedriveAuditService {
     @Transactional
     public RedriveAuditLog recordSkipped(
         AnalysisJob job,
+        String previousStatus,
+        Integer previousAttemptCount,
         String performedBy,
         String sourceIp,
         String userAgent,
@@ -117,8 +121,8 @@ public class RedriveAuditService {
         RedriveAuditLog auditLog = RedriveAuditLog.builder()
             .jobId(job.getJobId())
             .idempotencyKey(job.getIdempotencyKey())
-            .previousStatus(job.getStatus() != null ? job.getStatus().name() : null)
-            .previousAttemptCount(job.getAttemptCount())
+            .previousStatus(previousStatus)
+            .previousAttemptCount(previousAttemptCount)
             .performedBy(performedBy)
             .performedAt(LocalDateTime.now())
             .sourceIp(sourceIp)
@@ -126,7 +130,7 @@ public class RedriveAuditService {
             .traceId(traceId)
             .reason(reason)
             .outcome(RedriveAuditLog.Outcome.SKIPPED)
-            .errorMessage("Job status not eligible for redrive: " + job.getStatus())
+            .errorMessage("Job status not eligible for redrive: " + previousStatus)
             .build();
 
         RedriveAuditLog saved = auditLogRepository.save(auditLog);
@@ -154,7 +158,7 @@ public class RedriveAuditService {
     }
 
     /**
-     * Get all recent audit logs (admin view).
+     * Get all recent redrive audit logs (admin view).
      */
     public Page<RedriveAuditLog> getRecentAuditLogs(Pageable pageable) {
         return auditLogRepository.findAllByOrderByPerformedAtDesc(pageable);
