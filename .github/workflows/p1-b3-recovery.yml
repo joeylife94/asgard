@@ -331,7 +331,10 @@ jobs:
           echo "$FIRST_CODE" > p1-b3-redrive-http-code.txt
 
           final_status=''
-          for attempt in {1..120}; do
+          # The real Ollama client is allowed up to 300s per request on this
+          # bounded proof branch. Give the persisted Job enough time to reflect
+          # that real provider result instead of failing the harness first.
+          for attempt in {1..240}; do
             curl --fail --silent --show-error \
               -H "Authorization: Bearer $TOKEN" \
               http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b3-job-final.json
