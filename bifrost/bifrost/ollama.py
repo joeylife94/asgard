@@ -14,7 +14,7 @@ class OllamaClient:
         self,
         url: str = "http://localhost:11434",
         model: str = "mistral",
-        timeout: int = 120,
+        timeout: int = 300,
         max_retries: int = 3,
     ):
         self.url = url.rstrip('/')

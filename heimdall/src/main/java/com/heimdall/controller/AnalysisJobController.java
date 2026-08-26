@@ -71,20 +71,24 @@ public class AnalysisJobController {
         }
 
         try {
-            // Get job before redrive for audit logging
+            // Snapshot audit fields before redrive mutates the managed AnalysisJob.
             AnalysisJob jobBefore = analysisJobService.get(jobId);
+            String previousStatus = jobBefore.getStatus() != null ? jobBefore.getStatus().name() : null;
+            Integer previousAttemptCount = jobBefore.getAttemptCount();
 
             AnalysisOrchestratorService.OrchestrationResult result =
                 analysisOrchestratorService.redriveJob(jobId, traceId);
 
-            // Record audit log based on outcome
+            // Record audit log based on outcome using the true pre-redrive snapshot.
             if (result.created()) {
                 redriveAuditService.recordSuccess(
-                    result.job(), performedBy, sourceIp, userAgent, traceId, reason
+                    result.job(), previousStatus, previousAttemptCount,
+                    performedBy, sourceIp, userAgent, traceId, reason
                 );
             } else {
                 redriveAuditService.recordSkipped(
-                    result.job(), performedBy, sourceIp, userAgent, traceId, reason
+                    result.job(), previousStatus, previousAttemptCount,
+                    performedBy, sourceIp, userAgent, traceId, reason
                 );
             }
 
