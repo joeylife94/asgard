@@ -21,7 +21,7 @@ jobs:
       ASGARD_BEDROCK_ROLE_ARN: ${{ vars.ASGARD_BEDROCK_ROLE_ARN }}
       AWS_DEFAULT_REGION: ${{ vars.ASGARD_BEDROCK_REGION || 'us-east-1' }}
       BIFROST_BEDROCK_REGION: ${{ vars.ASGARD_BEDROCK_REGION || 'us-east-1' }}
-      BIFROST_BEDROCK_MODEL: ${{ vars.ASGARD_BEDROCK_MODEL || 'anthropic.claude-3-sonnet-20240229-v1:0' }}
+      BIFROST_BEDROCK_MODEL: ${{ vars.ASGARD_BEDROCK_MODEL || 'anthropic.claude-sonnet-4-6' }}
 
     steps:
       - name: Checkout
@@ -86,6 +86,21 @@ jobs:
           role-to-assume: ${{ vars.ASGARD_BEDROCK_ROLE_ARN }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
           role-session-name: asgard-uc03-proof
+
+      - name: Stop early when AWS role is not configured
+        if: ${{ vars.ASGARD_BEDROCK_ROLE_ARN == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'UC-03 CLOUD BLOCKED: GitHub OIDC role is not configured for this repository.' \
+            'Required repository variable: ASGARD_BEDROCK_ROLE_ARN.' \
+            'Execution-proven trust subject: repo:joeylife94/asgard:environment:asgard-proof.' \
+            'Audience: sts.amazonaws.com.' \
+            'Bedrock proof default model: anthropic.claude-sonnet-4-6 in us-east-1.' \
+            > p1-b2-cloud-prerequisite.txt
+          cat p1-b2-cloud-prerequisite.txt
+          exit 2
 
       - name: Start real Ollama model
         shell: bash
@@ -182,11 +197,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${ASGARD_BEDROCK_ROLE_ARN:-}" ]; then
-            printf '%s\n' \
-              'UC-03 CLOUD BLOCKED: GitHub OIDC role is not configured for this repository.' \
-              'Required one-time prerequisite: repository variable ASGARD_BEDROCK_ROLE_ARN pointing to an AWS IAM role whose trust subject exactly matches p1-b2-oidc-claims.json and whose permissions allow bedrock:InvokeModel for the accepted model/resource boundary.' \
-              > p1-b2-cloud-prerequisite.txt
-            cat p1-b2-cloud-prerequisite.txt
+            echo 'Invariant violation: CLOUD proof reached execution without ASGARD_BEDROCK_ROLE_ARN.' >&2
             exit 2
           fi
 
