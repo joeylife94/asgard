@@ -268,8 +268,21 @@ jobs:
           done
 
           for metric in ai_job_requested_total ai_job_success_total ai_job_failed_total ai_job_redriven_total; do
-            curl --fail --silent --get --data-urlencode "query=$metric" \
-              http://127.0.0.1:9090/api/v1/query > "p1-b4-prometheus-$metric.json"
+            for attempt in {1..30}; do
+              curl --fail --silent --get --data-urlencode "query=$metric" \
+                http://127.0.0.1:9090/api/v1/query > "p1-b4-prometheus-$metric.json"
+              if python3 - "$metric" <<'PY'
+          import json, sys
+          metric=sys.argv[1]
+          payload=json.load(open(f'p1-b4-prometheus-{metric}.json'))
+          rows=payload['data']['result']
+          value=sum(float(row['value'][1]) for row in rows) if rows else 0.0
+          sys.exit(0 if value >= 1.0 else 1)
+          PY
+              then break; fi
+              if [ "$attempt" -eq 30 ]; then cat "p1-b4-prometheus-$metric.json"; exit 1; fi
+              sleep 2
+            done
           done
 
           python3 - <<'PY'
