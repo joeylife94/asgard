@@ -10,11 +10,12 @@
 - **Target Level**: READY TO SHOW bounded software Proof
 - **Product Direction**: **Local-first AI Operations Platform**
 - **Current Phase**: Phase 1 — Recovery Proof
-- **Current Batch**: Closure evaluation complete after P1-B2R / UC-03; UC-04 is the next smallest remaining Proof gap
-- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PENDING / UC-05 PENDING**
+- **Current Batch**: P1-B3 / UC-04 Recovery — bounded executable proof
+- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 IN PROGRESS / UC-05 PENDING**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: none — Issue #17 CLOSED / COMPLETED after accepted PR #18 merge
+- **Active Issue**: Issue #19 — `P1-B3: prove UC-04 recovery redrive golden path`
+- **Active PR**: none yet
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-08-26
 - **Final v1.0 Gate**: Human Review Required
@@ -91,7 +92,7 @@ Historical code may still contain Bedrock/cloud lanes. **Existence does not make
 | UC-01 Startup | executable core stack | clone/configure → required core services healthy | **PASS** |
 | UC-02 Local AI Analysis | real asynchronous AI job | Job → Kafka → real Ollama → result → persistence → `SUCCEEDED` | **PASS** |
 | UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **PASS** |
-| UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED` | **PENDING** |
+| UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED` | **IN PROGRESS — Issue #19** |
 | UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **PENDING** |
 | Final | buyer-facing Proof | exact evidence + truthful README/Proof package + Human Review | **PENDING** |
 
@@ -198,7 +199,7 @@ No further UC-03 implementation is authorized unless later executable evidence r
 
 Existing code already contains failed-job listing, controlled redrive, per-user redrive rate limiting, redrive audit records, actor/source/trace/reason capture, retry preparation, Kafka re-publication, and `ai_job_redriven_total` metric hooks.
 
-This is **NOT VERIFIED as a complete v1.0 Golden Path yet**.
+**Active bounded work item: Issue #19.** The proof must exercise the existing subsystem rather than replace it.
 
 ## Acceptance Criteria
 - [ ] create or induce one deterministic failed job through a bounded supported path.
@@ -207,6 +208,16 @@ This is **NOT VERIFIED as a complete v1.0 Golden Path yet**.
 - [ ] redrive audit records operator/outcome and relevant trace/reason evidence.
 - [ ] retry republishes work and reaches a final accepted state, preferably `SUCCEEDED`.
 - [ ] duplicate or unsafe redrive behavior is not hidden.
+- [ ] exact-head executable evidence is captured in PR-visible CI/artifact output.
+
+## Current Verified Static Contract
+- `GET /api/v1/analysis/jobs/failed` lists persisted FAILED jobs.
+- `POST /api/v1/analysis/jobs/{jobId}/redrive` applies per-user rate limiting, invokes `redriveJob`, and records SUCCESS/SKIPPED/FAILED audit outcomes.
+- `prepareRetry` only transitions retriable FAILED jobs to PENDING and increments attempt count.
+- `redriveJob` rebuilds and republishes an `AnalysisRequestEvent`, marks the job RUNNING, and increments `ai_job_redriven_total`.
+- per-job audit endpoint exposes operator/outcome/trace/reason fields.
+
+These are code-path observations only; **UC-04 remains IN PROGRESS until exact-head runtime evidence proves the complete lifecycle.**
 
 Do not invent a new recovery subsystem if the existing one can be proven.
 
@@ -267,6 +278,7 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 | R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker |
 | R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | current intended `PolicyRouter` local-first path is now proven; refactor only if a later accepted gap requires it |
 | R-009 | agent self-report | never PASS without executed evidence |
+| R-010 | redrive audit's recorded previous status/attempt values may depend on when the mutable job is sampled | do not assume correctness; current UC-04 execution must verify attributable audit semantics and expose any mismatch |
 
 ---
 
@@ -289,33 +301,34 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 # 11. Current Checkpoint
 
 ## Result
-**UC-01 PASS / UC-02 PASS / UC-03 PASS / AWS-CLOUD DEFERRED / UC-04 IS THE NEXT SMALLEST REMAINING PROOF GAP.**
+**UC-01 PASS / UC-02 PASS / UC-03 PASS / AWS-CLOUD DEFERRED / UC-04 IN PROGRESS — ISSUE #19 ACTIVE.**
 
 ## Changed
-- Issue #17 closed completed after PR #18 exact-head proof passed and was merged.
-- UC-03 promoted from IN PROGRESS to PASS.
-- accepted Local-first behavior is now evidenced through production Bifrost dispatch, not router-code existence alone.
-- no cloud-provider proof was added; AWS/Bedrock/OIDC remain explicitly deferred.
+- created Issue #19 as the sole bounded UC-04 Recovery work item.
+- reconciled authoritative state from `UC-04 PENDING` to `UC-04 IN PROGRESS` before implementation.
+- inspected existing recovery/redrive/audit code sufficiently to confirm the intended proof should use current paths, not a new subsystem.
 
 ## Actually Executed / Verified
-- PR #18 exact-head dedicated UC-03 proof run `32945550180`: SUCCESS.
-- primary CI `32945550197`: SUCCESS.
-- Bifrost secondary build/test and dependency-security jobs: GREEN.
-- real Ollama model startup and execution: GREEN.
-- default, sensitive, and cloud-hint-disabled requests all resolved through `on_device_rag / ollama` with non-empty results.
-- cloud answerer remained uninitialized and `external_provider_invoked=false` in captured evidence.
-- review defect from the first proof version was corrected and resolved before merge.
+- current `main` MASTER was read before work selection.
+- open PRs were checked: none existed for UC-04.
+- open Issues were checked: only unrelated/stale Issue #1 existed before Issue #19; no exact UC-04 work item existed.
+- static recovery contract verified in current source: failed-job listing, controlled redrive endpoint, retry preparation, Kafka re-publication, per-user rate limiting, and audit outcome/actor/trace/reason capture paths exist.
 
 ## Not Verified
-- UC-04 complete failure → redrive → audit → retry → accepted final state.
+- deterministic persisted FAILED job under current exact head.
+- runtime failed-job listing for that job.
+- authorized redrive request and audit persistence.
+- actual retry Kafka re-publication/consumption.
+- final accepted retry state (`SUCCEEDED` preferred).
+- duplicate/unsafe redrive runtime behavior.
 - UC-05 live Prometheus/Grafana buyer-facing evidence.
 - final README/Proof package truthfulness reconciliation.
-- pre-existing Heimdall Checkstyle debt remains unresolved and is not part of UC-03 PASS.
 
 ## Remaining Risks
-- UC-04 and UC-05 still require current executable evidence.
-- final buyer-facing materials may still overclaim relative to this Master.
+- UC-04 code existence may not match runtime semantics; only exact-head execution can close the gap.
+- audit `previousStatus` / `previousAttemptCount` may reflect post-`prepareRetry` mutable state rather than the true pre-redrive state; do not claim correctness until runtime evidence verifies it.
+- pre-existing Heimdall Checkstyle debt remains outside UC-04 unless it directly blocks proof execution.
 - no stable latency, throughput, production-readiness, cloud execution, or certification claim is authorized.
 
 ## Exact Next Action
-**Closure evaluation confirms v1.0 is not yet at Human Review because UC-04 and UC-05 remain PENDING. The next smallest accepted gap is UC-04 Recovery. On the next work iteration, first search for one existing open Issue exactly matching UC-04; if none exists, create exactly one bounded Issue for deterministic FAILED/DLQ → Redrive → Audit → Retry → accepted final state, then follow the normal Issue-first lifecycle. Do not start UC-05 in the same work item.**
+**Under Issue #19, create one Issue-linked branch and the smallest PR-visible proof harness that deterministically drives an existing Analysis Job to persisted FAILED, invokes the existing redrive endpoint with operator/trace/reason evidence, verifies audit + retry attempt/republication, waits for an accepted final state (prefer `SUCCEEDED`), and explicitly probes duplicate/unsafe redrive behavior. First executable RED determines the only authorized correction. Do not start UC-05 concurrently.**
