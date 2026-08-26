@@ -1,0 +1,399 @@
+name: P1-B4 UC-05 Observability Proof
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/p1-b4-observability.yml'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'gradle/**'
+      - 'heimdall/**'
+      - 'docker-compose.yml'
+      - 'monitoring/**'
+  workflow_dispatch: {}
+
+jobs:
+  uc05_observability:
+    name: UC-05 Prometheus and Grafana lifecycle proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Heimdall
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :heimdall:bootJar --no-daemon --console=plain
+
+      - name: Start infrastructure and observability stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose up -d postgres zookeeper kafka redis elasticsearch prometheus grafana
+
+          for attempt in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U asgard >/dev/null 2>&1; then break; fi
+            if [ "$attempt" -eq 30 ]; then docker compose logs postgres; exit 1; fi
+            sleep 2
+          done
+
+          for attempt in {1..45}; do
+            if docker compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1; then break; fi
+            if [ "$attempt" -eq 45 ]; then docker compose logs kafka zookeeper; exit 1; fi
+            sleep 2
+          done
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:9200/_cluster/health > p1-b4-elasticsearch.json; then break; fi
+            if [ "$attempt" -eq 60 ]; then docker compose logs elasticsearch; exit 1; fi
+            sleep 2
+          done
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:9090/-/ready > p1-b4-prometheus-ready.txt; then break; fi
+            if [ "$attempt" -eq 60 ]; then docker compose logs prometheus; exit 1; fi
+            sleep 2
+          done
+
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3001/api/health > p1-b4-grafana-health.json; then break; fi
+            if [ "$attempt" -eq 60 ]; then docker compose logs grafana; exit 1; fi
+            sleep 2
+          done
+
+      - name: Start Heimdall
+        shell: bash
+        env:
+          SPRING_PROFILES_ACTIVE: dev
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/heimdall
+          SPRING_DATASOURCE_USERNAME: asgard
+          SPRING_DATASOURCE_PASSWORD: asgard_password
+          SPRING_KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
+          JWT_SECRET: p1-b4-ci-jwt-secret-at-least-32-bytes-long
+          HEIMDALL_SECURITY_ADMIN_USERNAME: admin
+          HEIMDALL_SECURITY_ADMIN_PASSWORD: p1-b4-admin-password
+          HEIMDALL_SECURITY_ADMIN_ROLES: ADMIN,USER
+          HEIMDALL_ANALYSIS_AUTO_REQUEST: 'false'
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: '6379'
+          REDIS_PASSWORD: redis_password
+          GRPC_PORT: '9091'
+        run: |
+          set -euo pipefail
+          HEIMDALL_JAR=$(find heimdall/build/libs -maxdepth 1 -name 'heimdall-*.jar' -type f | head -n 1)
+          test -n "$HEIMDALL_JAR"
+          java -jar "$HEIMDALL_JAR" > p1-b4-heimdall.log 2>&1 &
+          echo $! > p1-b4-heimdall.pid
+
+          for attempt in {1..90}; do
+            if curl --fail --silent http://127.0.0.1:8080/actuator/health > p1-b4-heimdall-health.json; then break; fi
+            if [ "$attempt" -eq 90 ]; then cat p1-b4-heimdall.log; exit 1; fi
+            sleep 2
+          done
+
+      - name: Execute bounded synthetic lifecycle scenario
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"p1-b4-admin-password"}' \
+            http://127.0.0.1:8080/api/v1/auth/login > p1-b4-login.json
+          TOKEN=$(python3 - <<'PY'
+          import json
+          print(json.load(open('p1-b4-login.json'))['token'])
+          PY
+          )
+          test -n "$TOKEN"
+
+          cat > p1-b4-input.json <<'JSON'
+          {
+            "source": "p1-b4-observability-proof",
+            "serviceName": "observability-proof-service",
+            "environment": "proof",
+            "severity": "ERROR",
+            "logContent": "2026-08-26T14:00:00Z ERROR synthetic observability lifecycle seed",
+            "metadata": {"proof": "uc-05", "synthetic": true}
+          }
+          JSON
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data @p1-b4-input.json \
+            http://127.0.0.1:8080/api/v1/logs > p1-b4-ingest.json
+
+          LOG_ID=$(python3 - <<'PY'
+          import json
+          print(json.load(open('p1-b4-ingest.json'))['logId'])
+          PY
+          )
+          test -n "$LOG_ID"
+          echo "$LOG_ID" > p1-b4-log-id.txt
+
+          IDEMPOTENCY_KEY='p1-b4-observability-proof-v1'
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+            -H 'X-Trace-Id: p1-b4-request-trace' \
+            -d "{\"idempotencyKey\":\"$IDEMPOTENCY_KEY\",\"modelPolicy\":{\"source\":\"local\"}}" \
+            -X POST http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis > p1-b4-analysis-accepted.json
+
+          JOB_ID=$(python3 - <<'PY'
+          import json
+          print(json.load(open('p1-b4-analysis-accepted.json'))['jobId'])
+          PY
+          )
+          test -n "$JOB_ID"
+          echo "$JOB_ID" > p1-b4-job-id.txt
+
+          python3 - <<'PY' > p1-b4-result-failed.json
+          import json
+          print(json.dumps({
+            'schema_version': 1,
+            'job_id': open('p1-b4-job-id.txt').read().strip(),
+            'log_id': int(open('p1-b4-log-id.txt').read().strip()),
+            'status': 'FAILED',
+            'error_code': 'UC05_SYNTHETIC_FAILURE',
+            'error_message': 'Synthetic UC-05 lifecycle failure for metrics proof',
+            'trace_id': 'p1-b4-failed-trace'
+          }))
+          PY
+
+          printf '%s:%s\n' "$JOB_ID" "$(cat p1-b4-result-failed.json)" | \
+            docker compose exec -T kafka kafka-console-producer \
+              --bootstrap-server kafka:29092 \
+              --topic analysis.result \
+              --property parse.key=true \
+              --property key.separator=:
+
+          status=''
+          for attempt in {1..30}; do
+            curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" \
+              http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b4-job-failed.json
+            status=$(python3 - <<'PY'
+          import json
+          print(json.load(open('p1-b4-job-failed.json'))['status'])
+          PY
+            )
+            if [ "$status" = 'FAILED' ]; then break; fi
+            sleep 2
+          done
+          test "$status" = 'FAILED'
+
+          REDRIVE_CODE=$(curl --silent --show-error \
+            -o p1-b4-redrive.json -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -H 'X-Trace-Id: p1-b4-redrive-trace' \
+            -d '{"reason":"UC-05 synthetic metrics proof"}' \
+            -X POST http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID/redrive)
+          test "$REDRIVE_CODE" = '202'
+
+          python3 - <<'PY' > p1-b4-result-success.json
+          import json
+          print(json.dumps({
+            'schema_version': 1,
+            'job_id': open('p1-b4-job-id.txt').read().strip(),
+            'log_id': int(open('p1-b4-log-id.txt').read().strip()),
+            'status': 'SUCCEEDED',
+            'summary': 'Synthetic UC-05 observability result',
+            'root_cause': 'Synthetic proof input',
+            'recommendation': 'No production action; observability proof only',
+            'severity': 'LOW',
+            'confidence': 0.99,
+            'model_used': 'synthetic-observability-proof',
+            'latency_ms': 10,
+            'trace_id': 'p1-b4-success-trace'
+          }))
+          PY
+
+          printf '%s:%s\n' "$JOB_ID" "$(cat p1-b4-result-success.json)" | \
+            docker compose exec -T kafka kafka-console-producer \
+              --bootstrap-server kafka:29092 \
+              --topic analysis.result \
+              --property parse.key=true \
+              --property key.separator=:
+
+          status=''
+          for attempt in {1..30}; do
+            curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" \
+              http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b4-job-final.json
+            status=$(python3 - <<'PY'
+          import json
+          print(json.load(open('p1-b4-job-final.json'))['status'])
+          PY
+            )
+            if [ "$status" = 'SUCCEEDED' ]; then break; fi
+            sleep 2
+          done
+          test "$status" = 'SUCCEEDED'
+
+      - name: Query live Prometheus lifecycle series
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for attempt in {1..30}; do
+            curl --fail --silent --get --data-urlencode 'query=up{job="heimdall"}' \
+              http://127.0.0.1:9090/api/v1/query > p1-b4-prometheus-up.json
+            if python3 - <<'PY'
+          import json, sys
+          data=json.load(open('p1-b4-prometheus-up.json'))['data']['result']
+          sys.exit(0 if data and float(data[0]['value'][1]) == 1.0 else 1)
+          PY
+            then break; fi
+            if [ "$attempt" -eq 30 ]; then cat p1-b4-prometheus-up.json; docker compose logs prometheus; exit 1; fi
+            sleep 2
+          done
+
+          for metric in ai_job_requested_total ai_job_success_total ai_job_failed_total ai_job_redriven_total; do
+            for attempt in {1..30}; do
+              curl --fail --silent --get --data-urlencode "query=$metric" \
+                http://127.0.0.1:9090/api/v1/query > "p1-b4-prometheus-$metric.json"
+              if python3 - "$metric" <<'PY'
+          import json, sys
+          metric=sys.argv[1]
+          payload=json.load(open(f'p1-b4-prometheus-{metric}.json'))
+          rows=payload['data']['result']
+          value=sum(float(row['value'][1]) for row in rows) if rows else 0.0
+          sys.exit(0 if value >= 1.0 else 1)
+          PY
+              then break; fi
+              if [ "$attempt" -eq 30 ]; then cat "p1-b4-prometheus-$metric.json"; exit 1; fi
+              sleep 2
+            done
+          done
+
+          python3 - <<'PY'
+          import json
+          metrics = ['ai_job_requested_total','ai_job_success_total','ai_job_failed_total','ai_job_redriven_total']
+          observed = {}
+          for metric in metrics:
+              payload=json.load(open(f'p1-b4-prometheus-{metric}.json'))
+              rows=payload['data']['result']
+              assert rows, (metric, payload)
+              value=sum(float(row['value'][1]) for row in rows)
+              assert value >= 1.0, (metric, value, payload)
+              observed[metric]=value
+          up=json.load(open('p1-b4-prometheus-up.json'))['data']['result']
+          assert up and float(up[0]['value'][1]) == 1.0, up
+          observed['up{job="heimdall"}']=1.0
+          with open('p1-b4-observed-metrics.json','w') as f:
+              json.dump({'observed_live': observed, 'source_only_not_claimed': ['ai_job_duplicate_result_total']}, f, indent=2)
+          print(json.dumps(observed, indent=2))
+          PY
+
+      - name: Verify Grafana datasource and provisioned dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent -u admin:admin http://127.0.0.1:3001/api/datasources/uid/prometheus > p1-b4-grafana-datasource.json
+          curl --fail --silent -u admin:admin 'http://127.0.0.1:3001/api/search?query=Asgard' > p1-b4-grafana-search.json
+
+          DASH_UID=$(python3 - <<'PY'
+          import json
+          items=json.load(open('p1-b4-grafana-search.json'))
+          dashboards=[x for x in items if x.get('type') == 'dash-db']
+          assert dashboards, items
+          print(dashboards[0]['uid'])
+          PY
+          )
+          test -n "$DASH_UID"
+          echo "$DASH_UID" > p1-b4-grafana-dashboard-uid.txt
+          curl --fail --silent -u admin:admin "http://127.0.0.1:3001/api/dashboards/uid/$DASH_UID" > p1-b4-grafana-dashboard.json
+
+          python3 - <<'PY'
+          import json
+          ds=json.load(open('p1-b4-grafana-datasource.json'))
+          dash=json.load(open('p1-b4-grafana-dashboard.json'))['dashboard']
+          text=json.dumps(dash)
+          assert ds['type'] == 'prometheus', ds
+          assert ds['url'] == 'http://prometheus:9090', ds
+          for metric in ['ai_job_requested_total','ai_job_success_total','ai_job_failed_total','ai_job_redriven_total']:
+              assert metric in text, metric
+          PY
+
+      - name: Capture synthetic-safe Grafana screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > p1-b4-screenshot.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const uid = fs.readFileSync('p1-b4-grafana-dashboard-uid.txt','utf8').trim();
+          const browser = await chromium.launch({headless:true});
+          const context = await browser.newContext({viewport:{width:1440,height:1000}, locale:'en-US'});
+          const login = await context.request.post('http://127.0.0.1:3001/login', {
+            data: { user: 'admin', password: 'admin' }
+          });
+          if (!login.ok()) {
+            throw new Error(`Grafana login API failed: ${login.status()} ${await login.text()}`);
+          }
+          const page = await context.newPage();
+          await page.goto(`http://127.0.0.1:3001/d/${uid}?from=now-15m&to=now&var-datasource=prometheus&refresh=5s`, {waitUntil:'domcontentloaded'});
+          await page.waitForTimeout(12000);
+          const body = await page.locator('body').innerText();
+          fs.writeFileSync('p1-b4-grafana-visible-text.txt', body);
+          if (!body.includes('Jobs Requested') || !body.includes('Jobs Succeeded') || !body.includes('Jobs Failed') || !body.includes('Jobs Redriven')) {
+            throw new Error('Expected lifecycle panels are not visible in Grafana');
+          }
+          await page.screenshot({path:'p1-b4-grafana-dashboard.png', fullPage:true});
+          await browser.close();
+          JS
+          node p1-b4-screenshot.mjs
+
+      - name: Upload UC-05 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-b4-uc05-observability-evidence
+          path: |
+            p1-b4-observed-metrics.json
+            p1-b4-prometheus-up.json
+            p1-b4-prometheus-ai_job_requested_total.json
+            p1-b4-prometheus-ai_job_success_total.json
+            p1-b4-prometheus-ai_job_failed_total.json
+            p1-b4-prometheus-ai_job_redriven_total.json
+            p1-b4-grafana-health.json
+            p1-b4-grafana-datasource.json
+            p1-b4-grafana-search.json
+            p1-b4-grafana-dashboard.json
+            p1-b4-grafana-dashboard.png
+            p1-b4-grafana-visible-text.txt
+            p1-b4-heimdall-health.json
+            p1-b4-job-failed.json
+            p1-b4-job-final.json
+            p1-b4-redrive.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -f p1-b4-heimdall.pid ]; then kill "$(cat p1-b4-heimdall.pid)" 2>/dev/null || true; fi
+          docker compose down -v --remove-orphans >/dev/null 2>&1 || true
