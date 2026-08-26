@@ -2,45 +2,47 @@
 
 > **Authoritative v1.0 execution contract**
 >
-> Single source of truth for Asgard v1.0. Current repository/Issue/PR/executed evidence overrides stale checkpoint fields, README claims, and agent self-report.
+> Single source of truth for Asgard v1.0 Proof. Current repository / Issue / PR / executable evidence overrides README claims, historical roadmap text, old portfolio positioning, and agent self-report.
 
 ## 0. Control
 
-- **Target**: Asgard v1.0 — Wishket Proof
-- **Target Level**: Usable Production-like PoC
-- **Current Phase**: Phase 1 — Golden Path
-- **Current Batch**: P1-B2 — UC-03 Hybrid Routing
-- **Batch Result**: **HOLD / BLOCKED — OIDC role prerequisite**
-- **Status**: UC-01 PASS / UC-02 PASS / UC-03 LOCAL VERIFIED, CLOUD BLOCKED
+- **Target**: Asgard v1.0 — Wishket / Freelance Proof
+- **Target Level**: READY TO SHOW bounded software Proof
+- **Product Direction**: **Local-first AI Operations Platform**
+- **Current Phase**: Scope Reset → remaining Proof closure
+- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 REDEFINED / UC-04 PENDING / UC-05 PENDING**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: #15 — OPEN
-- **Active PR**: #16 — DRAFT / HOLD
-- **P1-B2 Branch**: `agent/p1-b2-hybrid-routing-proof`
-- **P1-B2 PR Exact Head**: `5dc069a1189b4d7cc27cf4a8c4802013e2c57d1b`
-- **Primary CI**: `32370250115` — SUCCESS
-- **P1-B2 Proof Run**: `32370250218` — FAILURE at OIDC role prerequisite
-- **CI/CD Pipeline**: `32370250514` — FAILURE only at pre-existing Heimdall `checkstyleMain`; Bifrost/security GREEN
-- **P1-B2 Evidence Artifact**: `9406886841`
-- **P1-B2 Evidence Digest**: `sha256:60f8a6085372e3891be6481db894b4d3a8d0e85e903ac4758824be54f5366a69`
-- **Phase 0 Result**: PASS
-- **Updated**: 2026-08-20
-- **Final v1.0 Gate**: **Human Review Required**
+- **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
+- **Updated**: 2026-08-26
+- **Final v1.0 Gate**: Human Review Required
 
 ---
 
 # 1. Product Definition
 
-**Asgard는 기업 로그/운영 데이터를 Local LLM 또는 Cloud LLM으로 선택적으로 분석하고, Kafka 기반 비동기 Job과 장애 복구·관측 기능을 제공하는 Hybrid AI Operations Platform이다.**
+**Asgard는 운영 로그와 이벤트를 영속적인 비동기 Job으로 처리하고, Kafka 기반 실행 흐름과 Local LLM 분석, 결과 저장, 실패 복구, 감사 및 관측 기능을 제공하는 Local-first AI Operations Platform이다.**
 
 ```text
-Input → Heimdall → Analysis Job → Kafka → Bifrost
-      → Routing ─┬→ Local AI
-                 └→ Cloud AI
-      → Result / DB → Dashboard / Operator
+Input / Log
+  → Heimdall
+  → Persistent Analysis Job
+  → Kafka
+  → Bifrost
+  → Local AI (Ollama)
+  → Result Event
+  → Persistence
+  → Operator / Metrics
 
-FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
+Failure
+  → FAILED / DLQ
+  → Controlled Redrive
+  → Audit
+  → Retry
+  → SUCCEEDED
 ```
+
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다.
 
 ---
 
@@ -49,26 +51,37 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 ## Core Must Pass
 - Heimdall / Bifrost
 - PostgreSQL / Kafka
-- Local AI Provider
-- Cloud AI Provider proof through the existing Bedrock path
-- Hybrid Routing
-- Analysis Job / Persistence / Idempotency
+- Local Ollama provider
+- persistent Analysis Job lifecycle
+- result persistence / idempotency boundary
+- fail-closed local-first routing boundary
 - DLQ / Redrive / Audit
-- Auth / Rate Limit
-- Prometheus / Grafana
-- Minimal React Dashboard
-- CI / E2E Demo
+- Auth / Rate Limit where used by the bounded workflow
+- Prometheus / Grafana operating visibility
+- minimal executable frontend boot shell only
+- CI / E2E evidence
+- final buyer-facing truthfulness reconciliation
 
-## Explicit Non-Goals
-- Multi-tenancy completion
-- HA / multi-region
-- Kubernetes production
-- autoscaling
-- full RBAC / enterprise secret manager
+## Explicitly Deferred / Not Required for v1.0
+- AWS Bedrock
+- AWS OIDC / IAM role setup
+- real cloud-provider execution
+- replacing AWS with OpenAI / Gemini / another cloud provider
+- multi-provider routing expansion
+- RAG as the primary Asgard Proof
+- feedback system expansion
+- quality scoring expansion
+- A/B testing expansion
+- smart caching expansion
+- advanced React admin dashboard
+- HP AI Server reference deployment
+- Kubernetes production / HA / autoscaling / multi-region
+- Keycloak / Vault / enterprise secret-manager work
+- full RBAC / multi-tenancy
 - production SLA/SLO
-- security certification / legal GDPR certification
-- large admin UI
-- experimental feature expansion before Core completion
+- legal GDPR certification or security certification
+
+Historical code may still contain Bedrock/cloud lanes. **Existence does not make them current v1.0 requirements.** Do not delete or modernize them unless a bounded accepted Proof gap requires it.
 
 ---
 
@@ -76,192 +89,201 @@ FAILED → DLQ → Redrive → Audit → Retry → SUCCEEDED
 
 | UC | Goal | PASS criterion | Current |
 |---|---|---|---|
-| UC-01 Startup | third-party executable startup | clone/configure → core services healthy | **PASS** |
-| UC-02 Analysis | real AI analysis | Job → Kafka → real AI → result → SUCCEEDED | **PASS — Issue #13 / PR #14** |
-| UC-03 Routing | hybrid route | sensitive→LOCAL / general→CLOUD with real providers | **HOLD — LOCAL VERIFIED / CLOUD OIDC role prerequisite** |
-| UC-04 Recovery | failure recovery | FAILED → DLQ → Redrive → Audit → SUCCEEDED | PENDING |
-| UC-05 Observability | operating visibility | jobs/latency/routes/DLQ/redrive/health | PENDING |
+| UC-01 Startup | executable core stack | clone/configure → required core services healthy | **PASS** |
+| UC-02 Local AI Analysis | real asynchronous AI job | Job → Kafka → real Ollama → result → persistence → `SUCCEEDED` | **PASS** |
+| UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **REDEFINED — VERIFY BOUNDED CURRENT BEHAVIOR** |
+| UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED` | **PENDING** |
+| UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **PENDING** |
+| Final | buyer-facing Proof | exact evidence + truthful README/Proof package + Human Review | **PENDING** |
 
 ---
 
-# 4. Completed Baseline / Golden Path Evidence
+# 4. Accepted Evidence
 
-## Phase 0 — PASS
-- P0-B1: PR #4 merged; primary Heimdall+Bifrost unit job GREEN; secondary Bifrost install/lint/pytest/coverage GREEN; dependency security GREEN.
-- P0-B2: Issue #6 closed; PR #7 merged; minimal four-file frontend boot tree restored; frontend production build GREEN.
-- P0-B3: Issue #8 closed; PR #9/#10 merged; frontend dev-server root and root `build-all.ps1 -SkipTests` frontend path GREEN.
-- P0-B4: Issue #11 closed; PR #12 merged; full core startup/health GREEN for PostgreSQL, Kafka, Redis, Elasticsearch, Prometheus, Grafana `3001`, Heimdall, Bifrost, Frontend.
-- Pre-existing Heimdall Checkstyle debt remains classified out of scope: **41 files / 109 warnings / 2 info**.
+## Phase 0 / UC-01 — PASS
+- PR #12 merged after full core startup/health proof.
+- Verified stack included PostgreSQL, Kafka, Redis, Elasticsearch, Prometheus, Grafana, Heimdall, Bifrost, and frontend reachability.
+- Frontend accepted scope is a minimal boot shell, not a full operational dashboard.
+- Pre-existing Heimdall Checkstyle debt remains known and is not silently treated as resolved: **41 files / 109 warnings / 2 info** at the recorded checkpoint.
 
-## P1-B1 — UC-02 Real Local AI Golden Path — PASS
+## UC-02 — Real Local AI Golden Path — PASS
 - Issue #13 CLOSED / COMPLETED.
 - PR #14 MERGED at `ee24e6990d19c0be618baf1698bff275a8b27134`.
 - proof run `32323663891`: SUCCESS.
 - primary CI `32323664031`: SUCCESS.
-- deterministic log → Heimdall Job → Kafka request → Bifrost → real Ollama `smollm:135m` → Kafka result → persistence → Job `SUCCEEDED`.
-- artifact `9390712782`, digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`.
-- hosted CPU latency is variable; do not publish it as a stable performance claim.
-
----
-
-# 5. P1-B2 — UC-03 Hybrid Routing — HOLD / BLOCKED
-
-## Active Work Item
-- **Issue #15**: OPEN — `P1-B2: prove UC-03 Hybrid Routing with real LOCAL and CLOUD execution`.
-- **PR #16**: DRAFT / HOLD.
-- **Current exact head**: `5dc069a1189b4d7cc27cf4a8c4802013e2c57d1b`.
-- **Current proof run**: `32370250218` — FAILURE only because the OIDC role ARN resolved empty.
-- **Primary CI**: `32370250115` — SUCCESS.
-- **Secondary CI/CD**: `32370250514` — expected pre-existing Heimdall `checkstyleMain` failure; Bifrost and dependency-security jobs GREEN. No new UC-03 blocker.
-
-## Frozen Routing Contract
+- deterministic path executed:
 
 ```text
-HIGH / MEDIUM sensitivity → local → real Ollama
-LOW sensitivity           → cloud → real AWS Bedrock
+Log
+→ Heimdall Analysis Job
+→ Kafka request
+→ Bifrost
+→ real Ollama `smollm:135m`
+→ Kafka result
+→ Heimdall persistence
+→ Job `SUCCEEDED`
 ```
 
-Do not redesign routing policy in this batch.
+- artifact `9390712782`
+- digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`
+- fallback-only output was not accepted.
+- hosted CPU latency is variable and must not be published as a stable performance claim.
 
-## OIDC Cloud Execution Path
-- GitHub environment: `asgard-proof`
-- repository variable: `ASGARD_BEDROCK_ROLE_ARN`
-- optional repository variable: `ASGARD_BEDROCK_REGION` (default `us-east-1`)
-- optional repository variable: `ASGARD_BEDROCK_MODEL` (default current Bifrost Bedrock model)
-- workflow permission: `id-token: write`
-- auth action: `aws-actions/configure-aws-credentials@v6.2.3`
-- AWS role trust must allow subject `repo:joeylife94/asgard:environment:asgard-proof`
-- AWS role permissions must allow required Bedrock invocation, minimally `bedrock:InvokeModel` for the accepted model/resource boundary.
+## Historical UC-03 AWS Experiment — DEFERRED, NOT ACCEPTED AS v1.0 REQUIREMENT
+- Issue #15: CLOSED / NOT PLANNED on 2026-08-26.
+- PR #16: CLOSED / NOT MERGED.
+- Historical run evidence proved:
+  - HIGH/MEDIUM sensitive input → LOCAL decision
+  - real Ollama LOCAL execution
+  - legacy LOW input → CLOUD decision in `PrivacyRouter`
+  - GitHub OIDC claim issuance diagnostics
+- **NOT VERIFIED**:
+  - AWS `AssumeRoleWithWebIdentity`
+  - STS caller identity
+  - real Bedrock invocation/result
+- These unverified AWS items are no longer closure debt. They remain historical non-claims.
 
-## Deterministic Inputs
-- LOCAL/sensitive: `ERROR login failed user email alice@example.com password=SuperSecret123 request=p1-b2-sensitive`
-- CLOUD/general: `INFO scheduler completed nightly batch successfully duration_ms=18 job=p1-b2-general`
+---
 
-## Executed Evidence — exact head `5dc069a...`
-- Bifrost + boto3 install: GREEN.
-- real Ollama container + `smollm:135m` pull: GREEN.
-- privacy routing assertions: GREEN.
-- sensitive decision: `track=local`, `sensitivity=high`.
-- general decision: `track=cloud`, `sensitivity=low`.
-- real LOCAL `/analyze`: GREEN with non-empty, non-fallback `smollm:135m` result.
-- OIDC credential configuration: SKIPPED because `ASGARD_BEDROCK_ROLE_ARN` resolved empty.
-- real STS `AssumeRoleWithWebIdentity`: NOT EXECUTED.
-- real Bedrock invocation/result: NOT EXECUTED.
-- evidence artifact `9406886841`, digest `sha256:60f8a6085372e3891be6481db894b4d3a8d0e85e903ac4758824be54f5366a69`.
+# 5. UC-03 — Local-first Policy Boundary
+
+## Current Intended Contract
+
+```text
+Default request        → LOCAL
+Sensitive request      → LOCAL
+Cloud requested but disabled → LOCAL / fail closed
+No implicit external egress requirement
+```
+
+Current newer `PolicyRouter` already defaults `ENABLE_CLOUD_LANE=false` and keeps cloud-requested work on-device when cloud is disabled. This code existence alone is **NOT** PASS; current bounded executable evidence is still required.
 
 ## Acceptance Criteria
-- [x] sensitive input classified HIGH/MEDIUM and routed `local`.
-- [x] real local Ollama provider executes; mock/fallback-only output rejected.
-- [x] general input classified LOW and routed `cloud`.
-- [ ] GitHub OIDC successfully assumes the configured AWS role.
-- [ ] real existing Bedrock provider executes.
-- [x] local route/provider/model/result evidence captured.
-- [ ] cloud caller/provider/model/result evidence captured.
-- [x] exact-head PR-visible verification executed and evidence preserved.
-- [x] bounded diff only; no UC-04/05, UI, README, HP AI Server, duplicate-job or broad Checkstyle work.
+- [ ] default request resolves to the local/on-device lane under default configuration.
+- [ ] sensitive request remains local.
+- [ ] explicit cloud hint with cloud lane disabled does not invoke an external provider and resolves local/fail-closed according to current product contract.
+- [ ] real local provider execution uses Ollama, not mock/fallback-only output.
+- [ ] exact route/provider/result evidence is captured in a PR-visible run.
+- [ ] no AWS credential, Bedrock, replacement cloud-provider, RAG expansion, UI expansion, or unrelated refactor is introduced.
 
-## Exact External Prerequisite
-Configure repository variable:
-
-`ASGARD_BEDROCK_ROLE_ARN`
-
-with an IAM role whose trust permits:
-
-`repo:joeylife94/asgard:environment:asgard-proof`
-
-and whose permissions allow the required Bedrock call. **No static AWS access key/secret is required or requested.**
-
-If the next execution reaches OIDC and fails at `AssumeRoleWithWebIdentity`, STS caller identity, Bedrock authorization, model entitlement, region, or model configuration, classify only that first concrete AWS prerequisite from executed evidence.
-
-## HOLD Rule
-P1-B2 remains **enabled + HOLD/BLOCKED**. Do not close Issue #15 or merge PR #16 as UC-03 PASS until real Bedrock execution is evidenced. Do not start UC-04/05 while this gap remains active.
+## Smallest Useful Deliverable
+One bounded executable proof harness or test correction proving the current local-first policy. Prefer reuse of existing `PolicyRouter`, current provider abstraction, and the already-proven Ollama path.
 
 ---
 
-# 6. Evidence Registry
+# 6. UC-04 — Recovery
 
-| ID | Evidence | Status | Note |
-|---|---|---|---|
-| E-001 | GitHub-hosted baseline execution | VERIFIED | Phase 0 |
-| E-004 | Heimdall Checkstyle debt | VERIFIED RED / PRE-EXISTING | 41 / 109 / 2 |
-| E-005 | Frontend boot repair/build | VERIFIED / MERGED | PR #7 |
-| E-024 | UC-01 full core-stack health | VERIFIED GREEN / MERGED | PR #12 |
-| E-018 | Real Local AI E2E | VERIFIED GREEN / MERGED | Issue #13 / PR #14 |
-| E-040 | Real local model identity | VERIFIED | `smollm:135m`; fallback disabled |
-| E-042 | UC-02 persistence + final state | VERIFIED | Job SUCCEEDED |
-| E-019 | Local vs Cloud Routing | **PARTIAL VERIFIED / CLOUD BLOCKED** | Issue #15 / PR #16 / run `32370250218` |
-| E-043 | UC-03 LOCAL privacy route + real provider | **VERIFIED GREEN** | high→local / `smollm:135m` |
-| E-044 | UC-03 CLOUD real provider execution | **BLOCKED** | OIDC role ARN variable empty; Bedrock not executed |
-| E-045 | UC-03 OIDC workflow wiring | **VERIFIED STATIC + EXECUTED SKIP** | `asgard-proof`, `id-token: write`, configure-aws-credentials v6.2.3 |
-| E-020 | DLQ → Redrive → Success | PENDING | UC-04 |
-| E-021 | Grafana live metrics | PENDING | UC-05 |
-| E-022 | Final Demo | PENDING | final proof packaging |
-| E-023 | HP AI Server reference run | PENDING | reference deployment |
+Existing code already contains failed-job listing, controlled redrive, per-user redrive rate limiting, redrive audit records, actor/source/trace/reason capture, retry preparation, Kafka re-publication, and `ai_job_redriven_total` metric hooks.
+
+This is **NOT VERIFIED as a complete v1.0 Golden Path yet**.
+
+## Acceptance Criteria
+- [ ] create or induce one deterministic failed job through a bounded supported path.
+- [ ] failure state is persisted and attributable.
+- [ ] redrive is authorized through the existing endpoint/path.
+- [ ] redrive audit records operator/outcome and relevant trace/reason evidence.
+- [ ] retry republishes work and reaches a final accepted state, preferably `SUCCEEDED`.
+- [ ] duplicate or unsafe redrive behavior is not hidden.
+
+Do not invent a new recovery subsystem if the existing one can be proven.
 
 ---
 
-# 7. Known Risks / Holds
+# 7. UC-05 — Observability
+
+Existing Prometheus/Grafana assets already reference operational metrics including job requested, succeeded, failed, redriven, and duplicate-result counters.
+
+This is **NOT VERIFIED as a live buyer-facing Proof yet**.
+
+## Acceptance Criteria
+- [ ] run one bounded job/recovery scenario that emits current metrics.
+- [ ] Prometheus can query the relevant metric series.
+- [ ] existing Grafana dashboard loads against the configured datasource and visibly reflects supported job lifecycle metrics.
+- [ ] screenshot/log evidence is synthetic-safe and contains no secrets/PII.
+- [ ] no claim of production observability/SLO maturity is made.
+
+---
+
+# 8. Buyer-facing Claim Boundary
+
+## Allowed after current evidence remains valid
+- event-driven Java/Python AI operations architecture
+- persistent asynchronous Analysis Job lifecycle
+- Kafka request/result handoff
+- real local Ollama inference
+- result persistence and final Job state
+- bounded recovery/redrive/audit only after UC-04 execution
+- bounded operational metrics/Grafana visibility only after UC-05 execution
+
+## Prohibited / Not Verified
+- `production-ready`
+- `enterprise-grade` as an operational-readiness claim
+- legal `GDPR-compliant` certification
+- stable latency / throughput / cost-saving percentages
+- `80%+ coverage` unless re-verified at the accepted head and needed for Proof
+- production Kubernetes / HA / multi-region readiness
+- cloud-provider execution
+- full operational dashboard product
+- unattended autonomous operations
+
+README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portfolio text are **not authoritative** when they conflict with this Master or current evidence.
+
+---
+
+# 9. Known Risks / Holds
 
 | ID | Risk | Handling |
 |---|---|---|
-| R-001 | duplicate `idx_severity` schema index name | HOLD; repeatedly non-fatal |
-| R-002 | broad Heimdall Checkstyle debt | VERIFIED PRE-EXISTING; no mass-fix |
-| R-003 | anonymous gRPC reader inappropriate for future real gRPC endpoint | replace only when actual endpoint exists |
-| R-004 | startup banner is not health evidence | endpoint/readiness evidence only |
-| R-005 | root `start-all.ps1` Bifrost launch differs from proven CI invocation | evaluate only if future gap needs it |
-| R-006 | README overclaim / Grafana port drift | proof-hardening later |
-| R-007 | fallback-only AI risk | CLOSED for UC-02; forbidden as UC-03 PASS evidence |
-| R-008 | hosted CPU inference latency varies materially | no stable performance claims |
-| R-009 | ingestion auto-analysis creates extra job | HOLD |
-| R-010 | agent self-report | never PASS without executed evidence |
-| R-011 | `ASGARD_BEDROCK_ROLE_ARN` absent/empty | ACTIVE BLOCKER; configure trusted GitHub OIDC role; do not mock |
+| R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a current proof fails on it |
+| R-002 | broad Heimdall Checkstyle debt | pre-existing; no mass-fix without a required gate |
+| R-003 | startup script / proven CI invocation drift | evaluate only if a required current proof depends on it |
+| R-004 | README / old docs overclaim | final truthfulness reconciliation required |
+| R-005 | hosted CPU Ollama latency variability | no stable performance claims |
+| R-006 | ingestion auto-analysis may create extra job | keep visible in evidence; do not hide |
+| R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker |
+| R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | prove current intended local-first path; refactor only if necessary for acceptance |
+| R-009 | agent self-report | never PASS without executed evidence |
 
 ---
 
-# 8. Work Item / PR Lifecycle
+# 10. Work Item / PR Lifecycle
 
 1. MASTER first.
-2. Current repository/Issue/PR state overrides stale checkpoint fields.
-3. Active focused PR first.
-4. One active implementation Issue by default.
-5. Same-gap CI/review corrections remain in the same Issue/PR.
-6. RED → first concrete failure → smallest in-scope fix.
+2. Current repository / Issue / PR / executed evidence overrides stale checkpoint text.
+3. One bounded implementation/proof Issue at a time.
+4. Active relevant PR first.
+5. Same-gap CI/review corrections stay in the same Issue/PR.
+6. RED → first concrete failure → smallest in-scope correction.
 7. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
-8. Issue closes only after acceptance + merge.
-9. Reconcile MASTER on `main` before another Issue.
-10. Human Review remains the final v1.0 gate.
+8. Issue closes only after acceptance + merge; `not_planned` is allowed only for explicit scope removal such as historical Issue #15.
+9. Reconcile this Master on `main` before selecting the next gap.
+10. Re-evaluate closure before creating another Issue.
+11. Final v1.0 gate is Human Review; do not auto-declare public Proof complete.
 
 ---
 
-# 9. Current Checkpoint
+# 11. Current Checkpoint
 
 ## Result
-**PHASE 0 PASS / UC-01 PASS / UC-02 PASS / UC-03 HOLD — LOCAL VERIFIED, CLOUD OIDC ROLE BLOCKED.**
+**SCOPE RESET ACCEPTED — UC-01 PASS / UC-02 PASS / AWS/CLOUD DEFERRED / UC-03 LOCAL-FIRST VERIFICATION NEXT.**
 
-## What Changed
-- re-fetched current Issue #15 / PR #16 / exact head and PR-visible workflows.
-- reconciled stale MASTER state from static AWS key prerequisite to the current GitHub OIDC path.
-- updated exact head, workflow run IDs, artifact, digest, and current external prerequisite.
-- inspected secondary CI/CD failure and confirmed it remains only the known pre-existing Heimdall Checkstyle debt; Bifrost/security are GREEN.
-- no product-code mutation performed.
+## Changed
+- product direction narrowed from hybrid local+cloud to **Local-first AI Operations Platform**.
+- AWS Bedrock / AWS OIDC removed from v1.0 required Proof boundary.
+- historical Issue #15 and PR #16 classified `DEFER / CLOSED WITHOUT MERGE`.
+- Recovery and Observability retained because they strengthen the actual event-driven operations Proof.
+- broad roadmap features and cloud/provider expansion explicitly removed from current execution authority.
 
-## What Was Executed
-- current exact-head primary CI `32370250115`: SUCCESS.
-- current exact-head P1-B2 proof `32370250218`: executed; LOCAL and route assertions GREEN; OIDC role step skipped because `ASGARD_BEDROCK_ROLE_ARN` was empty; proof concluded FAILURE at cloud prerequisite.
-- current exact-head CI/CD `32370250514`: Heimdall failed at `:heimdall:checkstyleMain` with 41 files / 109 warnings / 2 info; Bifrost and dependency-security jobs GREEN.
+## Executed / Verified
+- UC-01 startup/health remains accepted from prior merged evidence.
+- UC-02 real Local AI asynchronous Job lifecycle remains accepted from prior merged evidence.
+- existing recovery and observability code/assets were inspected as candidate reusable assets, but complete UC-04/05 Golden Paths are still NOT VERIFIED.
 
-## What Was Not Verified
-- successful GitHub OIDC `AssumeRoleWithWebIdentity`.
-- STS caller identity.
-- real Bedrock invocation/result.
-- AWS trust policy, Bedrock permission, model entitlement, region/model validity after role ARN becomes available.
-- UC-04 / UC-05 / final proof package / HP AI Server reference run.
-
-## Remaining Risks
-- UC-03 cannot PASS without real Bedrock execution.
-- no product-code correction is justified by the current failure; the immediate blocker is external AWS/OIDC configuration.
-- stable performance claims remain prohibited.
-- pre-existing Checkstyle and duplicate-job holds remain out of scope.
+## Not Verified
+- UC-03 current local-first policy executable proof.
+- UC-04 complete failure → redrive → audit → retry → accepted final state.
+- UC-05 live Prometheus/Grafana buyer-facing evidence.
+- final README/Proof package truthfulness reconciliation.
 
 ## Exact Next Action
-**Keep Issue #15 and draft PR #16 open. Configure repository variable `ASGARD_BEDROCK_ROLE_ARN` to a trusted IAM role for GitHub environment `asgard-proof`, with the required Bedrock invocation permission. Then re-run the current exact-head `P1-B2 Hybrid Routing Proof`. If OIDC/STS/Bedrock reaches a new concrete failure, fix or record only that first Issue #15-scoped prerequisite. If real CLOUD execution succeeds and review/security are clean, mark PR ready, merge with expected-head guard, close Issue #15 only after acceptance, reconcile this MASTER, then perform closure evaluation before UC-04.**
+**Create one bounded Issue for UC-03 Local-first Policy verification. Reuse the existing `PolicyRouter` and real Ollama proof path. Prove default/sensitive/cloud-disabled behavior without any external cloud dependency. Merge only after exact-head evidence is GREEN, reconcile this Master, then evaluate whether UC-04 is the next smallest remaining Proof gap.**
