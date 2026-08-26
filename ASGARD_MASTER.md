@@ -9,12 +9,12 @@
 - **Target**: Asgard v1.0 — Wishket / Freelance Proof
 - **Target Level**: READY TO SHOW bounded software Proof
 - **Product Direction**: **Local-first AI Operations Platform**
-- **Current Phase**: Phase 1 — UC-03 Local-first Policy
-- **Current Batch**: P1-B2R — UC-03 Local-first Policy verification
-- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 IN PROGRESS / UC-04 PENDING / UC-05 PENDING**
+- **Current Phase**: Phase 1 — Recovery Proof
+- **Current Batch**: Closure evaluation complete after P1-B2R / UC-03; UC-04 is the next smallest remaining Proof gap
+- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PENDING / UC-05 PENDING**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: #17 — `P1-B2R: prove UC-03 Local-first Policy boundary`
+- **Active Issue**: none — Issue #17 CLOSED / COMPLETED after accepted PR #18 merge
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-08-26
 - **Final v1.0 Gate**: Human Review Required
@@ -71,17 +71,14 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 - replacing AWS with OpenAI / Gemini / another cloud provider
 - multi-provider routing expansion
 - RAG as the primary Asgard Proof
-- feedback system expansion
-- quality scoring expansion
-- A/B testing expansion
-- smart caching expansion
+- feedback / quality scoring / A-B testing / smart caching expansion
 - advanced React admin dashboard
 - HP AI Server reference deployment
 - Kubernetes production / HA / autoscaling / multi-region
 - Keycloak / Vault / enterprise secret-manager work
 - full RBAC / multi-tenancy
 - production SLA/SLO
-- legal GDPR certification or security certification
+- legal GDPR or security certification
 
 Historical code may still contain Bedrock/cloud lanes. **Existence does not make them current v1.0 requirements.** Do not delete or modernize them unless a bounded accepted Proof gap requires it.
 
@@ -93,7 +90,7 @@ Historical code may still contain Bedrock/cloud lanes. **Existence does not make
 |---|---|---|---|
 | UC-01 Startup | executable core stack | clone/configure → required core services healthy | **PASS** |
 | UC-02 Local AI Analysis | real asynchronous AI job | Job → Kafka → real Ollama → result → persistence → `SUCCEEDED` | **PASS** |
-| UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **IN PROGRESS — Issue #17** |
+| UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **PASS** |
 | UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED` | **PENDING** |
 | UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **PENDING** |
 | Final | buyer-facing Proof | exact evidence + truthful README/Proof package + Human Review | **PENDING** |
@@ -131,51 +128,69 @@ Log
 - fallback-only output was not accepted.
 - hosted CPU latency is variable and must not be published as a stable performance claim.
 
+## UC-03 — Local-first Policy Boundary — PASS
+- Issue #17 CLOSED / COMPLETED.
+- PR #18 squash-merged at `a7e079872004c6dcf73cdf36d105aabde37fbb8d`.
+- accepted exact head: `b6fc2c2f15f0d65ba6f314525740a63cc42c24ce`.
+- dedicated proof run `32945550180`: SUCCESS.
+- primary CI run `32945550197`: SUCCESS.
+- secondary CI/CD run `32945550181`: Bifrost GREEN and Dependency Security GREEN; Heimdall RED remains the already-known pre-existing Checkstyle debt and was not expanded into this bounded UC-03 work item.
+- evidence artifact `9598234317`.
+- artifact digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`.
+- executed proof used real Ollama `smollm:135m` through the production `OrchestratorService` dispatch boundary.
+- captured evidence:
+
+```text
+cloud_lane_enabled = false
+
+default:
+  lane = on_device_rag
+  decision_provider = ollama
+  executed_provider = ollama
+  result_non_empty = true
+
+sensitive:
+  lane = on_device_rag
+  decision_provider = ollama
+  executed_provider = ollama
+  result_non_empty = true
+
+cloud_hint_disabled:
+  lane = on_device_rag
+  decision_provider = ollama
+  executed_provider = ollama
+  result_non_empty = true
+
+cloud_answerer_initialized = false
+external_provider_invoked = false
+```
+
+- The initial review defect—proofing the router decision without production dispatch—was corrected before acceptance. The exact-head run exercised `OrchestratorService._sync_answer()` and the outdated review thread was resolved only after that executable correction.
+- No AWS credential, Bedrock/OIDC, replacement cloud provider, RAG expansion, frontend expansion, or unrelated product refactor was introduced.
+
 ## Historical UC-03 AWS Experiment — DEFERRED, NOT ACCEPTED AS v1.0 REQUIREMENT
 - Issue #15: CLOSED / NOT PLANNED on 2026-08-26.
 - PR #16: CLOSED / NOT MERGED.
-- Historical run evidence proved:
-  - HIGH/MEDIUM sensitive input → LOCAL decision
-  - real Ollama LOCAL execution
-  - legacy LOW input → CLOUD decision in `PrivacyRouter`
-  - GitHub OIDC claim issuance diagnostics
-- **NOT VERIFIED**:
-  - AWS `AssumeRoleWithWebIdentity`
-  - STS caller identity
-  - real Bedrock invocation/result
-- These unverified AWS items are no longer closure debt. They remain historical non-claims.
+- Historical LOCAL/routing diagnostics remain historical evidence only.
+- **NOT VERIFIED and not required for v1.0**: AWS `AssumeRoleWithWebIdentity`, STS caller identity, real Bedrock invocation/result.
 
 ---
 
 # 5. UC-03 — Local-first Policy Boundary
 
-## Active Work Item
-- **Issue #17** — `P1-B2R: prove UC-03 Local-first Policy boundary`
-- No active PR is accepted until one is created from Issue #17 after current-state inspection.
-- Historical PR #16 is not reusable as the acceptance surface.
-
-## Current Intended Contract
-
-```text
-Default request        → LOCAL
-Sensitive request      → LOCAL
-Cloud requested but disabled → LOCAL / fail closed
-No implicit external egress requirement
-```
-
-Current newer `PolicyRouter` already defaults `ENABLE_CLOUD_LANE=false` and keeps cloud-requested work on-device when cloud is disabled. This code existence alone is **NOT** PASS; current bounded executable evidence is still required.
+## Result
+**PASS — Issue #17 completed through merged PR #18.**
 
 ## Acceptance Criteria
-- [ ] default request resolves to the local/on-device lane under default configuration.
-- [ ] sensitive request remains local.
-- [ ] explicit cloud hint with cloud lane disabled does not invoke an external provider and resolves local/fail-closed according to current product contract.
-- [ ] real local provider execution uses Ollama, not mock/fallback-only output.
-- [ ] exact route/provider/result evidence is captured in a PR-visible run.
-- [ ] exact-head relevant CI/proof is GREEN.
-- [ ] no AWS credential, Bedrock, replacement cloud-provider, RAG expansion, UI expansion, or unrelated refactor is introduced.
+- [x] default request resolves to local/on-device under default configuration.
+- [x] sensitive request remains local.
+- [x] explicit cloud hint with `ENABLE_CLOUD_LANE=false` resolves local/fail-closed and does not initialize/invoke the cloud answerer.
+- [x] accepted provider execution uses real Ollama, not mock/fallback-only output.
+- [x] exact route/lane/provider/result evidence captured in PR-visible execution artifact.
+- [x] exact-head dedicated proof and primary CI GREEN.
+- [x] diff bounded to the proof workflow and no deferred cloud/provider scope introduced.
 
-## Smallest Useful Deliverable
-One Issue #17-linked branch and one PR containing only the bounded executable proof harness or smallest correction required by executed evidence. Prefer reuse of existing `PolicyRouter`, current provider abstraction, and the already-proven Ollama path.
+No further UC-03 implementation is authorized unless later executable evidence regresses this accepted contract.
 
 ---
 
@@ -220,6 +235,7 @@ This is **NOT VERIFIED as a live buyer-facing Proof yet**.
 - Kafka request/result handoff
 - real local Ollama inference
 - result persistence and final Job state
+- fail-closed Local-first routing boundary under accepted configuration
 - bounded recovery/redrive/audit only after UC-04 execution
 - bounded operational metrics/Grafana visibility only after UC-05 execution
 
@@ -249,7 +265,7 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 | R-005 | hosted CPU Ollama latency variability | no stable performance claims |
 | R-006 | ingestion auto-analysis may create extra job | keep visible in evidence; do not hide |
 | R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker |
-| R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | prove current intended local-first path; refactor only if necessary for acceptance |
+| R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | current intended `PolicyRouter` local-first path is now proven; refactor only if a later accepted gap requires it |
 | R-009 | agent self-report | never PASS without executed evidence |
 
 ---
@@ -273,26 +289,33 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 # 11. Current Checkpoint
 
 ## Result
-**SCOPE RESET ACCEPTED — UC-01 PASS / UC-02 PASS / AWS/CLOUD DEFERRED / ISSUE #17 ACTIVE FOR UC-03 LOCAL-FIRST PROOF.**
+**UC-01 PASS / UC-02 PASS / UC-03 PASS / AWS-CLOUD DEFERRED / UC-04 IS THE NEXT SMALLEST REMAINING PROOF GAP.**
 
 ## Changed
-- product direction narrowed from hybrid local+cloud to **Local-first AI Operations Platform**.
-- AWS Bedrock / AWS OIDC removed from v1.0 required Proof boundary.
-- historical Issue #15 closed `not_planned` and PR #16 closed without merge.
-- Issue #17 created as the sole active UC-03 work item.
-- Recovery and Observability retained because they strengthen the actual event-driven operations Proof.
-- broad roadmap features and cloud/provider expansion explicitly removed from current execution authority.
+- Issue #17 closed completed after PR #18 exact-head proof passed and was merged.
+- UC-03 promoted from IN PROGRESS to PASS.
+- accepted Local-first behavior is now evidenced through production Bifrost dispatch, not router-code existence alone.
+- no cloud-provider proof was added; AWS/Bedrock/OIDC remain explicitly deferred.
 
-## Executed / Verified
-- UC-01 startup/health remains accepted from prior merged evidence.
-- UC-02 real Local AI asynchronous Job lifecycle remains accepted from prior merged evidence.
-- existing recovery and observability code/assets were inspected as candidate reusable assets, but complete UC-04/05 Golden Paths are still NOT VERIFIED.
+## Actually Executed / Verified
+- PR #18 exact-head dedicated UC-03 proof run `32945550180`: SUCCESS.
+- primary CI `32945550197`: SUCCESS.
+- Bifrost secondary build/test and dependency-security jobs: GREEN.
+- real Ollama model startup and execution: GREEN.
+- default, sensitive, and cloud-hint-disabled requests all resolved through `on_device_rag / ollama` with non-empty results.
+- cloud answerer remained uninitialized and `external_provider_invoked=false` in captured evidence.
+- review defect from the first proof version was corrected and resolved before merge.
 
 ## Not Verified
-- Issue #17 UC-03 current local-first policy executable proof.
 - UC-04 complete failure → redrive → audit → retry → accepted final state.
 - UC-05 live Prometheus/Grafana buyer-facing evidence.
 - final README/Proof package truthfulness reconciliation.
+- pre-existing Heimdall Checkstyle debt remains unresolved and is not part of UC-03 PASS.
+
+## Remaining Risks
+- UC-04 and UC-05 still require current executable evidence.
+- final buyer-facing materials may still overclaim relative to this Master.
+- no stable latency, throughput, production-readiness, cloud execution, or certification claim is authorized.
 
 ## Exact Next Action
-**Process Issue #17 only. Create/use one linked branch and one PR. Prove default/sensitive/cloud-disabled behavior through the current `PolicyRouter` and real Ollama path with no external cloud dependency. Merge only after exact-head evidence is GREEN, close Issue #17 after acceptance, reconcile this Master, then evaluate whether UC-04 is the next smallest remaining Proof gap.**
+**Closure evaluation confirms v1.0 is not yet at Human Review because UC-04 and UC-05 remain PENDING. The next smallest accepted gap is UC-04 Recovery. On the next work iteration, first search for one existing open Issue exactly matching UC-04; if none exists, create exactly one bounded Issue for deterministic FAILED/DLQ → Redrive → Audit → Retry → accepted final state, then follow the normal Issue-first lifecycle. Do not start UC-05 in the same work item.**
