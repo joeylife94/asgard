@@ -387,7 +387,6 @@ jobs:
             p1-b4-job-failed.json
             p1-b4-job-final.json
             p1-b4-redrive.json
-            p1-b4-heimdall.log
           if-no-files-found: ignore
           retention-days: 14
 
