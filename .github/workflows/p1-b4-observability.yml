@@ -352,7 +352,7 @@ jobs:
           await page.locator('input[name="password"]').fill('admin');
           await page.locator('button[type="submit"]').click();
           await page.waitForLoadState('networkidle');
-          await page.goto(`http://127.0.0.1:3001/d/${uid}?from=now-15m&to=now&var-datasource=prometheus&refresh=5s`, {waitUntil:'networkidle'});
+          await page.goto(`http://127.0.0.1:3001/d/${uid}?from=now-15m&to=now&var-datasource=prometheus&refresh=5s`, {waitUntil:'domcontentloaded'});
           await page.waitForTimeout(12000);
           await page.screenshot({path:'p1-b4-grafana-dashboard.png', fullPage:true});
           const body = await page.locator('body').innerText();
