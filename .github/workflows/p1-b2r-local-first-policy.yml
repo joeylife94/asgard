@@ -1,0 +1,138 @@
+name: P1-B2R UC-03 Local-first Policy Proof
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/p1-b2r-local-first-policy.yml'
+      - 'bifrost/**'
+  workflow_dispatch: {}
+
+jobs:
+  uc03_local_first_policy:
+    name: UC-03 local-first policy boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ENABLE_CLOUD_LANE: 'false'
+      BIFROST_CLOUD_PROVIDER: 'bedrock'
+      BIFROST_ON_DEVICE_PROVIDER: 'ollama'
+      BIFROST_ON_DEVICE_MODE: 'ollama'
+      BIFROST_OLLAMA_URL: http://127.0.0.1:11434
+      BIFROST_OLLAMA_MODEL: smollm:135m
+      BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Bifrost
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r bifrost/requirements.txt
+          python -m pip install -e bifrost
+
+      - name: Start real Ollama model
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name p1-b2r-ollama -p 11434:11434 ollama/ollama:latest
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b2r-ollama-tags-before.json; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs p1-b2r-ollama
+              exit 1
+            fi
+            sleep 2
+          done
+          docker exec p1-b2r-ollama ollama pull smollm:135m | tee p1-b2r-ollama-pull.log
+          curl --fail --silent http://127.0.0.1:11434/api/tags > p1-b2r-ollama-tags-after.json
+          grep -q 'smollm:135m' p1-b2r-ollama-tags-after.json
+
+      - name: Execute UC-03 policy proof through production dispatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+
+          from bifrost.orchestrator.orchestrator_service import OrchestratorService
+
+          assert os.environ['ENABLE_CLOUD_LANE'].lower() == 'false'
+          service = OrchestratorService()
+
+          cases = [
+              ('default', 'Summarize this service log.', None),
+              ('sensitive', 'Customer account token exposure detected in auth logs.', None),
+              ('cloud_hint_disabled', 'Summarize this general operations event.', 'cloud'),
+          ]
+
+          evidence_cases = {}
+          for name, question, hint in cases:
+              decision = service.router.decide(question=question, source_hint=hint)
+              assert decision.lane == 'on_device_rag', (name, decision)
+              assert decision.provider == 'ollama', (name, decision)
+
+              # Route the actual decision through the production dispatch boundary.
+              attempt = service._sync_answer(decision.lane, question)
+              assert attempt.provider == 'ollama', (name, attempt)
+              assert attempt.answer.strip(), (name, attempt)
+              assert attempt.provider != 'on_device_stub', (name, attempt)
+              assert service.cloud is None, 'cloud answerer must remain uninitialized while cloud lane is disabled'
+
+              evidence_cases[name] = {
+                  'lane': decision.lane,
+                  'decision_provider': decision.provider,
+                  'executed_provider': attempt.provider,
+                  'result_non_empty': bool(attempt.answer.strip()),
+              }
+
+          evidence = {
+              'cloud_lane_enabled': service.router.enable_cloud,
+              'cases': evidence_cases,
+              'cloud_answerer_initialized': service.cloud is not None,
+              'external_provider_invoked': service.cloud is not None,
+          }
+          with open('p1-b2r-evidence.json', 'w', encoding='utf-8') as f:
+              json.dump(evidence, f, ensure_ascii=False, indent=2)
+          print(json.dumps(evidence, ensure_ascii=False))
+          PY
+
+      - name: Assert no cloud credential dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${AWS_ACCESS_KEY_ID:-}"
+          test -z "${AWS_SECRET_ACCESS_KEY:-}"
+          test -z "${AWS_SESSION_TOKEN:-}"
+          grep -q '"cloud_lane_enabled": false' p1-b2r-evidence.json
+          grep -q '"cloud_answerer_initialized": false' p1-b2r-evidence.json
+          grep -q '"external_provider_invoked": false' p1-b2r-evidence.json
+          test "$(grep -c '"executed_provider": "ollama"' p1-b2r-evidence.json)" -eq 3
+
+      - name: Upload UC-03 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-b2r-local-first-policy-evidence
+          path: |
+            p1-b2r-evidence.json
+            p1-b2r-ollama-pull.log
+            p1-b2r-ollama-tags-after.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: docker rm -f p1-b2r-ollama >/dev/null 2>&1 || true
