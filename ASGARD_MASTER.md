@@ -9,13 +9,13 @@
 - **Target**: Asgard v1.0 — Wishket / Freelance Proof
 - **Target Level**: READY TO SHOW bounded software Proof
 - **Product Direction**: **Local-first AI Operations Platform**
-- **Current Phase**: Phase 1 — Recovery Proof
-- **Current Batch**: P1-B3 / UC-04 Recovery — bounded executable proof
-- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 IN PROGRESS / UC-05 PENDING**
+- **Current Phase**: Phase 1 — Operational Visibility / Proof Closure
+- **Current Batch**: closure evaluation after UC-04; UC-05 remains the only unproven required use case
+- **Current Status**: **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 PENDING**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
-- **Active Issue**: Issue #19 — `P1-B3: prove UC-04 recovery redrive golden path`
-- **Active PR**: none yet
+- **Active Issue**: none for the next gap yet
+- **Active PR**: none
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-08-26
 - **Final v1.0 Gate**: Human Review Required
@@ -92,7 +92,7 @@ Historical code may still contain Bedrock/cloud lanes. **Existence does not make
 | UC-01 Startup | executable core stack | clone/configure → required core services healthy | **PASS** |
 | UC-02 Local AI Analysis | real asynchronous AI job | Job → Kafka → real Ollama → result → persistence → `SUCCEEDED` | **PASS** |
 | UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path remains local; no AWS requirement | **PASS** |
-| UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED` | **IN PROGRESS — Issue #19** |
+| UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED`; duplicate redrive visible | **PASS** |
 | UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health evidence visible through existing metrics/Grafana path | **PENDING** |
 | Final | buyer-facing Proof | exact evidence + truthful README/Proof package + Human Review | **PENDING** |
 
@@ -135,39 +135,57 @@ Log
 - accepted exact head: `b6fc2c2f15f0d65ba6f314525740a63cc42c24ce`.
 - dedicated proof run `32945550180`: SUCCESS.
 - primary CI run `32945550197`: SUCCESS.
-- secondary CI/CD run `32945550181`: Bifrost GREEN and Dependency Security GREEN; Heimdall RED remains the already-known pre-existing Checkstyle debt and was not expanded into this bounded UC-03 work item.
-- evidence artifact `9598234317`.
-- artifact digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`.
-- executed proof used real Ollama `smollm:135m` through the production `OrchestratorService` dispatch boundary.
-- captured evidence:
+- secondary CI/CD run `32945550181`: Bifrost GREEN and Dependency Security GREEN; Heimdall RED remained the known pre-existing Checkstyle debt.
+- artifact `9598234317`
+- digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`
+- executed proof used real Ollama `smollm:135m` through production `OrchestratorService` dispatch.
+- `ENABLE_CLOUD_LANE=false` proof showed default, sensitive and cloud-hint-disabled requests all executed `on_device_rag / ollama` with non-empty real results.
+- cloud answerer was not initialized and no external provider was invoked.
+
+## UC-04 — Recovery Golden Path — PASS
+- Issue #19 CLOSED / COMPLETED after merge.
+- PR #20 squash-merged at `37c29223044100c216372d27169eba0c3c0a0dc0`.
+- accepted exact head: `4b3bf88b31ae7392004121817832b232f4cd8e21`.
+- dedicated recovery proof run `32967543925`: **SUCCESS**.
+- primary CI run `32967543793`: **SUCCESS**.
+- secondary CI/CD run `32967543989`:
+  - Bifrost build/test GREEN.
+  - Dependency Security GREEN.
+  - Heimdall RED remained the already-known pre-existing Checkstyle gate and was not expanded into this bounded slice.
+- durable evidence artifact `9606403831`.
+- artifact digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`.
+
+Executed lifecycle proven:
 
 ```text
-cloud_lane_enabled = false
-
-default:
-  lane = on_device_rag
-  decision_provider = ollama
-  executed_provider = ollama
-  result_non_empty = true
-
-sensitive:
-  lane = on_device_rag
-  decision_provider = ollama
-  executed_provider = ollama
-  result_non_empty = true
-
-cloud_hint_disabled:
-  lane = on_device_rag
-  decision_provider = ollama
-  executed_provider = ollama
-  result_non_empty = true
-
-cloud_answerer_initialized = false
-external_provider_invoked = false
+Analysis Job
+→ deterministic existing DLQ failure path
+→ persisted FAILED + attributable error/trace
+→ failed-job listing
+→ authorized POST /redrive
+→ attemptCount 0 → 1
+→ Kafka retry handoff
+→ Bifrost
+→ real Ollama
+→ persisted SUCCEEDED
+→ SUCCESS audit
+→ duplicate redrive
+→ SKIPPED audit + attemptCount remains 1
 ```
 
-- The initial review defect—proofing the router decision without production dispatch—was corrected before acceptance. The exact-head run exercised `OrchestratorService._sync_answer()` and the outdated review thread was resolved only after that executable correction.
-- No AWS credential, Bedrock/OIDC, replacement cloud provider, RAG expansion, frontend expansion, or unrelated product refactor was introduced.
+Accepted audit evidence includes:
+- operator `admin`
+- outcome `SUCCESS`
+- redrive trace and reason
+- true pre-redrive snapshot `previousStatus=FAILED`
+- true pre-redrive snapshot `previousAttemptCount=0`
+- duplicate redrive outcome `SKIPPED`
+- duplicate trace/reason captured
+- final job remains `SUCCEEDED`, attempt count unchanged at `1`
+
+The proof exposed and corrected one real product bug: redrive audit previously sampled the already-mutated managed job and could record `RUNNING / 1` instead of the true pre-redrive `FAILED / 0`. The accepted correction snapshots scalar values before mutation and passes them into SUCCESS/SKIPPED audit creation.
+
+The proof also raised the local Ollama client timeout from 120s to 300s after hosted-CPU execution exceeded the prior window. This is **not** a stable latency claim; hosted CPU remains variable.
 
 ## Historical UC-03 AWS Experiment — DEFERRED, NOT ACCEPTED AS v1.0 REQUIREMENT
 - Issue #15: CLOSED / NOT PLANNED on 2026-08-26.
@@ -182,44 +200,27 @@ external_provider_invoked = false
 ## Result
 **PASS — Issue #17 completed through merged PR #18.**
 
-## Acceptance Criteria
-- [x] default request resolves to local/on-device under default configuration.
-- [x] sensitive request remains local.
-- [x] explicit cloud hint with `ENABLE_CLOUD_LANE=false` resolves local/fail-closed and does not initialize/invoke the cloud answerer.
-- [x] accepted provider execution uses real Ollama, not mock/fallback-only output.
-- [x] exact route/lane/provider/result evidence captured in PR-visible execution artifact.
-- [x] exact-head dedicated proof and primary CI GREEN.
-- [x] diff bounded to the proof workflow and no deferred cloud/provider scope introduced.
-
 No further UC-03 implementation is authorized unless later executable evidence regresses this accepted contract.
 
 ---
 
 # 6. UC-04 — Recovery
 
-Existing code already contains failed-job listing, controlled redrive, per-user redrive rate limiting, redrive audit records, actor/source/trace/reason capture, retry preparation, Kafka re-publication, and `ai_job_redriven_total` metric hooks.
-
-**Active bounded work item: Issue #19.** The proof must exercise the existing subsystem rather than replace it.
+## Result
+**PASS — Issue #19 completed through merged PR #20.**
 
 ## Acceptance Criteria
-- [ ] create or induce one deterministic failed job through a bounded supported path.
-- [ ] failure state is persisted and attributable.
-- [ ] redrive is authorized through the existing endpoint/path.
-- [ ] redrive audit records operator/outcome and relevant trace/reason evidence.
-- [ ] retry republishes work and reaches a final accepted state, preferably `SUCCEEDED`.
-- [ ] duplicate or unsafe redrive behavior is not hidden.
-- [ ] exact-head executable evidence is captured in PR-visible CI/artifact output.
+- [x] deterministic persisted FAILED job through an existing bounded path.
+- [x] failure state attributable by error/trace evidence.
+- [x] failed-job listing exposes the target job.
+- [x] existing authorized redrive endpoint invoked.
+- [x] retry attempt increments and work is republished/consumed.
+- [x] retry reaches `SUCCEEDED` through real local Ollama.
+- [x] audit records operator/outcome/trace/reason and true pre-redrive status/attempt snapshot.
+- [x] duplicate redrive is explicitly surfaced as `SKIPPED` and does not increment attempt count.
+- [x] exact-head PR-visible CI and durable artifact evidence captured.
 
-## Current Verified Static Contract
-- `GET /api/v1/analysis/jobs/failed` lists persisted FAILED jobs.
-- `POST /api/v1/analysis/jobs/{jobId}/redrive` applies per-user rate limiting, invokes `redriveJob`, and records SUCCESS/SKIPPED/FAILED audit outcomes.
-- `prepareRetry` only transitions retriable FAILED jobs to PENDING and increments attempt count.
-- `redriveJob` rebuilds and republishes an `AnalysisRequestEvent`, marks the job RUNNING, and increments `ai_job_redriven_total`.
-- per-job audit endpoint exposes operator/outcome/trace/reason fields.
-
-These are code-path observations only; **UC-04 remains IN PROGRESS until exact-head runtime evidence proves the complete lifecycle.**
-
-Do not invent a new recovery subsystem if the existing one can be proven.
+No new recovery subsystem was introduced.
 
 ---
 
@@ -247,7 +248,8 @@ This is **NOT VERIFIED as a live buyer-facing Proof yet**.
 - real local Ollama inference
 - result persistence and final Job state
 - fail-closed Local-first routing boundary under accepted configuration
-- bounded recovery/redrive/audit only after UC-04 execution
+- bounded FAILED/DLQ → Redrive → Audit → Retry → `SUCCEEDED` recovery behavior
+- duplicate redrive visibility through recorded `SKIPPED` audit behavior
 - bounded operational metrics/Grafana visibility only after UC-05 execution
 
 ## Prohibited / Not Verified
@@ -273,12 +275,13 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 | R-002 | broad Heimdall Checkstyle debt | pre-existing; no mass-fix without a required gate |
 | R-003 | startup script / proven CI invocation drift | evaluate only if a required current proof depends on it |
 | R-004 | README / old docs overclaim | final truthfulness reconciliation required |
-| R-005 | hosted CPU Ollama latency variability | no stable performance claims |
+| R-005 | hosted CPU Ollama latency variability | no stable performance claims; 300s client timeout is tolerance, not a performance assertion |
 | R-006 | ingestion auto-analysis may create extra job | keep visible in evidence; do not hide |
 | R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker |
-| R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | current intended `PolicyRouter` local-first path is now proven; refactor only if a later accepted gap requires it |
+| R-008 | duplicate routing generations (`PrivacyRouter` vs newer `PolicyRouter`) | current intended `PolicyRouter` local-first path is proven; refactor only if a later accepted gap requires it |
 | R-009 | agent self-report | never PASS without executed evidence |
-| R-010 | redrive audit's recorded previous status/attempt values may depend on when the mutable job is sampled | do not assume correctness; current UC-04 execution must verify attributable audit semantics and expose any mismatch |
+| R-010 | redrive audit pre-state correctness | **CLOSED for accepted UC-04 path**: exact-head runtime proof verified `FAILED / 0`; do not generalize beyond bounded evidence |
+| R-011 | historical UC-02 hosted-CPU workflow can time out under variable inference duration | supporting regression signal only; do not claim stable inference timing; investigate only if a required current acceptance gate regresses |
 
 ---
 
@@ -301,34 +304,42 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 # 11. Current Checkpoint
 
 ## Result
-**UC-01 PASS / UC-02 PASS / UC-03 PASS / AWS-CLOUD DEFERRED / UC-04 IN PROGRESS — ISSUE #19 ACTIVE.**
+**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / AWS-CLOUD DEFERRED / UC-05 PENDING.**
 
 ## Changed
-- created Issue #19 as the sole bounded UC-04 Recovery work item.
-- reconciled authoritative state from `UC-04 PENDING` to `UC-04 IN PROGRESS` before implementation.
-- inspected existing recovery/redrive/audit code sufficiently to confirm the intended proof should use current paths, not a new subsystem.
+- completed Issue #19 / PR #20 as the sole bounded UC-04 Recovery work item.
+- added a dedicated PR-visible UC-04 proof workflow using existing recovery paths.
+- raised the real local Ollama timeout from 120s to 300s after executable evidence showed the previous window could expire on hosted CPU.
+- corrected the redrive audit mutable-state bug by snapshotting true pre-redrive status/attempt values before retry mutation.
 
 ## Actually Executed / Verified
-- current `main` MASTER was read before work selection.
-- open PRs were checked: none existed for UC-04.
-- open Issues were checked: only unrelated/stale Issue #1 existed before Issue #19; no exact UC-04 work item existed.
-- static recovery contract verified in current source: failed-job listing, controlled redrive endpoint, retry preparation, Kafka re-publication, per-user rate limiting, and audit outcome/actor/trace/reason capture paths exist.
+- PR #20 accepted exact head `4b3bf88b31ae7392004121817832b232f4cd8e21`.
+- dedicated recovery run `32967543925`: SUCCESS.
+- primary CI `32967543793`: SUCCESS.
+- deterministic FAILED persisted and listed.
+- authorized redrive returned 202 and incremented attempt count from 0 to 1.
+- retry was republished/consumed and reached persisted `SUCCEEDED` through real Ollama.
+- SUCCESS audit recorded operator, trace, reason, outcome and true pre-redrive `FAILED / 0` snapshot.
+- duplicate redrive after success was visible as `SKIPPED` and attempt count remained 1.
+- artifact `9606403831`, digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`.
+- PR #20 squash-merged to main at `37c29223044100c216372d27169eba0c3c0a0dc0`.
+- Issue #19 CLOSED / COMPLETED after merge.
 
 ## Not Verified
-- deterministic persisted FAILED job under current exact head.
-- runtime failed-job listing for that job.
-- authorized redrive request and audit persistence.
-- actual retry Kafka re-publication/consumption.
-- final accepted retry state (`SUCCEEDED` preferred).
-- duplicate/unsafe redrive runtime behavior.
-- UC-05 live Prometheus/Grafana buyer-facing evidence.
-- final README/Proof package truthfulness reconciliation.
+- UC-05 live Prometheus metric query evidence.
+- UC-05 live Grafana dashboard evidence against configured datasource.
+- buyer-facing screenshot/log package for observability.
+- final README / Proof-package truthfulness reconciliation.
+- Human Review acceptance.
 
 ## Remaining Risks
-- UC-04 code existence may not match runtime semantics; only exact-head execution can close the gap.
-- audit `previousStatus` / `previousAttemptCount` may reflect post-`prepareRetry` mutable state rather than the true pre-redrive state; do not claim correctness until runtime evidence verifies it.
-- pre-existing Heimdall Checkstyle debt remains outside UC-04 unless it directly blocks proof execution.
-- no stable latency, throughput, production-readiness, cloud execution, or certification claim is authorized.
+- pre-existing Heimdall Checkstyle debt remains outside current proof unless it directly blocks a required gate.
+- hosted CPU Ollama latency remains variable; no stable latency or throughput claims.
+- legacy cloud-provider code remains deferred and unproven.
+- no production-readiness, SLO, HA, cloud execution, or certification claim is authorized.
+
+## Closure Evaluation
+The v1.0 implementation/proof candidate is **not yet at Human Review** because `Prometheus / Grafana operating visibility` remains inside the frozen Core Must Pass boundary and UC-05 has not been executed as a buyer-facing live proof. Therefore one bounded UC-05 work item is still justified, but it must be selected only after this reconciliation is re-read on `main`.
 
 ## Exact Next Action
-**Under Issue #19, create one Issue-linked branch and the smallest PR-visible proof harness that deterministically drives an existing Analysis Job to persisted FAILED, invokes the existing redrive endpoint with operator/trace/reason evidence, verifies audit + retry attempt/republication, waits for an accepted final state (prefer `SUCCEEDED`), and explicitly probes duplicate/unsafe redrive behavior. First executable RED determines the only authorized correction. Do not start UC-05 concurrently.**
+**Re-read this synchronized MASTER on `main`, confirm no active relevant PR/Issue exists, then create exactly one bounded UC-05 Observability Issue before any implementation/proof change. Prove existing metrics/Grafana visibility only; do not expand into a new observability subsystem or touch deferred AWS/cloud scope.**
