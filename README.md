@@ -173,6 +173,18 @@ Additional known boundaries:
 - legacy AWS/cloud code may remain in the repository without being part of accepted execution evidence;
 - `ai_job_duplicate_result_total` was not observed live in UC-05 and is not claimed as such.
 
+## Executable verification paths
+
+The accepted Proof paths remain directly inspectable as repository workflows:
+
+- [Primary CI](.github/workflows/ci.yml)
+- [UC-02 real local AI proof](.github/workflows/p1-b1-local-ai.yml)
+- [UC-03 Local-first policy proof](.github/workflows/p1-b2r-local-first-policy.yml)
+- [UC-04 recovery/redrive proof](.github/workflows/p1-b3-recovery.yml)
+- [UC-05 Prometheus/Grafana observability proof](.github/workflows/p1-b4-observability.yml)
+
+These workflow files are the executable reproduction references for the accepted CI-hosted proof conditions. Their historical successful run IDs and artifact digests are recorded above and in `ASGARD_MASTER.md`.
+
 ## Reproduction and repository guidance
 
 This repository contains historical scripts and documentation from earlier development phases. Before using an old quick-start or roadmap statement as an acceptance claim, compare it with [`ASGARD_MASTER.md`](ASGARD_MASTER.md).
