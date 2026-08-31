@@ -7,19 +7,21 @@
 ## 0. Control
 
 - **Target**: Asgard v1.0 — Wishket / Freelance Proof
-- **Target Level**: READY TO SHOW bounded software Proof candidate
+- **Target Level**: READY TO SHOW bounded software Proof
 - **Product Direction**: **Local-first AI Operations Platform**
-- **Current Phase**: Final Proof Acceptance
-- **Current Batch**: Human Review
-- **Current Status**: **IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED**
+- **Current Phase**: v1.0 Proof — FREEZE
+- **Current Batch**: Human Review — CLOSED
+- **Current Status**: **ASGARD PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
+- **Accepted buyer-facing proof/docs main SHA**: `359b26e573e5da04b2d0ec406a56be7ecb508dbd`
 - **Active Issue**: none
 - **Active PR**: none
+- **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-08-27
-- **Final v1.0 Gate**: Human Review Required
+- **Updated**: 2026-08-31
+- **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
 
 ---
 
@@ -52,7 +54,7 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 
 # 2. Frozen v1.0 Boundary
 
-## Core Must Pass
+## Core Must Pass — COMPLETE
 - Heimdall / Bifrost
 - PostgreSQL / Kafka
 - Local Ollama provider
@@ -95,7 +97,7 @@ Historical cloud code may remain in the repository. **Its existence does not mak
 | UC-03 Local-first Policy | no implicit external dependency | default/sensitive/cloud-disabled path stays local; no external provider invoked | **PASS** |
 | UC-04 Recovery | controlled failure recovery | FAILED / DLQ → Redrive → Audit → Retry → `SUCCEEDED`; duplicate redrive visible | **PASS** |
 | UC-05 Observability | operator visibility | requested/succeeded/failed/redriven/health live metrics + existing Grafana path | **PASS** |
-| Final | buyer-facing Proof | exact evidence + truthful claims + Human Review | **HUMAN REVIEW REQUIRED** |
+| Final | buyer-facing Proof | exact evidence + truthful claims + Human Review | **PASS — HUMAN REVIEW PASSED** |
 
 ---
 
@@ -171,6 +173,25 @@ Historical cloud code may remain in the repository. **Its existence does not mak
 - dashboard `increase(...)` / rate-style window panels can show `0` for this very short single-event synthetic window even though the current Prometheus counter values are `1`. Therefore UC-05 proves the existing metrics/Grafana path and visible supported panels, **not production dashboard calibration or SLO maturity**.
 - `ai_job_duplicate_result_total` remains source/config-only in UC-05 and is not claimed as live-observed.
 
+## Final Human Review / Buyer-facing Truthfulness — PASS
+- Human Review identified one concrete buyer-facing defect: the public README retained stale Hybrid/Cloud, production-readiness, compliance, performance, and infrastructure claims broader than the accepted v1.0 evidence.
+- Issue #23 — `Proof review: reconcile buyer-facing README to accepted v1.0 evidence` — **CLOSED / COMPLETED**.
+- PR #24 — `docs: reconcile buyer-facing v1.0 proof claims` — **MERGED**.
+- final PR #24 exact head: `d37d8e974d1567c473e4e28b10d597dcf402f7b3`.
+- exact-head `CI` run `33371042786`: **SUCCESS**.
+  - Windows default build path: SUCCESS.
+  - Phase 0 preflight/frontend build: SUCCESS.
+  - frontend root reachability: SUCCESS.
+  - full core-service startup/health: SUCCESS.
+  - Heimdall + Bifrost unit tests: SUCCESS.
+  - optional/manual integration job: skipped by workflow design.
+- exact-head `CI/CD Pipeline` run `33371042762`: **SUCCESS**.
+- final diff was README-only.
+- automated review raised one valid P2 reproduction-path concern; the same PR was corrected to link the accepted executable CI / UC-02 / UC-03 / UC-04 / UC-05 workflow paths directly.
+- PR #24 was squash-merged with expected-head guard at `359b26e573e5da04b2d0ec406a56be7ecb508dbd`.
+- Issue #23 auto-closed as completed.
+- no product/runtime feature was added for Human Review closure.
+
 ## Historical AWS Experiment — DEFERRED / NOT v1.0 ACCEPTANCE
 - Issue #15 CLOSED / NOT PLANNED.
 - PR #16 CLOSED / NOT MERGED.
@@ -204,7 +225,7 @@ Historical cloud code may remain in the repository. **Its existence does not mak
 - unattended autonomous operations
 - stable Grafana dashboard calibration from the short synthetic UC-05 run
 
-README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portfolio text are **not authoritative** when they conflict with this Master or current accepted evidence.
+The public README has been reconciled to this boundary. ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portfolio text remain non-authoritative when they conflict with this Master or current accepted evidence.
 
 ---
 
@@ -215,7 +236,7 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 | R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a future accepted requirement fails on it |
 | R-002 | broad Heimdall Checkstyle debt | pre-existing; no mass-fix without a required gate |
 | R-003 | startup script / proven CI invocation drift | evaluate only if a future required proof depends on it |
-| R-004 | README / historical docs may overclaim | **Human Review gate** decides final buyer-facing reconciliation |
+| R-004 | README / historical docs may overclaim | **README CLOSED via Issue #23 / PR #24; historical docs remain non-authoritative context** |
 | R-005 | hosted CPU Ollama latency variability | no stable performance claims |
 | R-006 | ingestion auto-analysis may create extra job | remain explicit in evidence; do not hide |
 | R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker or accepted execution claim |
@@ -223,6 +244,8 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 | R-009 | agent self-report | never substitute for executed evidence |
 | R-010 | redrive audit pre-state correctness | CLOSED for accepted UC-04 bounded path (`FAILED / 0` proven) |
 | R-011 | short-window Grafana delta/rate panel semantics | UC-05 live counters are proven; do not generalize screenshot values into production observability claims |
+
+These known risks do not reopen the frozen v1.0 Proof unless a new paid-delivery requirement, explicit buyer objection, or separately approved Proof requirement makes one of them an Acceptance blocker.
 
 ---
 
@@ -235,35 +258,48 @@ README, ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portf
 5. RED → first concrete failure → smallest in-scope correction.
 6. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
 7. Reconcile this Master on `main` after merge.
-8. Final v1.0 gate is Human Review; do not create another implementation Issue merely to manufacture activity.
+8. Re-evaluate closure before another Issue.
+9. Once Human Review / FREEZE is reached, do not manufacture automatic work.
 
 ---
 
-# 8. Current Checkpoint
+# 8. Final Checkpoint
 
 ## Result
-**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 PASS / AWS-CLOUD DEFERRED.**
+**UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 PASS / HUMAN REVIEW PASS / AWS-CLOUD DEFERRED.**
 
-**IMPLEMENTATION / PROOF CANDIDATE READY — HUMAN REVIEW REQUIRED.**
+**ASGARD PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED.**
 
 ## Changed
-- completed UC-05 under Issue #21 / PR #22 using the existing Prometheus/Grafana subsystem.
-- accepted only the smallest scrape/security, datasource/dashboard provisioning, proof-harness, browser-locale, and artifact-safety corrections needed for executable evidence.
+- completed UC-01 through UC-05 within the frozen Local-first v1.0 boundary;
+- closed the final buyer-facing README truthfulness defect through Issue #23 / PR #24;
+- replaced stale Hybrid/Cloud and production/compliance wording with claims bounded to accepted evidence;
+- restored direct links to accepted executable proof workflows after review feedback;
 - no AWS/Bedrock/OIDC work, replacement cloud provider, new observability platform, UI expansion, RAG expansion, or broad Checkstyle cleanup was introduced.
 
 ## Actually Executed / Verified
-- all required v1.0 UC-01 through UC-05 have bounded executable PASS evidence.
-- UC-05 exact-head run `33009550844` and primary CI `33009550928` are GREEN.
-- UC-05 artifact `9622043567` / `sha256:783c37b1bd7079edce01caa61e5ab767826d195cb4a3b800e87ee0cb0c1262a8` was inspected for synthetic safety and absence of secrets/PII.
-- live Prometheus observed requested/succeeded/failed/redriven counters and Heimdall health at `1` in the accepted proof.
-- existing Grafana dashboard/datasource path rendered successfully in the accepted screenshot execution.
+- all required v1.0 UC-01 through UC-05 have bounded executable PASS evidence;
+- UC-05 exact-head run `33009550844` and primary CI `33009550928` are GREEN;
+- UC-05 artifact `9622043567` / `sha256:783c37b1bd7079edce01caa61e5ab767826d195cb4a3b800e87ee0cb0c1262a8` was inspected for synthetic safety and absence of secrets/PII;
+- live Prometheus observed requested/succeeded/failed/redriven counters and Heimdall health at `1` in the accepted proof;
+- existing Grafana dashboard/datasource path rendered successfully in the accepted screenshot execution;
+- final Human Review README head `d37d8e974d1567c473e4e28b10d597dcf402f7b3` passed CI `33371042786` and CI/CD `33371042762`;
+- PR #24 merged at `359b26e573e5da04b2d0ec406a56be7ecb508dbd` and Issue #23 closed completed.
 
-## Not Automatically Accepted
-- final public/Wishket wording, README/Proof-package truthfulness, and screenshot selection remain Human Review decisions.
-- production readiness, SLO/SLA, stable performance, legal compliance, HA, cloud execution, and full admin UI are not proven.
+## Not Verified / Explicit Non-Claims
+- production readiness;
+- production SLA/SLO, stable latency/throughput/cost savings;
+- legal GDPR/security compliance certification;
+- production Kubernetes/HA/multi-region posture;
+- accepted cloud-provider execution;
+- full operational/admin dashboard product;
+- unattended autonomous operations;
+- production observability calibration beyond the bounded proof conditions.
 
 ## Closure Evaluation
-The frozen v1.0 implementation/proof criteria are complete. There is no remaining mandatory automatic implementation gap. The project is therefore at its intended **Human Review boundary**.
+The frozen v1.0 implementation, executable Proof, buyer-facing truthfulness, and Human Review criteria are complete. No mandatory automatic v1.0 gap remains.
 
 ## Exact Next Action
-**Human Review:** inspect the accepted evidence and buyer-facing claim boundary, then decide the final README / Wishket / Proof-package wording and whether the candidate is accepted for external presentation. Do not create another automatic implementation Issue unless Human Review identifies one concrete bounded defect or the user creates a new explicit Sales/Proof requirement.
+**FREEZE / no automatic Asgard v1.0 implementation.**
+
+Reopen only when a new paid-delivery requirement, explicit Sales/Proof Requirement, buyer objection, reproducibility regression, or separately approved product decision creates one concrete bounded Acceptance gap.
