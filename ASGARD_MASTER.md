@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M3 ACTIVE
-- **Current Batch**: M3 — Controlled Recovery Operator Workflow — IN PROGRESS
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN — M3 ACTIVE**
+- **Current Phase**: Post-v1.0 Bounded Progression — M4 SELECTED
+- **Current Batch**: M4 — Runtime Resilience: persisted Job survives bounded worker restart — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN — M4 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -21,14 +21,16 @@
 - **Accepted M1 merge main SHA**: `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`
 - **Accepted M2 exact PR head**: `224e53814bc33e565189acd0b2c45866be32f2a0`
 - **Accepted M2 merge main SHA**: `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86`
-- **Active Implementation Issue**: #33 — v1.1 M3 controlled recovery operator workflow
+- **Accepted M3 exact PR head**: `b4e79a00dc3677746a244a08c6fd36dfccba620c`
+- **Accepted M3 merge main SHA**: `c97dfa2d79f81b7b0172833769a71164934a103e`
+- **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M3 — Controlled Recovery Operator Workflow
+- **Selected Next Milestone**: M4 — Runtime Resilience: bounded Bifrost restart around persisted Job
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-01
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS — M3 IN PROGRESS**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS — M4 SELECTED**
 
 ---
 
@@ -115,65 +117,61 @@ The v1.0 boundary is permanently preserved as a frozen verified baseline. Post-v
 # 4. Frozen v1.0 Accepted Evidence
 
 ## UC-01 — Startup — PASS
-- accepted through PR #12.
-- verified PostgreSQL, Kafka, Redis, Elasticsearch, Prometheus, Grafana, Heimdall, Bifrost, and frontend reachability.
-- frontend v1.0 accepted scope remained a minimal boot shell.
+- accepted through PR #12;
+- PostgreSQL, Kafka, Redis, Elasticsearch, Prometheus, Grafana, Heimdall, Bifrost, and frontend reachability verified;
+- frontend v1.0 remained a minimal boot shell;
 - broad Heimdall Checkstyle debt remained known: baseline 41 files / 109 warnings / 2 info.
 
 ## UC-02 — Real Local AI Golden Path — PASS
-- Issue #13 CLOSED / COMPLETED.
-- PR #14 MERGED at `ee24e6990d19c0be618baf1698bff275a8b27134`.
-- dedicated proof `32323663891`: SUCCESS.
-- primary CI `32323664031`: SUCCESS.
-- artifact `9390712782`.
-- digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`.
-- executed: deterministic log → Analysis Job → Kafka → Bifrost → real Ollama `smollm:135m` → result → persistence → `SUCCEEDED`.
+- Issue #13 CLOSED / COMPLETED;
+- PR #14 MERGED at `ee24e6990d19c0be618baf1698bff275a8b27134`;
+- dedicated proof `32323663891`: SUCCESS;
+- primary CI `32323664031`: SUCCESS;
+- artifact `9390712782`, digest `sha256:66840ffe978f0a6d011b1440e7960962da530f352cc68da8e23744bf50d212da`;
+- deterministic log → Analysis Job → Kafka → Bifrost → real Ollama `smollm:135m` → result → persistence → `SUCCEEDED`;
 - fallback-only output was not accepted; hosted CPU latency is not a stable performance claim.
 
 ## UC-03 — Local-first Policy Boundary — PASS
-- Issue #17 CLOSED / COMPLETED.
-- PR #18 MERGED at `a7e079872004c6dcf73cdf36d105aabde37fbb8d`.
-- accepted head `b6fc2c2f15f0d65ba6f314525740a63cc42c24ce`.
-- dedicated proof `32945550180`: SUCCESS.
-- primary CI `32945550197`: SUCCESS.
-- artifact `9598234317`.
-- digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`.
-- default, sensitive, and cloud-hint-disabled requests all executed `on_device_rag / ollama` through production dispatch; no external provider was invoked.
+- Issue #17 CLOSED / COMPLETED;
+- PR #18 MERGED at `a7e079872004c6dcf73cdf36d105aabde37fbb8d`;
+- accepted head `b6fc2c2f15f0d65ba6f314525740a63cc42c24ce`;
+- dedicated proof `32945550180`: SUCCESS;
+- primary CI `32945550197`: SUCCESS;
+- artifact `9598234317`, digest `sha256:94ce477579261ee28cd9bec30e17d2397628158b5ba85e3a8fa168cd44b32c01`;
+- default, sensitive, and cloud-hint-disabled requests all executed `on_device_rag / ollama`; no external provider was invoked.
 
 ## UC-04 — Recovery Golden Path — PASS
-- Issue #19 CLOSED / COMPLETED.
-- PR #20 MERGED at `37c29223044100c216372d27169eba0c3c0a0dc0`.
-- accepted head `4b3bf88b31ae7392004121817832b232f4cd8e21`.
-- recovery proof `32967543925`: SUCCESS.
-- primary CI `32967543793`: SUCCESS.
-- artifact `9606403831`.
-- digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`.
-- executed: deterministic `FAILED` → listing → authorized redrive → attempt `0→1` → Kafka → Bifrost → real Ollama → `SUCCEEDED` → audit → duplicate redrive `SKIPPED`.
+- Issue #19 CLOSED / COMPLETED;
+- PR #20 MERGED at `37c29223044100c216372d27169eba0c3c0a0dc0`;
+- accepted head `4b3bf88b31ae7392004121817832b232f4cd8e21`;
+- recovery proof `32967543925`: SUCCESS;
+- primary CI `32967543793`: SUCCESS;
+- artifact `9606403831`, digest `sha256:a641015cdb0fa2cabebc49e27da456e93c4ecce5d4b7dff1ccb976604f00e2ec`;
+- deterministic `FAILED` → listing → authorized redrive → attempt `0→1` → Kafka → Bifrost → real Ollama → `SUCCEEDED` → audit → duplicate redrive `SKIPPED`;
 - accepted audit snapshot records true pre-redrive `FAILED / 0`.
 
 ## UC-05 — Observability — PASS
-- Issue #21 CLOSED / COMPLETED.
-- PR #22 squash-merged at `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`.
-- accepted head `e1509b7cefdb47a057c25051c16409b030c11dee`.
-- dedicated proof `33009550844`: SUCCESS.
-- primary CI `33009550928`: SUCCESS.
-- artifact `9622043567`.
-- digest `sha256:783c37b1bd7079edce01caa61e5ab767826d195cb4a3b800e87ee0cb0c1262a8`.
-- actually observed live: `ai_job_requested_total=1`, `ai_job_success_total=1`, `ai_job_failed_total=1`, `ai_job_redriven_total=1`, `up{job="heimdall"}=1`.
-- Grafana Prometheus datasource/dashboard path rendered in browser execution.
-- short-window dashboard rate/delta values are not production calibration or SLO evidence.
+- Issue #21 CLOSED / COMPLETED;
+- PR #22 squash-merged at `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`;
+- accepted head `e1509b7cefdb47a057c25051c16409b030c11dee`;
+- dedicated proof `33009550844`: SUCCESS;
+- primary CI `33009550928`: SUCCESS;
+- artifact `9622043567`, digest `sha256:783c37b1bd7079edce01caa61e5ab767826d195cb4a3b800e87ee0cb0c1262a8`;
+- live observed: `ai_job_requested_total=1`, `ai_job_success_total=1`, `ai_job_failed_total=1`, `ai_job_redriven_total=1`, `up{job="heimdall"}=1`;
+- Grafana Prometheus datasource/dashboard rendered in browser execution;
+- short-window rate/delta values are not production calibration or SLO evidence.
 
 ## Final Human Review / Buyer-facing Truthfulness — PASS
-- Issue #23 CLOSED / COMPLETED.
-- PR #24 MERGED at `359b26e573e5da04b2d0ec406a56be7ecb508dbd`.
-- final exact head `d37d8e974d1567c473e4e28b10d597dcf402f7b3`.
-- `CI` `33371042786`: SUCCESS.
-- `CI/CD Pipeline` `33371042762`: SUCCESS.
-- README was reconciled to accepted Local-first claims; no product/runtime feature was added for Human Review closure.
+- Issue #23 CLOSED / COMPLETED;
+- PR #24 MERGED at `359b26e573e5da04b2d0ec406a56be7ecb508dbd`;
+- exact head `d37d8e974d1567c473e4e28b10d597dcf402f7b3`;
+- `CI` `33371042786`: SUCCESS;
+- `CI/CD Pipeline` `33371042762`: SUCCESS;
+- README reconciled to accepted Local-first claims; no runtime feature was added for Human Review closure.
 
 ## Historical AWS Experiment — DEFERRED / NOT v1.0 ACCEPTANCE
-- Issue #15 CLOSED / NOT PLANNED.
-- PR #16 CLOSED / NOT MERGED.
+- Issue #15 CLOSED / NOT PLANNED;
+- PR #16 CLOSED / NOT MERGED;
 - AWS `AssumeRoleWithWebIdentity`, STS caller identity, and real Bedrock invocation/result are **not verified and not required for v1.0**.
 
 ---
@@ -181,30 +179,30 @@ The v1.0 boundary is permanently preserved as a frozen verified baseline. Post-v
 # 5. Buyer-facing Claim Boundary
 
 ## Supported by frozen v1.0 bounded evidence
-- event-driven Java/Python AI operations architecture
-- persistent asynchronous Analysis Job lifecycle
-- Kafka request/result handoff
-- real local Ollama inference
-- result persistence and final Job state
-- fail-closed Local-first routing under the accepted configuration
-- bounded FAILED/DLQ → Redrive → Audit → Retry → `SUCCEEDED` recovery
-- duplicate redrive visibility through `SKIPPED` audit behavior
-- bounded live lifecycle metrics through Prometheus
-- existing Grafana datasource/dashboard path and visible lifecycle panels
+- event-driven Java/Python AI operations architecture;
+- persistent asynchronous Analysis Job lifecycle;
+- Kafka request/result handoff;
+- real local Ollama inference;
+- result persistence and final Job state;
+- fail-closed Local-first routing under accepted configuration;
+- bounded FAILED/DLQ → Redrive → Audit → Retry → `SUCCEEDED` recovery;
+- duplicate redrive visibility through `SKIPPED` audit behavior;
+- bounded live lifecycle metrics through Prometheus;
+- existing Grafana datasource/dashboard path and visible lifecycle panels.
 
 ## Prohibited / Not Verified by v1.0
-- `production-ready`
-- `enterprise-grade` as an operational-readiness claim
-- legal `GDPR-compliant` certification
-- production SLA/SLO
-- stable latency / throughput / cost-saving percentages
-- production Kubernetes / HA / multi-region readiness
-- cloud-provider execution
-- full operational/admin dashboard product
-- unattended autonomous operations
-- stable Grafana dashboard calibration from the short synthetic UC-05 run
+- `production-ready`;
+- `enterprise-grade` as an operational-readiness claim;
+- legal `GDPR-compliant` certification;
+- production SLA/SLO;
+- stable latency / throughput / cost-saving percentages;
+- production Kubernetes / HA / multi-region readiness;
+- cloud-provider execution;
+- full operational/admin dashboard product;
+- unattended autonomous operations;
+- stable Grafana calibration from the short synthetic UC-05 run.
 
-Post-v1.0 milestone acceptance may add new supported claims only when the new claim has its own executable acceptance evidence. It does not retroactively broaden v1.0.
+Post-v1.0 milestone acceptance may add new supported claims only when the claim has its own executable acceptance evidence. It does not retroactively broaden v1.0.
 
 ---
 
@@ -223,9 +221,10 @@ Post-v1.0 milestone acceptance may add new supported claims only when the new cl
 | R-009 | agent self-report | never substitute for executed evidence |
 | R-010 | redrive audit pre-state correctness | CLOSED for accepted UC-04 bounded path (`FAILED / 0` proven) |
 | R-011 | short-window Grafana delta/rate semantics | do not generalize bounded screenshot values into production observability claims |
-| R-012 | M2 operator console is bounded/read-only | accepted only for recent persisted Job list/detail and success/failure inspection; no generic admin claims |
+| R-012 | M2 operator console is bounded/read-only by default | accepted for recent persisted Job list/detail and success/failure inspection; M3 recovery appears only under its explicit recovery feature flag |
+| R-013 | proof harness ordering can race queued analysis requests | M3 exact-head proof explicitly consumed the seed request before starting Bifrost; do not generalize this harness isolation into autonomous runtime guarantees |
 
-Known risks do not reopen or weaken the frozen v1.0 baseline. A risk may become active work only when it blocks the selected bounded milestone or creates a regression against an accepted path.
+Known risks do not reopen or weaken frozen accepted milestones. A risk becomes active work only when it blocks the selected bounded milestone or creates regression against an accepted path.
 
 ---
 
@@ -234,15 +233,15 @@ Known risks do not reopen or weaken the frozen v1.0 baseline. A risk may become 
 1. MASTER first.
 2. Current repository / Issue / PR / executed evidence overrides stale checkpoint text and Scheduled Task self-report.
 3. One bounded implementation/proof Issue at a time.
-4. Active relevant PR first.
+4. Active relevant PR before new work.
 5. Define executable Acceptance Criteria before implementation.
 6. RED → first concrete failure → smallest in-scope correction.
 7. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
-8. Close the Issue only after accepted evidence exists.
-9. Reconcile this Master on `main` after merge.
+8. Close Issue only after accepted evidence exists.
+9. Reconcile MASTER on `main` after merge.
 10. Evaluate Milestone Acceptance before selecting another Issue.
-11. A frozen accepted milestone becomes a preserved baseline slice; **FREEZE does not mean project development ends**.
-12. After each accepted milestone, return to Progression Review and select the next bounded milestone only when it has clear use/show/delivery value.
+11. Frozen accepted milestone becomes a preserved baseline slice; **FREEZE does not mean project development ends**.
+12. After acceptance, return to Progression Review and select the next bounded milestone only when it has clear use/show/delivery value.
 13. Do not manufacture work for activity. Existing asset reuse and small gap closure precede new implementation.
 
 ---
@@ -278,7 +277,7 @@ Known risks do not reopen or weaken the frozen v1.0 baseline. A risk may become 
 ### Intended user
 - one technical operator or a small technical team using the same bounded environment;
 - developer / backend engineer / AI engineer / internal operator;
-- user can understand service health, jobs, failures, retries, and logs at a technical level.
+- user understands service health, jobs, failures, retries, and logs at a technical level.
 
 ### Intended use
 - start the supported local stack;
@@ -369,18 +368,18 @@ Only the selected milestone becomes active work. Later milestones must be re-rev
 Clean supported Linux path with prerequisites/preflight, required services, Local Ollama/model, one deterministic persistent Job, Kafka → Bifrost → real Ollama result, final `SUCCEEDED`, operator-visible IDs/result, and bounded cleanup.
 
 ### Accepted Evidence
-- Issue #25 CLOSED / COMPLETED.
-- PR #30 SQUASH MERGED with expected-head guard.
-- accepted head `0db87a1a1feb54bf677533d88516d72f3bda73ec`.
-- merge main SHA `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`.
-- primary CI `33399015985`: SUCCESS.
-- M1 runner `33399015962`: SUCCESS.
-- UC-02 `33399016060`: SUCCESS.
-- UC-03 `33399016019`: SUCCESS.
-- UC-04 `33399015968`: SUCCESS.
-- artifact `9760584618`, digest `sha256:f8011b67f5c49a87ddef93356295d403d37d4dc731b82811bfe087c2399c361`.
-- artifact records `status=PASS`, `provider=ollama`, `model=smollm:135m`, persistent IDs, `synthetic=true`, `cloudExecution=false`.
-- CI/CD remained RED only on pre-existing Heimdall Checkstyle debt; M1 did not claim it resolved.
+- Issue #25 CLOSED / COMPLETED;
+- PR #30 SQUASH MERGED with expected-head guard;
+- accepted head `0db87a1a1feb54bf677533d88516d72f3bda73ec`;
+- merge main SHA `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`;
+- primary CI `33399015985`: SUCCESS;
+- M1 runner `33399015962`: SUCCESS;
+- UC-02 `33399016060`: SUCCESS;
+- UC-03 `33399016019`: SUCCESS;
+- UC-04 `33399015968`: SUCCESS;
+- artifact `9760584618`, digest `sha256:f8011b67f5c49a87ddef93356295d403d37d4dc731b82811bfe087c2399c361`;
+- artifact: `status=PASS`, `provider=ollama`, `model=smollm:135m`, persistent IDs, `synthetic=true`, `cloudExecution=false`;
+- CI/CD remained RED only on pre-existing Heimdall Checkstyle debt.
 
 ### Limitations
 - accepted executable environment is GitHub-hosted Linux; macOS not independently executed;
@@ -393,50 +392,42 @@ Clean supported Linux path with prerequisites/preflight, required services, Loca
 
 ## M2 — Operator Console: Read-only Job Lifecycle
 
-### Why
-The next operator-usability gap was understanding persisted Job state without curl/manual DB inspection.
-
 ### Accepted Scope
-- authenticated recent Job list backed by real persisted data;
+- authenticated recent Job list backed by persisted data;
 - Job detail with persisted status, timestamps, attempt count, trace/result references;
 - successful real Local Ollama result inspection;
 - deterministic failed/error state inspection;
 - bounded React operator surface;
-- strictly read-only: no redrive/retry/recovery mutation controls.
+- default surface strictly read-only.
 
 ### Actually Changed
-- added one authenticated read-only recent-job paging endpoint ordered by persisted `createdAt DESC`;
-- upgraded the frontend boot shell into a bounded read-only operator console using Heimdall read APIs;
-- added exact-head real-stack Playwright proof for one real `SUCCEEDED` Job and one deterministic `FAILED` Job;
-- did not add M3 recovery controls, cloud providers, RAG, generic admin tooling, or broad cleanup.
+- authenticated read-only recent-job paging endpoint ordered by persisted `createdAt DESC`;
+- frontend boot shell upgraded into bounded read-only operator console;
+- exact-head real-stack Playwright proof for one real `SUCCEEDED` Job and one deterministic `FAILED` Job;
+- no cloud providers, RAG, generic admin tooling, or broad cleanup.
 
 ### Actually Executed / Verified
-- Issue #31 — **CLOSED / COMPLETED**.
-- PR #32 — **SQUASH MERGED** with expected-head guard.
-- accepted exact PR head: `224e53814bc33e565189acd0b2c45866be32f2a0`.
-- merge main SHA: `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86`.
-- dedicated `v1.1 M2 Operator Console` run `33405406557`: **SUCCESS**.
-- primary `CI` run `33405406555`: **SUCCESS**.
-- M1 Local Proof Runner `33405406603`: **SUCCESS**.
-- UC-02 Real Local AI `33405406515`: **SUCCESS**.
-- UC-03 Local-first Policy `33405406542`: **SUCCESS**.
-- UC-04 Recovery `33405406571`: **SUCCESS**.
-- UC-05 Observability `33405406432`: **SUCCESS**.
-- exact M2 job executed: infrastructure readiness → real Ollama → Heimdall/Bifrost → real persisted `SUCCEEDED` Job → deterministic persisted `FAILED` Job → recent-job API verification → frontend → Playwright list/detail proof → evidence upload.
-- artifact `9763096595`, digest `sha256:ff363841b4c4754870ab40a33f630284e39b3820123d503e847096ccc1e19b05`.
-- artifact upload is restricted to synthetic API/browser evidence and two synthetic screenshots; the workflow does not upload the temporary auth token file.
-- browser proof records success visible, failure visible, mutation controls absent, `synthetic=true`.
-- review threads: none; submitted reviews: none.
-- supporting CI/CD `33405406456` remained RED at the known Heimdall build/Checkstyle boundary while Bifrost, frontend, and dependency security were GREEN; M2 does not claim broad Checkstyle debt resolved.
+- Issue #31 CLOSED / COMPLETED;
+- PR #32 SQUASH MERGED with expected-head guard;
+- exact head `224e53814bc33e565189acd0b2c45866be32f2a0`;
+- merge main SHA `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86`;
+- M2 run `33405406557`: SUCCESS;
+- primary CI `33405406555`: SUCCESS;
+- M1 `33405406603`: SUCCESS;
+- UC-02 `33405406515`: SUCCESS;
+- UC-03 `33405406542`: SUCCESS;
+- UC-04 `33405406571`: SUCCESS;
+- UC-05 `33405406432`: SUCCESS;
+- artifact `9763096595`, digest `sha256:ff363841b4c4754870ab40a33f630284e39b3820123d503e847096ccc1e19b05`;
+- browser proof records success visible, failure visible, mutation controls absent, `synthetic=true`;
+- review threads none; submitted reviews none;
+- supporting CI/CD RED remained known Heimdall build/Checkstyle debt while Bifrost/frontend/dependency security were GREEN.
 
-### Not Verified / Limitations
-- M2 does not prove recovery/redrive mutation through the browser;
+### Limitations
+- M2 does not independently prove browser recovery/redrive;
 - M2 is not a generic/full admin dashboard;
-- no production-readiness, HA, SLA/SLO, stable performance, or cloud-execution claim is added;
-- bounded proof uses synthetic operator credentials and synthetic Job inputs inside CI only.
-
-### Milestone Acceptance
-A technical operator can inspect recent persisted Job lifecycle state, select Job detail, inspect a real Local Ollama success result and deterministic failed/error state through the browser without curl/manual DB inspection. The surface is read-only and regression evidence remained GREEN on the exact head. **M2 PASS / ACCEPTED / FROZEN.**
+- no production readiness, HA, SLA/SLO, stable performance, or cloud-execution claim;
+- bounded proof uses synthetic credentials/inputs in CI.
 
 **Current: ACCEPTED / FROZEN — PASS**
 
@@ -444,50 +435,99 @@ A technical operator can inspect recent persisted Job lifecycle state, select Jo
 
 ## M3 — Controlled Recovery Operator Workflow
 
-### Why
-Backend redrive/audit is accepted proof, and M2 exposes failed Jobs read-only. The next bounded operator-usability gap is a controlled recovery action rather than hidden API-only mutation.
+### Accepted Scope
+- select persisted `FAILED` Job from M2 surface;
+- require explicit redrive reason and visible confirmation boundary;
+- invoke only existing authorized redrive endpoint;
+- show persisted status/attempt transition;
+- show bounded per-job redrive audit history;
+- make duplicate redrive visible as `SKIPPED` with attempt unchanged;
+- preserve M2 default read-only behavior unless `VITE_ENABLE_RECOVERY=true`;
+- reuse existing UC-04 recovery semantics rather than inventing new recovery machinery.
 
-### Active Scope — Issue #33
-- select an existing persisted `FAILED` Job from the M2 operator surface;
-- require an explicit redrive reason and visible confirmation boundary;
-- invoke only the existing authorized production redrive endpoint;
-- show status/attempt transition;
-- show bounded redrive audit history;
-- expose supported rate-limit/error feedback;
-- make duplicate redrive visible as non-creation / `SKIPPED` with attempt unchanged;
-- reuse existing UC-04 semantics and M2 read contracts before adding backend machinery.
+### Actually Changed
+- bounded recovery panel gated by `VITE_ENABLE_RECOVERY=true`;
+- mandatory operator reason + confirmation before mutation;
+- existing `/api/v1/analysis/jobs/{jobId}/redrive` only;
+- per-job audit visibility and duplicate `SKIPPED` visibility;
+- exact-head real-stack Playwright M3 workflow;
+- proof harness corrected to consume the initial seeded `analysis.request` before starting Bifrost, eliminating interference from the pre-redrive request;
+- no AWS/Bedrock/OIDC/cloud, autonomous retry, generic admin mutations, or unrelated backend recovery semantics.
 
-### Executable Acceptance
-1. Browser E2E starts from a real persisted deterministic `FAILED` Job visible in the operator console.
-2. Recovery requires an explicit reason and confirmation.
-3. Existing authorized redrive endpoint drives the Job through real Local Ollama retry to `SUCCEEDED`.
-4. UI attempt/status matches persisted backend state before and after.
-5. SUCCESS audit is visible with accepted pre-redrive snapshot semantics.
-6. Duplicate redrive is visibly `SKIPPED` / non-creation with attempt unchanged.
-7. Existing v1.0, M1, and M2 regression paths remain GREEN on the exact PR head.
+### Actually Executed / Verified
+- Issue #33 — **CLOSED / COMPLETED**;
+- Draft PR #34 — CLOSED / NOT MERGED only because connector Draft→Ready GraphQL transition failed on `Repository.fullDatabaseId`; implementation head preserved;
+- replacement PR #35 — **SQUASH MERGED** with expected-head guard;
+- accepted exact head `b4e79a00dc3677746a244a08c6fd36dfccba620c`;
+- merge main SHA `c97dfa2d79f81b7b0172833769a71164934a103e`;
+- M3 Recovery Console run `33422708481`: **SUCCESS**;
+- primary CI `33422708448`: **SUCCESS**;
+- M1 Local Proof `33422708431`: **SUCCESS**;
+- M2 Operator Console `33422708497`: **SUCCESS**;
+- UC-02 `33422708460`: **SUCCESS**;
+- UC-03 `33422708512`: **SUCCESS**;
+- UC-04 `33422708432`: **SUCCESS**;
+- artifact `9769683333`, digest `sha256:2c1bdfe47287dc3e88061259ee2d93f9b8025310721e3a2b66b7ae3fd05d6d78`;
+- persisted final Job evidence: `SUCCEEDED`, `attemptCount=1`;
+- SUCCESS audit records `previousStatus=FAILED`, `previousAttemptCount=0`, operator reason, outcome `SUCCESS`;
+- duplicate audit records `previousStatus=SUCCEEDED`, `previousAttemptCount=1`, outcome `SKIPPED`, and attempt remains unchanged;
+- browser evidence records `status=PASS`, `initialStatus=FAILED`, `initialAttempt=0`, `recoveredStatus=SUCCEEDED`, `recoveredAttempt=1`, `successAuditVisible=true`, `duplicateOutcomeVisible=SKIPPED`, `duplicateAttemptUnchanged=true`, `synthetic=true`, `cloudExecution=false`;
+- M3 job steps all GREEN: deterministic FAILED seed, browser proof, persisted API capture, synthetic-safe verification, artifact upload;
+- review threads none; submitted reviews none;
+- Dependency Security Check GREEN;
+- supporting CI/CD remained RED only at known pre-existing Heimdall broad Checkstyle/build boundary; frontend and Bifrost jobs were GREEN.
 
-### Non-goals
-- autonomous/background retry policy changes;
-- arbitrary Job mutation/admin tooling;
-- AWS/Bedrock/OIDC/cloud;
-- generic admin expansion;
-- RAG;
-- broad Checkstyle cleanup;
-- production-readiness, HA, SLA/SLO, or stable performance claims.
+### Limitations / Non-claims
+- recovery UI is bounded, not a generic admin platform;
+- no autonomous/background retry policy is proven;
+- no production readiness, SLA/SLO, stable performance, HA/Kubernetes, cloud-provider execution, enterprise identity, or legal compliance claim;
+- M3 harness ordering proves the bounded scenario, not all possible queue/restart race behavior.
 
-**Current: ACTIVE / IN PROGRESS — Issue #33**
+### Milestone Acceptance
+A technical operator can start from a persisted deterministic `FAILED` Job, explicitly confirm and explain a redrive, recover through the existing authorized path and real Local Ollama to `SUCCEEDED`, inspect the SUCCESS audit, and observe a duplicate redrive as `SKIPPED` without attempt inflation. Exact-head regressions remained GREEN. **M3 PASS / ACCEPTED / FROZEN.**
+
+**Current: ACCEPTED / FROZEN — PASS**
 
 ---
 
-## M4 — Runtime Resilience & Traceability
+## M4 — Runtime Resilience: Bounded Bifrost Restart Around Persisted Job
 
-### Candidate Scope
-At milestone start select only one or two failure modes supported by current architecture, e.g. temporary Bifrost unavailability, process restart around a persisted Job, duplicate-result/idempotency boundary, or bounded Kafka interruption/recovery.
+### Why selected
+M1–M3 now prove reproducible execution, inspection, and controlled recovery. The highest-priority remaining useful gap is reliability/recovery correctness under a real process interruption. The bounded product destination is single-node; therefore a worker restart around a persisted Job has direct use/show/delivery value without implying HA.
 
-### Stop Condition
-Stop after selected bounded failure cases are accepted. Do not generalize into SLA/HA claims.
+### Selected Scope
+Choose exactly one failure mode: **Bifrost process interruption/restart while a target Analysis Job is already persisted and queued/eligible for processing**.
 
-**Current: FUTURE CANDIDATE / NOT STARTED**
+The milestone must determine and prove the smallest supported behavior from current architecture, preferring existing Kafka/persistence semantics over new machinery:
+- create one deterministic persisted target Job;
+- establish the target state immediately before Bifrost interruption;
+- stop/kill Bifrost at a controlled point before final persisted success;
+- restart Bifrost in the same bounded single-node environment;
+- verify the target reaches one correct final persisted state without silent loss;
+- verify result/idempotency behavior prevents an incorrect duplicate final result if the current architecture already supports it;
+- capture operator-visible state/evidence sufficient to explain what happened;
+- preserve M1/M2/M3 and v1.0 accepted paths.
+
+### Executable Acceptance
+1. Exact-head real-stack proof uses persisted Job + Kafka + Bifrost + real Local Ollama.
+2. Bifrost is actually terminated/restarted during the bounded scenario; a mere mocked exception is insufficient.
+3. Target Job is not silently lost; final persisted state is deterministic and evidence-backed.
+4. If replay occurs, accepted idempotency/result boundary is explicitly verified; if current architecture cannot safely provide that behavior, record RED and correct the smallest current-use blocker in the same Issue/PR.
+5. Evidence records pre-interruption state, restart event, post-restart state, final Job/result identifiers, and any duplicate/replay observation.
+6. Existing v1.0/M1/M2/M3 regression paths remain GREEN on exact head.
+7. No HA, SLA/SLO, autonomous recovery, Kubernetes, multi-node, or cloud claim is added.
+
+### Non-goals
+- Kafka cluster outage simulation;
+- multi-node failover;
+- HA/autoscaling/Kubernetes;
+- generic chaos engineering framework;
+- autonomous retry policy expansion;
+- AWS/Bedrock/OIDC/cloud;
+- broad refactor or Checkstyle cleanup;
+- production SLA/SLO or stable recovery-time claim.
+
+**Current: SELECTED — ISSUE NOT YET OPEN**
 
 ---
 
@@ -512,38 +552,41 @@ Stop when a clean independent handoff can start the system, run a real Local AI 
 # 11. Current Post-v1.0 Progression Checkpoint
 
 ## Decision
-- v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**.
-- M1 — Local Reproduction & First Job is **PASS / ACCEPTED / FROZEN**.
-- M2 — Operator Console: Read-only Job Lifecycle is **PASS / ACCEPTED / FROZEN**.
-- Progression Review selected **M3 — Controlled Recovery Operator Workflow** because M2 exposes failed Jobs but accepted recovery remains API-only.
-- Issue #33 is the only active bounded implementation work item; no M3 PR exists yet.
+- v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
+- M1 is **PASS / ACCEPTED / FROZEN**;
+- M2 is **PASS / ACCEPTED / FROZEN**;
+- M3 is **PASS / ACCEPTED / FROZEN**;
+- M3 accepted exact head `b4e79a00dc3677746a244a08c6fd36dfccba620c`, merged through PR #35 at `c97dfa2d79f81b7b0172833769a71164934a103e`;
+- Issue #33 CLOSED / COMPLETED;
+- Progression Review selected exactly one next milestone: **M4 — bounded Bifrost restart around a persisted Job**.
 
-## Changed by M2
-- added authenticated read-only recent-job API;
-- added bounded browser operator console for recent Job list/detail, success result, and failed/error inspection;
-- added exact-head real-stack browser proof using one real Local Ollama success and one deterministic failure;
-- preserved v1.0/M1 Local-first behavior and introduced no recovery mutation controls, cloud execution, RAG, HA, or generic admin scope.
+## Changed by M3
+- added feature-flagged controlled recovery UI over existing authorized redrive/audit semantics;
+- mandatory reason + confirmation;
+- persisted status/attempt and audit visibility;
+- duplicate redrive visible as `SKIPPED`;
+- deterministic browser proof with real Local Ollama;
+- no cloud execution, autonomous retry, generic admin platform, or unrelated recovery subsystem.
 
-## Actually Executed / Verified for M2
-- Issue #31 CLOSED / COMPLETED after merge.
-- PR #32 SQUASH MERGED at `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86` from exact head `224e53814bc33e565189acd0b2c45866be32f2a0`.
-- M2 proof `33405406557`: SUCCESS, including read API verification and Playwright list/detail proof.
-- primary CI `33405406555`: SUCCESS.
-- accepted v1.0/M1 regression proofs on the exact head remained GREEN.
-- artifact `9763096595`, digest `sha256:ff363841b4c4754870ab40a33f630284e39b3820123d503e847096ccc1e19b05`.
-- supporting CI/CD RED remained known Heimdall build/Checkstyle debt; Bifrost/frontend/dependency security were GREEN.
+## Actually Executed / Verified for M3
+- M3 run `33422708481`: SUCCESS;
+- artifact `9769683333`, digest `sha256:2c1bdfe47287dc3e88061259ee2d93f9b8025310721e3a2b66b7ae3fd05d6d78`;
+- `FAILED / attempt 0 → SUCCEEDED / attempt 1` persisted;
+- SUCCESS audit visible with pre-redrive `FAILED / 0` snapshot;
+- duplicate redrive persisted as `SKIPPED` with attempt unchanged;
+- `synthetic=true`, `cloudExecution=false`;
+- primary CI, M1, M2, UC-02, UC-03, UC-04 all GREEN on exact head;
+- dependency security GREEN;
+- secondary Heimdall CI/CD RED remains pre-existing broad Checkstyle debt.
 
 ## Not Verified / Known Limitations
-- M3 browser recovery/redrive controls are not yet implemented or verified;
+- Bifrost restart/replay correctness has not yet been accepted; this is the selected M4 gap;
+- Kafka outage, multi-node failover, HA, autoscaling, production recovery time, SLA/SLO remain unverified/non-claims;
 - full admin-platform behavior remains outside scope;
-- production readiness, SLA/SLO, stable performance, HA/Kubernetes, cloud-provider execution, enterprise identity, and legal compliance remain non-claims;
-- M4/M5 remain candidates only.
+- M5 remains candidate only.
 
-## M2 Acceptance
-M2 satisfies its bounded acceptance and is frozen. The operator can inspect real persisted Job lifecycle state and success/failure details through a read-only browser surface with exact-head real-stack Playwright evidence.
-
-## M3 Milestone Gate
-M3 has concrete use/show/delivery value, executable acceptance criteria, bounded scope suitable for one Issue/PR, and requires no unresolved product-direction decision. Issue #33 therefore activates M3 without altering frozen v1.0/M1/M2 claims.
+## M4 Milestone Gate
+M4 has concrete use/show/delivery value, executable acceptance criteria, bounded scope suitable for one Issue/PR, and no unresolved product-direction decision. It is limited to one real process-interruption scenario and does not imply HA.
 
 ## Exact Next Action
-**Under Issue #33, inspect the current merged M2 frontend together with the existing redrive and audit APIs, identify the smallest API/read gap required for confirmation/reason/redrive/audit visibility, then create one Issue-linked branch and one bounded PR. Do not add unrelated write controls or new recovery semantics.**
+**Open exactly one M4 Issue for the bounded Bifrost restart scenario, then inspect current consumer/persistence/idempotency behavior before implementing the smallest executable proof or correction. Do not add a chaos framework, new retry subsystem, cloud execution, or multi-node behavior.**
