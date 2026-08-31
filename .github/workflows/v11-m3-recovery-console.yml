@@ -1,0 +1,256 @@
+name: v1.1 M3 Recovery Console
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/v11-m3-recovery-console.yml'
+      - 'bifrost/frontend/**'
+      - 'heimdall/src/main/java/com/heimdall/controller/AnalysisJobController.java'
+      - 'heimdall/src/main/java/com/heimdall/service/AnalysisOrchestratorService.java'
+      - 'heimdall/src/main/java/com/heimdall/service/RedriveAuditService.java'
+      - 'docker-compose.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-console:
+    name: M3 controlled recovery browser proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      M3_OPERATOR_USERNAME: m3-operator
+      M3_OPERATOR_PASSWORD: m3-operator-password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Prepare application and browser dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash ./gradlew :heimdall:bootJar --no-daemon --console=plain
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r bifrost/requirements.txt
+          python -m pip install -e bifrost
+          cd bifrost/frontend
+          npm install
+          VITE_ENABLE_RECOVERY=true npm run build
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start required infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose up -d postgres zookeeper kafka redis elasticsearch
+          for attempt in {1..30}; do
+            docker compose exec -T postgres pg_isready -U asgard >/dev/null 2>&1 && break
+            test "$attempt" -lt 30 || { docker compose logs postgres; exit 1; }
+            sleep 2
+          done
+          for attempt in {1..45}; do
+            docker compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1 && break
+            test "$attempt" -lt 45 || { docker compose logs kafka zookeeper; exit 1; }
+            sleep 2
+          done
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:9200/_cluster/health > m3-elasticsearch.json && break
+            test "$attempt" -lt 60 || { docker compose logs elasticsearch; exit 1; }
+            sleep 2
+          done
+
+      - name: Start real Ollama model
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name m3-ollama -p 11434:11434 ollama/ollama:latest
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:11434/api/tags > m3-ollama-tags.json && break
+            test "$attempt" -lt 30 || { docker logs m3-ollama; exit 1; }
+            sleep 2
+          done
+          docker exec m3-ollama ollama pull smollm:135m | tee m3-ollama-pull.log
+          curl --fail --silent http://127.0.0.1:11434/api/tags | grep -q 'smollm:135m'
+
+      - name: Start Heimdall and Bifrost
+        shell: bash
+        env:
+          SPRING_PROFILES_ACTIVE: dev
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/heimdall
+          SPRING_DATASOURCE_USERNAME: asgard
+          SPRING_DATASOURCE_PASSWORD: asgard_password
+          SPRING_KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
+          JWT_SECRET: m3-ci-jwt-secret-at-least-32-bytes-long
+          HEIMDALL_SECURITY_ADMIN_USERNAME: m3-operator
+          HEIMDALL_SECURITY_ADMIN_PASSWORD: m3-operator-password
+          HEIMDALL_SECURITY_ADMIN_ROLES: ADMIN,USER
+          HEIMDALL_ANALYSIS_AUTO_REQUEST: 'false'
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: '6379'
+          REDIS_PASSWORD: redis_password
+          GRPC_PORT: '9091'
+          KAFKA_ENABLED: 'true'
+          HEIMDALL_ENABLED: 'true'
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:9092
+          HEIMDALL_DATABASE_URL: postgresql://asgard:asgard_password@127.0.0.1:5432/heimdall
+          BIFROST_OLLAMA_URL: http://127.0.0.1:11434
+          BIFROST_OLLAMA_MODEL: smollm:135m
+          BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+          BIFROST_OLLAMA_NUM_PREDICT: '256'
+        run: |
+          set -euo pipefail
+          HEIMDALL_JAR=$(find heimdall/build/libs -maxdepth 1 -name 'heimdall-*.jar' -type f | head -n 1)
+          java -jar "$HEIMDALL_JAR" > m3-heimdall.log 2>&1 & echo $! > m3-heimdall.pid
+          python -m bifrost.main serve > m3-bifrost.log 2>&1 & echo $! > m3-bifrost.pid
+          for attempt in {1..90}; do
+            curl --fail --silent http://127.0.0.1:8080/actuator/health > m3-heimdall-health.json && break
+            test "$attempt" -lt 90 || { cat m3-heimdall.log; exit 1; }
+            sleep 2
+          done
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:8000/health > m3-bifrost-health.json && break
+            test "$attempt" -lt 60 || { cat m3-bifrost.log; exit 1; }
+            sleep 2
+          done
+
+      - name: Seed deterministic persisted FAILED job
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -H 'Content-Type: application/json' \
+            -d '{"username":"m3-operator","password":"m3-operator-password"}' \
+            http://127.0.0.1:8080/api/v1/auth/login > m3-login.json
+          TOKEN=$(python -c "import json; print(json.load(open('m3-login.json'))['token'])")
+          printf '%s' "$TOKEN" > m3-token.txt
+
+          cat > m3-input.json <<'JSON'
+          {"source":"m3-recovery-console-proof","serviceName":"operator-recovery-service","environment":"proof","severity":"ERROR","logContent":"2026-09-01T00:00:00Z ERROR operator-recovery-service deterministic synthetic failure seed","metadata":{"proof":"m3","synthetic":true}}
+          JSON
+          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data @m3-input.json http://127.0.0.1:8080/api/v1/logs > m3-ingest.json
+          LOG_ID=$(python -c "import json; print(json.load(open('m3-ingest.json'))['logId'])")
+          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            -H 'Idempotency-Key: m3-failed-v1' -H 'X-Trace-Id: m3-initial-trace' \
+            -d '{"idempotencyKey":"m3-failed-v1","modelPolicy":{"source":"local"}}' \
+            -X POST http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis > m3-accepted.json
+          JOB_ID=$(python -c "import json; print(json.load(open('m3-accepted.json'))['jobId'])")
+          echo "$JOB_ID" > m3-job-id.txt
+
+          kill "$(cat m3-bifrost.pid)"
+          wait "$(cat m3-bifrost.pid)" 2>/dev/null || true
+          docker compose exec -T kafka kafka-console-consumer --bootstrap-server kafka:29092 --topic analysis.request \
+            --group bifrost-consumer-group --timeout-ms 10000 --max-messages 1 > m3-request-drained.txt 2>&1 || true
+
+          python - <<'PY' > m3-dlq-event.json
+          import json
+          job_id = open('m3-job-id.txt').read().strip()
+          print(json.dumps({'schema_version':1,'job_id':job_id,'idempotency_key':'m3-failed-v1','error_code':'M3_DETERMINISTIC_FAILURE','error_message':'Deterministic M3 failure injected through existing dlq.failed contract','trace_id':'m3-failed-trace','original_topic':'analysis.request','original_partition':0,'original_offset':0,'payload':{'proof':'m3','synthetic':True}}))
+          PY
+          printf '%s:%s\n' "$JOB_ID" "$(cat m3-dlq-event.json)" | docker compose exec -T kafka kafka-console-producer \
+            --bootstrap-server kafka:29092 --topic dlq.failed --property parse.key=true --property key.separator=:
+
+          for attempt in {1..30}; do
+            curl --fail --silent -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > m3-failed-job.json
+            STATUS=$(python -c "import json; print(json.load(open('m3-failed-job.json'))['status'])")
+            [ "$STATUS" = 'FAILED' ] && break
+            sleep 2
+          done
+          python - <<'PY'
+          import json
+          job=json.load(open('m3-failed-job.json'))
+          assert job['status']=='FAILED', job
+          assert job['attemptCount']==0, job
+          assert job['errorCode']=='M3_DETERMINISTIC_FAILURE', job
+          PY
+
+          python -m bifrost.main serve > m3-bifrost.log 2>&1 & echo $! > m3-bifrost.pid
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:8000/health >/dev/null && break
+            test "$attempt" -lt 60 || { cat m3-bifrost.log; exit 1; }
+            sleep 2
+          done
+
+      - name: Run M3 browser proof
+        shell: bash
+        env:
+          VITE_ENABLE_RECOVERY: 'true'
+          M3_OPERATOR_USERNAME: m3-operator
+          M3_OPERATOR_PASSWORD: m3-operator-password
+        run: |
+          set -euo pipefail
+          cd bifrost/frontend
+          npm run dev -- --host 127.0.0.1 > ../../m3-frontend.log 2>&1 & echo $! > ../../m3-frontend.pid
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:3000/ >/dev/null && break
+            test "$attempt" -lt 30 || { cat ../../m3-frontend.log; exit 1; }
+            sleep 2
+          done
+          npx playwright test e2e/recovery-console.spec.js --reporter=line
+          cp m3-browser-evidence.json ../../m3-browser-evidence.json
+          cp m3-before-redrive.png ../../m3-before-redrive.png
+          cp m3-after-recovery.png ../../m3-after-recovery.png
+          cp m3-duplicate-skipped.png ../../m3-duplicate-skipped.png
+
+      - name: Capture persisted API evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f m3-token.txt ] && [ -f m3-job-id.txt ]; then
+            TOKEN=$(cat m3-token.txt)
+            JOB_ID=$(cat m3-job-id.txt)
+            curl --silent --show-error -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > m3-final-job.json || true
+            curl --silent --show-error -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID/redrive/audit > m3-audit.json || true
+          fi
+
+      - name: Verify synthetic-safe evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f m3-browser-evidence.json ]; then
+            python - <<'PY'
+          import json
+          e=json.load(open('m3-browser-evidence.json'))
+          assert e['status']=='PASS', e
+          assert e['initialStatus']=='FAILED' and e['initialAttempt']==0, e
+          assert e['recoveredStatus']=='SUCCEEDED' and e['recoveredAttempt']==1, e
+          assert e['duplicateOutcomeVisible']=='SKIPPED' and e['duplicateAttemptUnchanged'] is True, e
+          assert e['synthetic'] is True and e['cloudExecution'] is False, e
+          PY
+          fi
+          ! grep -R -E 'AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|Bearer [A-Za-z0-9._-]{20,}' m3-browser-evidence.json m3-*.png 2>/dev/null
+
+      - name: Upload M3 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v11-m3-recovery-console-evidence
+          if-no-files-found: warn
+          path: |
+            m3-browser-evidence.json
+            m3-final-job.json
+            m3-audit.json
+            m3-before-redrive.png
+            m3-after-recovery.png
+            m3-duplicate-skipped.png
