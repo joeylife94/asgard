@@ -1,27 +1,30 @@
 # ASGARD MASTER
 
-> **Authoritative v1.0 execution contract**
+> **Authoritative execution and progression contract**
 >
-> Single source of truth for Asgard v1.0 Proof. Current repository / Issue / PR / executable evidence overrides README claims, historical roadmap text, old portfolio positioning, and agent self-report.
+> Single source of truth for the frozen Asgard v1.0 Proof baseline and bounded post-v1.0 progression. Current repository / Issue / PR / executable evidence overrides README claims, historical roadmap text, old portfolio positioning, Scheduled Task prompt text, and agent self-report.
 
 ## 0. Control
 
-- **Target**: Asgard v1.0 — Wishket / Freelance Proof
-- **Target Level**: READY TO SHOW bounded software Proof
-- **Product Direction**: **Local-first AI Operations Platform**
-- **Current Phase**: v1.0 Proof — FREEZE
-- **Current Batch**: Human Review — CLOSED
-- **Current Status**: **ASGARD PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**
+- **Frozen Baseline**: Asgard v1.0 — Wishket / Freelance Proof
+- **Frozen Baseline Level**: READY TO SHOW bounded software Proof
+- **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
+- **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
+- **Current Phase**: Post-v1.0 Bounded Progression — M1 PLANNED
+- **Current Batch**: Progression Contract / Milestone Map
+- **Current Status**: **v1.0 FROZEN / VERIFIED BASELINE PRESERVED — POST-v1.0 PROGRESSION ENABLED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
 - **Accepted buyer-facing proof/docs main SHA**: `359b26e573e5da04b2d0ec406a56be7ecb508dbd`
-- **Active Issue**: none
-- **Active PR**: none
+- **Active Implementation Issue**: none
+- **Active Implementation PR**: none
+- **Selected Next Milestone**: M1 — Local Reproduction & First Job
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-08-31
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
+- **Post-v1.0 Gate**: **READY FOR FIRST BOUNDED IMPLEMENTATION ISSUE; M1 NOT VERIFIED**
 
 ---
 
@@ -49,6 +52,8 @@ Failure
 ```
 
 Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다.
+
+Post-v1.0의 목적은 이 검증된 lifecycle을 무한 확장하는 것이 아니라, **기술 운영자가 단일 로컬/서버 환경에 재현 가능하게 설치하고, 비동기 Local AI Job을 실행·조회·복구·감사하며 시스템 상태를 이해할 수 있는 usable operational tool로 발전시키는 것**이다.
 
 ---
 
@@ -85,6 +90,8 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 - legal GDPR or security certification
 
 Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0 requirement or accepted claim.**
+
+The v1.0 boundary is permanently preserved as a frozen verified baseline. Post-v1.0 progression must not rewrite historical v1.0 PASS claims, accepted evidence, or non-claims merely to make a later milestone look stronger.
 
 ---
 
@@ -170,7 +177,7 @@ Historical cloud code may remain in the repository. **Its existence does not mak
 - Playwright screenshot execution was GREEN after pinning browser locale to `en-US`; diagnostic execution proved prior browser boot failure came from CI locale `en-US@posix`, not failed JS/CSS asset delivery.
 - final artifact screenshot/text was inspected as synthetic-safe and contained no PII/secrets.
 - final durable artifact excludes the Heimdall debug process log; the archive was inspected for credential/token patterns.
-- dashboard `increase(...)` / rate-style window panels can show `0` for this very short single-event synthetic window even though the current Prometheus counter values are `1`. Therefore UC-05 proves the existing metrics/Grafana path and visible supported panels, **not production dashboard calibration or SLO maturity**.
+- dashboard `increase(...)` / rate-style window panels can show `0` for this very short single-event synthetic window even when the current Prometheus counter values are `1`. Therefore UC-05 proves the existing metrics/Grafana path and visible supported panels, **not production dashboard calibration or SLO maturity**.
 - `ai_job_duplicate_result_total` remains source/config-only in UC-05 and is not claimed as live-observed.
 
 ## Final Human Review / Buyer-facing Truthfulness — PASS
@@ -227,6 +234,8 @@ Historical cloud code may remain in the repository. **Its existence does not mak
 
 The public README has been reconciled to this boundary. ROADMAP, `PROJECT_COMPLETION.md`, old Bifrost docs, and historical portfolio text remain non-authoritative when they conflict with this Master or current accepted evidence.
 
+Post-v1.0 milestone acceptance may add new supported claims only when the new claim has its own executable acceptance evidence. It does not retroactively broaden v1.0.
+
 ---
 
 # 6. Known Risks / Holds
@@ -235,35 +244,39 @@ The public README has been reconciled to this boundary. ROADMAP, `PROJECT_COMPLE
 |---|---|---|
 | R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a future accepted requirement fails on it |
 | R-002 | broad Heimdall Checkstyle debt | pre-existing; no mass-fix without a required gate |
-| R-003 | startup script / proven CI invocation drift | evaluate only if a future required proof depends on it |
+| R-003 | startup script / proven CI invocation drift | M1 may address only the smallest concrete reproduction drift needed to establish the accepted local reproduction contract |
 | R-004 | README / historical docs may overclaim | **README CLOSED via Issue #23 / PR #24; historical docs remain non-authoritative context** |
 | R-005 | hosted CPU Ollama latency variability | no stable performance claims |
 | R-006 | ingestion auto-analysis may create extra job | remain explicit in evidence; do not hide |
-| R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker or accepted execution claim |
-| R-008 | duplicate routing generations | accepted `PolicyRouter` local-first path is proven; no refactor without new requirement |
+| R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker or automatic post-v1.0 progression target |
+| R-008 | duplicate routing generations | accepted `PolicyRouter` local-first path is proven; no refactor without a milestone requirement |
 | R-009 | agent self-report | never substitute for executed evidence |
 | R-010 | redrive audit pre-state correctness | CLOSED for accepted UC-04 bounded path (`FAILED / 0` proven) |
 | R-011 | short-window Grafana delta/rate panel semantics | UC-05 live counters are proven; do not generalize screenshot values into production observability claims |
 
-These known risks do not reopen the frozen v1.0 Proof unless a new paid-delivery requirement, explicit buyer objection, or separately approved Proof requirement makes one of them an Acceptance blocker.
+Known risks do not reopen or weaken the frozen v1.0 baseline. A risk may become active post-v1.0 work only when it blocks the currently selected bounded milestone or creates a reproducibility/reliability regression against an accepted path.
 
 ---
 
 # 7. Work Item / PR Lifecycle
 
 1. MASTER first.
-2. Current repository / Issue / PR / executed evidence overrides stale checkpoint text.
+2. Current repository / Issue / PR / executed evidence overrides stale checkpoint text and Scheduled Task self-report.
 3. One bounded implementation/proof Issue at a time.
 4. Active relevant PR first.
-5. RED → first concrete failure → smallest in-scope correction.
-6. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
-7. Reconcile this Master on `main` after merge.
-8. Re-evaluate closure before another Issue.
-9. Once Human Review / FREEZE is reached, do not manufacture automatic work.
+5. Define executable Acceptance Criteria before implementation.
+6. RED → first concrete failure → smallest in-scope correction.
+7. Exact-head GREEN + bounded diff + clean review/security → merge with expected-head guard.
+8. Close the Issue only after accepted evidence exists.
+9. Reconcile this Master on `main` after merge.
+10. Evaluate Milestone Acceptance before selecting another Issue.
+11. A frozen accepted milestone becomes a new preserved baseline slice; **FREEZE does not mean project development ends**.
+12. After each accepted milestone, return to Progression Review and select the next bounded milestone only when it has clear usability, reproducibility, reliability/recovery, observability/auditability, demonstrability, or delivery value.
+13. Do not manufacture work for activity. Existing asset reuse and small gap closure precede new implementation.
 
 ---
 
-# 8. Final Checkpoint
+# 8. Frozen v1.0 Checkpoint
 
 ## Result
 **UC-01 PASS / UC-02 PASS / UC-03 PASS / UC-04 PASS / UC-05 PASS / HUMAN REVIEW PASS / AWS-CLOUD DEFERRED.**
@@ -297,9 +310,316 @@ These known risks do not reopen the frozen v1.0 Proof unless a new paid-delivery
 - production observability calibration beyond the bounded proof conditions.
 
 ## Closure Evaluation
-The frozen v1.0 implementation, executable Proof, buyer-facing truthfulness, and Human Review criteria are complete. No mandatory automatic v1.0 gap remains.
+The frozen v1.0 implementation, executable Proof, buyer-facing truthfulness, and Human Review criteria are complete. No mandatory v1.0 gap remains.
 
 ## Exact Next Action
-**FREEZE / no automatic Asgard v1.0 implementation.**
+**Preserve v1.0 as a frozen verified baseline. Do not reopen v1.0 scope. Continue only through the bounded post-v1.0 progression contract below.**
 
-Reopen only when a new paid-delivery requirement, explicit Sales/Proof Requirement, buyer objection, reproducibility regression, or separately approved product decision creates one concrete bounded Acceptance gap.
+---
+
+# 9. Post-v1.0 Progression Contract
+
+## 9.1 Product Destination
+
+Post-v1.0 Asgard targets:
+
+> **A bounded, single-node Local AI Operations Tool that a technical operator can reproducibly deploy, use to submit and inspect asynchronous Local AI analysis jobs, recover supported failures, audit operator actions, and understand system health without requiring a cloud AI provider.**
+
+This destination is intentionally narrower than an enterprise AI platform.
+
+### Intended user
+- one technical operator or a small technical team using the same bounded environment;
+- developer / backend engineer / AI engineer / internal operator;
+- user can understand service health, jobs, failures, retries, and logs at a technical level.
+
+### Intended use
+- start the supported local stack;
+- submit or trigger an analysis job;
+- inspect job lifecycle and result;
+- identify supported failures;
+- perform controlled redrive where allowed;
+- inspect audit and trace information;
+- understand bounded system health;
+- hand the supported single-node setup to another technical operator with explicit constraints.
+
+## 9.2 Progression Axes — Priority Order
+
+Default priority:
+
+1. **Usability**
+2. **Reproducibility**
+3. **Reliability / Recovery**
+4. **Observability / Auditability**
+5. **Buyer-facing Demonstrability**
+6. **Delivery Readiness**
+7. **Maintainability / Security only when it blocks actual use or delivery**
+8. **New Capability only when the earlier axes cannot close the accepted gap**
+
+M1 intentionally starts with reproducibility because every later operator-facing milestone depends on a trustworthy clean start / first-job verification path. This is an enabling exception, not a reversal of the long-term priority order.
+
+## 9.3 Progression Loop
+
+```text
+Frozen Verified Baseline
+→ Progression Review
+→ Select one bounded milestone
+→ Create one implementation Issue
+→ Branch
+→ Implementation
+→ PR
+→ Exact-head Verification
+→ Merge
+→ Issue Close
+→ MASTER Reconciliation
+→ Milestone Acceptance / Freeze
+→ Progression Review
+```
+
+Rules:
+- only one active bounded implementation Issue per repository;
+- active relevant PR is always handled before new work;
+- milestone scope and executable acceptance are fixed before implementation;
+- accepted milestone evidence must record Changed / Executed / Verified / Not Verified / Known Limitations;
+- agent self-report is never Final Acceptance;
+- a later milestone must preserve already accepted v1.0 behavior unless the user explicitly approves a product-direction change;
+- technical HOLD / RED is a correction state, not a reason to stop progression;
+- no-op MASTER churn is prohibited.
+
+## 9.4 Automatic Scope Guardrails
+
+The Builder must not automatically select these as progression work:
+- AWS Bedrock / OIDC / IAM;
+- OpenAI / Gemini / other cloud-provider expansion;
+- multi-provider routing as a product goal;
+- Kubernetes / HA / autoscaling / multi-region;
+- multi-tenancy;
+- full RBAC / SSO / enterprise identity;
+- billing;
+- unattended autonomous operations;
+- broad RAG expansion;
+- feedback / experiment / MLflow / cache subsystems merely because historical code exists;
+- broad Checkstyle cleanup;
+- generic refactors without a current Acceptance blocker;
+- full admin-platform feature competition.
+
+Historical or unused assets may be reused only after proving that reuse is the smallest gap closure for the selected milestone. Existing code is not accepted functionality until executed and verified under that milestone.
+
+## 9.5 Builder Stop / Disable Conditions
+
+The existence of a frozen version, READY TO SHOW state, Human Review PASS, or accepted milestone **does not disable the progression Builder**.
+
+Builder disable / queue is allowed only when:
+- explicit user/product stop;
+- repository archived or superseded;
+- unsafe or material human product-direction decision is required before any bounded milestone can be selected;
+- external WIP cap requires `QUEUED — WIP CAP` rotation;
+- no useful bounded milestone remains within the defined destination and further work would be feature creep.
+
+---
+
+# 10. Post-v1.0 Milestone Map
+
+The map is directional. Only the selected milestone becomes active work. Later milestones must be re-reviewed against actual main state after every acceptance.
+
+## M1 — Local Reproduction & First Job
+
+### Why
+CI proves the stack can execute, but CI execution is not yet equivalent to a low-friction technical-operator reproduction path. A trustworthy clean-start contract reduces setup ambiguity and becomes reusable verification infrastructure for every later milestone.
+
+### Scope
+- clean-checkout supported environment contract;
+- explicit prerequisites and configuration preflight;
+- Local Ollama/model availability check;
+- smallest supported start path for required services;
+- health confirmation;
+- one deterministic sample input / analysis request;
+- real Local Ollama execution through the accepted Job lifecycle;
+- result / final Job state confirmation;
+- bounded teardown / reset guidance;
+- reuse existing scripts/workflows where possible before creating new machinery.
+
+### Executable Acceptance
+From a clean supported environment with declared prerequisites:
+1. preflight clearly PASSes or fail-fast identifies a missing prerequisite/configuration;
+2. required bounded services become healthy through the documented start path;
+3. a deterministic sample request creates a persistent Analysis Job;
+4. the request traverses Kafka → Bifrost → real Ollama;
+5. a non-fallback result is persisted and the Job reaches `SUCCEEDED`;
+6. operator-visible commands/output identify the Job and result;
+7. teardown leaves the documented bounded state;
+8. primary regression CI remains GREEN on the exact PR head.
+
+### Evidence
+- exact commands / environment preconditions;
+- preflight output;
+- health output;
+- Job ID / lifecycle output;
+- real Ollama/model evidence without secrets;
+- final result/state evidence;
+- exact-head CI/run links and artifact where durable evidence is useful;
+- Known Limitations and What Was Not Verified.
+
+### Stop Condition
+Stop when one clean supported reproduction path and first real Local AI Job are independently executable and exact-head verified. Do not add UI, cloud providers, HA, deployment orchestration, or unrelated cleanup in M1.
+
+**Current: PLANNED / NOT VERIFIED**
+
+---
+
+## M2 — Operator Console: Read-only Job Lifecycle
+
+### Why
+The backend has meaningful Job lifecycle APIs, while the current React surface is only a boot shell. The next usability gap is to let a technical operator understand current jobs without assembling API calls manually.
+
+### Scope
+- minimal recent Job list/read surface;
+- Job detail;
+- status / timestamps / attempt count;
+- result summary/payload or bounded error state;
+- failed-job visibility;
+- trace/result references that already exist in the backend;
+- smallest backend read API gap only if the current API cannot support the view.
+
+### Executable Acceptance
+- browser-visible Job list from real persisted data;
+- Job detail accurately matches backend persisted state;
+- successful Job result is inspectable;
+- failed Job state/error is inspectable;
+- no mutation/redrive control is introduced in M2;
+- Playwright or equivalent browser path verifies the bounded workflow;
+- existing v1.0 regression paths remain GREEN.
+
+### Evidence
+- browser screenshots/video where useful;
+- browser E2E log;
+- API/integration tests for any new read contract;
+- exact-head CI.
+
+### Stop Condition
+Stop when an operator can inspect the supported lifecycle without curl/manual DB inspection. Do not build a generic admin dashboard.
+
+**Current: FUTURE CANDIDATE / NOT STARTED**
+
+---
+
+## M3 — Controlled Recovery Operator Workflow
+
+### Why
+Backend redrive/audit is already strong proof, but real operator usability requires a controlled, understandable recovery workflow rather than hidden API-only mutation.
+
+### Scope
+- failed Job selection;
+- explicit redrive reason;
+- confirmation boundary;
+- supported rate-limit/error feedback;
+- attempt transition visibility;
+- duplicate-redrive behavior visibility;
+- redrive audit history in the bounded operator surface.
+
+### Executable Acceptance
+A deterministic failure can be observed in the operator surface, redriven through the authorized production endpoint, reach `SUCCEEDED`, and display the resulting audit record. Duplicate redrive must remain visible as bounded non-creation / `SKIPPED` behavior without silently mutating attempt state.
+
+### Evidence
+- browser E2E covering failure → redrive → success → audit;
+- API/integration regression evidence;
+- screenshot/video of the bounded operator path;
+- exact-head CI.
+
+### Stop Condition
+Stop when the already-accepted recovery semantics are safely usable through the minimal operator workflow. Do not add arbitrary write tools or autonomous retry control.
+
+**Current: FUTURE CANDIDATE / NOT STARTED**
+
+---
+
+## M4 — Runtime Resilience & Traceability
+
+### Why
+A single deterministic redrive proof does not establish behavior across process interruption or temporary service failure. Before stronger delivery claims, a small number of realistic lifecycle failure cases should be proven end to end.
+
+### Scope
+At milestone start, select only one or two concrete failure modes from current evidence, for example:
+- temporary Bifrost unavailability;
+- Heimdall/Bifrost restart around a persisted Job;
+- duplicate result/idempotency boundary;
+- Kafka interruption/recovery where the existing architecture supports a bounded deterministic proof.
+
+Do not attempt a comprehensive chaos/HA program.
+
+### Executable Acceptance
+Each selected failure mode must have a deterministic reproduction, explicit expected persisted state, recovery procedure or bounded fail-closed outcome, exact actual result, and no regression to accepted v1.0 lifecycle semantics.
+
+### Evidence
+- deterministic failure-injection steps;
+- Job/attempt/trace state before and after;
+- recovery/audit output;
+- exact-head integration proof;
+- known unsupported failure classes.
+
+### Stop Condition
+Stop after the selected bounded failure cases are accepted. Do not generalize into SLA/HA claims.
+
+**Current: FUTURE CANDIDATE / NOT STARTED**
+
+---
+
+## M5 — Single-node Delivery Handoff
+
+### Why
+A usable technical tool becomes delivery-relevant only when another technical operator can receive the supported deployment boundary and reproduce normal operation without private tribal knowledge.
+
+### Scope
+- supported single-node environment boundary;
+- prerequisites / configuration ownership;
+- start / stop / restart;
+- persistence expectations;
+- supported update/redeploy path if already practical;
+- bounded troubleshooting/runbook path;
+- explicit backup/restore boundary: either verified supported procedure or explicit NOT VERIFIED statement;
+- proof/reproduction command reference.
+
+### Executable Acceptance
+A clean independent handoff exercise can follow the documented supported path to start the system, run a real Local AI Job, inspect result/health, restart within the supported boundary, and identify known limitations without undocumented private steps.
+
+### Evidence
+- handoff checklist;
+- clean-environment execution log;
+- exact commands/config contract;
+- restart/persistence evidence for whatever is claimed;
+- unresolved risks and non-claims.
+
+### Stop Condition
+Stop when the defined single-node handoff is reproducible. Do not extend into production HA, Kubernetes, enterprise identity, or legal compliance unless a separate approved delivery requirement requires it.
+
+**Current: FUTURE CANDIDATE / NOT STARTED**
+
+---
+
+# 11. Current Post-v1.0 Progression Checkpoint
+
+## Decision
+- v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**.
+- Post-v1.0 destination is **Local AI Operations Tool**.
+- First bounded milestone is **M1 — Local Reproduction & First Job**.
+
+## Changed by this Contract
+- replaced the old interpretation that `v1.0 FREEZE` means automatic development termination;
+- preserved all accepted v1.0 evidence and claim boundaries;
+- established a bounded continuous progression loop;
+- established milestone-selection priorities and anti-sprawl guardrails;
+- defined M1 through M5 as directional milestone candidates;
+- selected M1 without claiming implementation or verification.
+
+## Executed / Verified for Post-v1.0
+- repository architecture, current `ASGARD_MASTER.md`, README, operator APIs, frontend boot shell, workflows, open work state, and recent main state were re-reviewed before this contract was defined;
+- no post-v1.0 product implementation has been executed by this contract change.
+
+## Not Verified
+- M1 acceptance;
+- low-friction clean-environment reproduction outside the already accepted CI proof conditions;
+- operator console usability;
+- broader runtime resilience;
+- delivery handoff.
+
+## Exact Next Action
+**After this contract is merged to `main`, create exactly one bounded M1 implementation Issue with the executable acceptance above. Do not start M2 or any other capability until M1 is accepted or explicitly HOLD/DEFERRED after evidence.**
