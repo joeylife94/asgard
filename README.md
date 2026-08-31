@@ -2,7 +2,7 @@
 
 Asgard is a bounded software Proof for operating asynchronous AI analysis jobs through a Java/Python event-driven stack.
 
-The accepted v1.0 Proof focuses on an **operable AI Job lifecycle**, not on the number of AI providers or on production-readiness claims.
+The accepted v1.0 implementation evidence focuses on an **operable AI Job lifecycle**, not on the number of AI providers or on production-readiness claims.
 
 ```text
 Input / Log
@@ -39,7 +39,7 @@ Accepted v1.0 use cases:
 | UC-04 Recovery | PASS | `FAILED` / DLQ → authorized redrive → audit → retry → `SUCCEEDED`, with duplicate-redrive visibility |
 | UC-05 Observability | PASS | bounded lifecycle counters observed through Prometheus and existing Grafana path rendered |
 
-Final buyer-facing wording remains subject to Human Review. The repository does **not** claim production readiness from these bounded proof runs.
+The current repository does **not** claim production readiness from these bounded proof runs. Final external-presentation acceptance is controlled by the Human Review gate in `ASGARD_MASTER.md`.
 
 ## Verified capability boundary
 
