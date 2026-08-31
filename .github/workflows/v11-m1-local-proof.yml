@@ -1,0 +1,74 @@
+name: v1.1 M1 Local Proof Runner
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/local-proof.sh'
+      - '.github/workflows/v11-m1-local-proof.yml'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'docker-compose.yml'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradlew'
+      - 'gradle/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate runner syntax
+        shell: bash
+        run: bash -n scripts/local-proof.sh
+
+      - name: Execute real Local-first proof
+        shell: bash
+        env:
+          ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/v11-m1-local-proof-summary.json
+        run: bash scripts/local-proof.sh
+
+      - name: Inspect synthetic-safe summary
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('v11-m1-local-proof-summary.json')
+          data = json.loads(path.read_text())
+          assert data['status'] == 'PASS', data
+          assert data['provider'] == 'ollama', data
+          assert data['synthetic'] is True, data
+          assert data['cloudExecution'] is False, data
+          text = path.read_text().lower()
+          for forbidden in ('authorization:', 'bearer ', 'jwt_secret', 'password'):
+              assert forbidden not in text, forbidden
+          print(json.dumps(data, ensure_ascii=False))
+          PY
+
+      - name: Upload local proof summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v11-m1-local-proof-summary
+          path: v11-m1-local-proof-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
