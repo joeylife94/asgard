@@ -157,7 +157,7 @@ The current Proof does **not** establish:
 
 - production readiness;
 - enterprise operational readiness;
-- legal GDPR or security compliance certification;
+- legal GDPR certification or security certification;
 - production SLA/SLO;
 - stable latency, throughput, or cost-saving percentages;
 - production Kubernetes, HA, autoscaling, or multi-region readiness;
