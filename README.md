@@ -27,7 +27,7 @@ Failure
 
 ## Proof status
 
-**Implementation / Proof Candidate Ready — Human Review Required**
+**ASGARD PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED**
 
 Accepted v1.0 use cases:
 
@@ -39,7 +39,7 @@ Accepted v1.0 use cases:
 | UC-04 Recovery | PASS | `FAILED` / DLQ → authorized redrive → audit → retry → `SUCCEEDED`, with duplicate-redrive visibility |
 | UC-05 Observability | PASS | bounded lifecycle counters observed through Prometheus and existing Grafana path rendered |
 
-The current repository does **not** claim production readiness from these bounded proof runs. Final external-presentation acceptance is controlled by the Human Review gate in `ASGARD_MASTER.md`.
+The current repository does **not** claim production readiness from these bounded proof runs. Human Review accepted this bounded external-presentation claim boundary; reopen only for a new concrete Sales/Proof requirement, buyer objection, or reproducibility regression.
 
 ## Verified capability boundary
 
