@@ -10,21 +10,23 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M1 PLANNED
-- **Current Batch**: Progression Contract / Milestone Map
-- **Current Status**: **v1.0 FROZEN / VERIFIED BASELINE PRESERVED — POST-v1.0 PROGRESSION ENABLED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M1 ACCEPTED / FROZEN
+- **Current Batch**: M1 — Local Reproduction & First Job — CLOSED
+- **Current Status**: **v1.0 FROZEN / VERIFIED BASELINE PRESERVED — M1 PASS / ACCEPTED / FROZEN — RETURN TO PROGRESSION REVIEW**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
 - **Accepted buyer-facing proof/docs main SHA**: `359b26e573e5da04b2d0ec406a56be7ecb508dbd`
+- **Accepted M1 exact PR head**: `0db87a1a1feb54bf677533d88516d72f3bda73ec`
+- **Accepted M1 merge main SHA**: `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M1 — Local Reproduction & First Job
+- **Selected Next Milestone**: none — Progression Review required before selecting the next bounded milestone
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-08-31
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **READY FOR FIRST BOUNDED IMPLEMENTATION ISSUE; M1 NOT VERIFIED**
+- **Post-v1.0 Gate**: **M1 PASS / ACCEPTED / FROZEN — NEXT: PROGRESSION REVIEW**
 
 ---
 
@@ -244,10 +246,10 @@ Post-v1.0 milestone acceptance may add new supported claims only when the new cl
 |---|---|---|
 | R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a future accepted requirement fails on it |
 | R-002 | broad Heimdall Checkstyle debt | pre-existing; no mass-fix without a required gate |
-| R-003 | startup script / proven CI invocation drift | M1 may address only the smallest concrete reproduction drift needed to establish the accepted local reproduction contract |
+| R-003 | startup script / proven CI invocation drift | **M1 CLOSED for the accepted bounded Linux reproduction path**; broader convenience remains out of scope until another accepted requirement needs it |
 | R-004 | README / historical docs may overclaim | **README CLOSED via Issue #23 / PR #24; historical docs remain non-authoritative context** |
-| R-005 | hosted CPU Ollama latency variability | no stable performance claims |
-| R-006 | ingestion auto-analysis may create extra job | remain explicit in evidence; do not hide |
+| R-005 | hosted CPU Ollama latency variability | M1/UC-03 proof harnesses use an explicit bounded generation option; no stable performance claims |
+| R-006 | ingestion auto-analysis may create extra job | M1/UC-02 proof processes isolate the explicit target Job; product-default behavior is not claimed changed |
 | R-007 | legacy AWS/Bedrock code remains | DEFER; not a v1.0 blocker or automatic post-v1.0 progression target |
 | R-008 | duplicate routing generations | accepted `PolicyRouter` local-first path is proven; no refactor without a milestone requirement |
 | R-009 | agent self-report | never substitute for executed evidence |
@@ -462,7 +464,7 @@ From a clean supported environment with declared prerequisites:
 ### Stop Condition
 Stop when one clean supported reproduction path and first real Local AI Job are independently executable and exact-head verified. Do not add UI, cloud providers, HA, deployment orchestration, or unrelated cleanup in M1.
 
-**Current: PLANNED / NOT VERIFIED**
+**Current: ACCEPTED / FROZEN — PASS**
 
 ---
 
@@ -599,27 +601,45 @@ Stop when the defined single-node handoff is reproducible. Do not extend into pr
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**.
-- Post-v1.0 destination is **Local AI Operations Tool**.
-- First bounded milestone is **M1 — Local Reproduction & First Job**.
+- Post-v1.0 destination remains **Local AI Operations Tool**.
+- M1 — Local Reproduction & First Job is **PASS / ACCEPTED / FROZEN**.
+- no next milestone is automatically active; return to Progression Review against current `main` before selecting another bounded Issue.
 
-## Changed by this Contract
-- replaced the old interpretation that `v1.0 FREEZE` means automatic development termination;
-- preserved all accepted v1.0 evidence and claim boundaries;
-- established a bounded continuous progression loop;
-- established milestone-selection priorities and anti-sprawl guardrails;
-- defined M1 through M5 as directional milestone candidates;
-- selected M1 without claiming implementation or verification.
+## Changed by M1
+- added `scripts/local-proof.sh` as one supported bounded Local-first reproduction command for Unix-like environments;
+- added `.github/workflows/v11-m1-local-proof.yml` with exact-head execution, PASS artifact, and failure diagnostics;
+- protected caller-owned work directories from recursive cleanup and reject non-empty caller-owned directories before mutation;
+- removed tracked `gradlew` executable-bit mutation from the runner by invoking it through `bash`;
+- added opt-in `BIFROST_OLLAMA_NUM_PREDICT` generation bounds without changing default product inference behavior;
+- bounded M1 and UC-03 hosted proof generation to remove stochastic runaway output;
+- isolated the UC-02 proof target Job from ingestion auto-analysis only inside the proof process and kept its hosted polling window bounded;
+- did not add UI, cloud execution, Kubernetes/HA, RAG expansion, production claims, or broad Checkstyle cleanup.
 
-## Executed / Verified for Post-v1.0
-- repository architecture, current `ASGARD_MASTER.md`, README, operator APIs, frontend boot shell, workflows, open work state, and recent main state were re-reviewed before this contract was defined;
-- no post-v1.0 product implementation has been executed by this contract change.
+## Actually Executed / Verified for M1
+- Issue #25 — **CLOSED / COMPLETED**.
+- PR #30 — **SQUASH MERGED** with expected-head guard.
+- accepted exact PR head: `0db87a1a1feb54bf677533d88516d72f3bda73ec`.
+- merge main SHA: `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`.
+- primary `CI` run `33399015985` (#132): **SUCCESS**.
+- M1 Local Proof Runner run `33399015962` (#11): **SUCCESS**.
+- UC-02 real Local AI run `33399016060` (#30): **SUCCESS**.
+- UC-03 Local-first Policy run `33399016019` (#9): **SUCCESS**.
+- UC-04 Recovery run `33399015968` (#21): **SUCCESS**.
+- M1 artifact `9760584618`, digest `sha256:f8011b67f5c49a87ddef93356295d403d37d4dc731b82811bfe087c2399c361`, was directly inspected and records `status=PASS`, `provider=ollama`, `model=smollm:135m`, persistent Job/Log/Analysis IDs, `synthetic=true`, and `cloudExecution=false` without credential material in the summary.
+- supporting UC-02 artifact `9760764140`, digest `sha256:fc38cec2e4b364b335d699dbbd280b6c848a121d9aeae1865eb3d663095bd12f`.
+- supporting UC-03 artifact `9760508364`, digest `sha256:487b928ffe89e880e2f39acd98ed03c0797ccc32c4d06e3e27fcca665ee6aa5e`.
+- automated review findings for caller-owned work-dir deletion and tracked `gradlew` mode mutation were corrected, replied to, and both review threads are resolved.
+- `CI/CD Pipeline` run `33399016089` (#149) remains **RED only on the pre-existing broad Heimdall Checkstyle gate**: `checkstyleMain` reported 41 files / 111 warnings / 2 info. The same run has Bifrost build/test, Dependency Security, Code Quality, and CI/CD Summary GREEN. M1 changes no Java source and does not claim this debt resolved.
 
-## Not Verified
-- M1 acceptance;
-- low-friction clean-environment reproduction outside the already accepted CI proof conditions;
-- operator console usability;
-- broader runtime resilience;
-- delivery handoff.
+## Not Verified / Known Limitations
+- macOS was not independently executed; accepted M1 executable evidence is GitHub-hosted Linux;
+- existing Windows scripts were not replaced;
+- hosted CPU Ollama latency remains variable and no latency/throughput/cost/SLA/SLO claim is added;
+- production readiness, production HA/Kubernetes, cloud-provider execution, enterprise identity, and full admin-console behavior remain outside the accepted boundary;
+- M2 operator-console usability, M3 operator recovery UI, M4 broader runtime resilience, and M5 independent delivery handoff remain NOT VERIFIED.
+
+## Closure Evaluation
+M1 satisfies its bounded executable acceptance: a supported clean-path runner performs preflight, service readiness, one persistent Job, Kafka → Bifrost → real Ollama execution, persisted non-fallback result, operator-visible identifiers, and bounded cleanup with exact-head regression evidence. **M1 is therefore accepted and frozen as a new post-v1.0 baseline slice.** This FREEZE does not terminate Asgard progression.
 
 ## Exact Next Action
-**After this contract is merged to `main`, create exactly one bounded M1 implementation Issue with the executable acceptance above. Do not start M2 or any other capability until M1 is accepted or explicitly HOLD/DEFERRED after evidence.**
+**Return to Progression Review. Re-read current `main`, preserve v1.0 + M1 accepted evidence, and select exactly one next bounded milestone only if it closes a concrete usability/reliability/observability/delivery gap. M2 is the current directional candidate because operator usability is the highest remaining product gap, but it must not be treated as active work until the Progression Review confirms it.**
