@@ -123,6 +123,9 @@ jobs:
           HEIMDALL_SECURITY_ADMIN_USERNAME: admin
           HEIMDALL_SECURITY_ADMIN_PASSWORD: p1-b1-admin-password
           HEIMDALL_SECURITY_ADMIN_ROLES: ADMIN,USER
+          # UC-02 creates the target Job explicitly. Disable ingestion auto-request
+          # only in this proof process so one long local inference cannot starve it.
+          HEIMDALL_ANALYSIS_AUTO_REQUEST: 'false'
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: '6379'
           REDIS_PASSWORD: redis_password
@@ -235,7 +238,9 @@ jobs:
           echo "$JOB_ID" | tee p1-b1-job-id.txt
 
           final_status=''
-          for attempt in {1..120}; do
+          # Hosted CPU Ollama latency is variable. This is a tolerance window,
+          # not a performance/SLA claim. Keep the job-level workflow timeout bounded.
+          for attempt in {1..180}; do
             curl --fail --silent --show-error \
               -H "Authorization: Bearer $TOKEN" \
               http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > p1-b1-job.json

@@ -21,6 +21,9 @@ jobs:
       BIFROST_OLLAMA_URL: http://127.0.0.1:11434
       BIFROST_OLLAMA_MODEL: smollm:135m
       BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+      # Keep this proof deterministic on hosted CPU runners without changing
+      # product defaults or making a latency/performance claim.
+      BIFROST_OLLAMA_NUM_PREDICT: '256'
 
     steps:
       - name: Checkout

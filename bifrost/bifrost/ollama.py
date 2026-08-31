@@ -77,6 +77,19 @@ class OllamaClient:
             "yes",
         )
 
+    def _generation_options(self) -> Dict[str, int]:
+        """Return explicitly configured Ollama generation bounds without changing defaults."""
+        raw_num_predict = os.getenv("BIFROST_OLLAMA_NUM_PREDICT", "").strip()
+        if not raw_num_predict:
+            return {}
+        try:
+            num_predict = int(raw_num_predict)
+        except ValueError as exc:
+            raise ValueError("BIFROST_OLLAMA_NUM_PREDICT must be a positive integer") from exc
+        if num_predict <= 0:
+            raise ValueError("BIFROST_OLLAMA_NUM_PREDICT must be a positive integer")
+        return {"num_predict": num_predict}
+
     def _is_model_not_found(self, error: Exception) -> bool:
         if not isinstance(error, requests.exceptions.HTTPError):
             return False
@@ -118,6 +131,8 @@ class OllamaClient:
             "prompt": prompt,
             "stream": False,
         }
+        if options := self._generation_options():
+            payload["options"] = options
         
         start_time = time.time()
         response = requests.post(
@@ -148,6 +163,8 @@ class OllamaClient:
             "prompt": prompt,
             "stream": True,
         }
+        if options := self._generation_options():
+            payload["options"] = options
         
         start_time = time.time()
         response = requests.post(
