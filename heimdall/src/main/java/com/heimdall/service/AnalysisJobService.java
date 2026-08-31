@@ -160,6 +160,11 @@ public class AnalysisJobService {
     }
 
     @Transactional(readOnly = true)
+    public Page<AnalysisJob> listRecent(Pageable pageable) {
+        return analysisJobRepository.findAllByOrderByCreatedAtDesc(pageable);
+    }
+
+    @Transactional(readOnly = true)
     public Page<AnalysisJob> listFailed(Pageable pageable) {
         return analysisJobRepository.findByStatusOrderByCreatedAtDesc(AnalysisJob.Status.FAILED, pageable);
     }

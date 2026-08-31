@@ -14,5 +14,7 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, UUID> 
 
     Optional<AnalysisJob> findByIdempotencyKey(String idempotencyKey);
 
+    Page<AnalysisJob> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
     Page<AnalysisJob> findByStatusOrderByCreatedAtDesc(AnalysisJob.Status status, Pageable pageable);
 }
