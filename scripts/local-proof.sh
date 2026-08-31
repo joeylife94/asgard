@@ -156,7 +156,9 @@ export HEIMDALL_ANALYSIS_AUTO_REQUEST=false
 export REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=redis_password GRPC_PORT=9091
 export KAFKA_ENABLED=true HEIMDALL_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
 export HEIMDALL_DATABASE_URL=postgresql://asgard:asgard_password@127.0.0.1:5432/heimdall
-export BIFROST_OLLAMA_URL=http://127.0.0.1:11434 BIFROST_OLLAMA_MODEL="$MODEL" BIFROST_OLLAMA_ALLOW_FALLBACK=false
+# Bound generation only for the reproducibility proof. Production/default behavior is unchanged
+# unless this opt-in environment variable is explicitly set.
+export BIFROST_OLLAMA_URL=http://127.0.0.1:11434 BIFROST_OLLAMA_MODEL="$MODEL" BIFROST_OLLAMA_ALLOW_FALLBACK=false BIFROST_OLLAMA_NUM_PREDICT=256
 java -jar "$HEIMDALL_JAR" > "$WORK_DIR/heimdall.log" 2>&1 & HEIMDALL_PID=$!
 "$WORK_DIR/venv/bin/python" -m bifrost.main serve > "$WORK_DIR/bifrost.log" 2>&1 & BIFROST_PID=$!
 wait_http "Heimdall" "http://127.0.0.1:8080/actuator/health" 90
