@@ -123,6 +123,9 @@ jobs:
           HEIMDALL_SECURITY_ADMIN_USERNAME: admin
           HEIMDALL_SECURITY_ADMIN_PASSWORD: p1-b1-admin-password
           HEIMDALL_SECURITY_ADMIN_ROLES: ADMIN,USER
+          # UC-02 creates the target Job explicitly. Disable ingestion auto-request
+          # only in this proof process so one long local inference cannot starve it.
+          HEIMDALL_ANALYSIS_AUTO_REQUEST: 'false'
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: '6379'
           REDIS_PASSWORD: redis_password
