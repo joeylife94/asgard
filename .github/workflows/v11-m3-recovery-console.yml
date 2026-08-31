@@ -172,6 +172,18 @@ jobs:
           assert job['errorCode']=='M3_DETERMINISTIC_FAILURE', job
           PY
 
+          # The analysis creation API necessarily enqueues the original request. Consume exactly
+          # that seed request with Bifrost's real consumer group before starting Bifrost so the
+          # browser proof can only succeed after the operator-triggered redrive publishes retry work.
+          docker compose exec -T kafka kafka-console-consumer \
+            --bootstrap-server kafka:29092 \
+            --topic analysis.request \
+            --group bifrost-consumer-group \
+            --from-beginning \
+            --max-messages 1 \
+            --timeout-ms 30000 > m3-drained-seed-request.json
+          test -s m3-drained-seed-request.json
+
           python -m bifrost.main serve > m3-bifrost.log 2>&1 & echo $! > m3-bifrost.pid
           for attempt in {1..60}; do
             curl --fail --silent http://127.0.0.1:8000/health >/dev/null && break
