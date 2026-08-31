@@ -11,7 +11,13 @@ MODEL="${ASGARD_PROOF_MODEL:-smollm:135m}"
 OUTPUT="${ASGARD_PROOF_OUTPUT:-$ROOT_DIR/local-proof-summary.json}"
 EVIDENCE_DIR="${ASGARD_PROOF_EVIDENCE_DIR:-$ROOT_DIR/local-proof-evidence}"
 KEEP="${ASGARD_PROOF_KEEP:-0}"
-WORK_DIR="${ASGARD_PROOF_WORK_DIR:-$(mktemp -d)}"
+if [[ -n "${ASGARD_PROOF_WORK_DIR:-}" ]]; then
+  WORK_DIR="$ASGARD_PROOF_WORK_DIR"
+  OWN_WORK_DIR=0
+else
+  WORK_DIR="$(mktemp -d)"
+  OWN_WORK_DIR=1
+fi
 OWN_OLLAMA=0
 HEIMDALL_PID=""
 BIFROST_PID=""
@@ -48,7 +54,11 @@ cleanup() {
     [[ -n "$BIFROST_PID" ]] && kill "$BIFROST_PID" 2>/dev/null || true
     [[ "$OWN_OLLAMA" == "1" ]] && docker rm -f "$PROOF_ID-ollama" >/dev/null 2>&1 || true
     docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
-    rm -rf "$WORK_DIR"
+    if [[ "$OWN_WORK_DIR" == "1" ]]; then
+      rm -rf "$WORK_DIR"
+    else
+      log "caller-owned work dir retained at $WORK_DIR"
+    fi
   else
     log "KEEP=1; work dir retained at $WORK_DIR"
   fi
@@ -72,6 +82,12 @@ wait_http() {
 }
 
 STAGE="preflight"
+if [[ "$OWN_WORK_DIR" == "0" ]]; then
+  mkdir -p "$WORK_DIR" || fail "cannot create ASGARD_PROOF_WORK_DIR: $WORK_DIR"
+  if find "$WORK_DIR" -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
+    fail "ASGARD_PROOF_WORK_DIR must be empty; refusing to modify caller-owned content: $WORK_DIR"
+  fi
+fi
 for cmd in docker java python3 curl; do need_cmd "$cmd"; done
 docker info >/dev/null 2>&1 || fail "Docker daemon is not available"
 docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is required"
@@ -90,8 +106,7 @@ done
 log "preflight PASS (Java 21, Python, Docker, Compose, curl)"
 
 STAGE="build"
-chmod +x ./gradlew
-./gradlew :heimdall:bootJar --no-daemon --console=plain
+bash ./gradlew :heimdall:bootJar --no-daemon --console=plain
 "$WORK_DIR/venv/bin/python" -m pip install --quiet --upgrade pip setuptools wheel
 "$WORK_DIR/venv/bin/python" -m pip install --quiet -r bifrost/requirements.txt
 "$WORK_DIR/venv/bin/python" -m pip install --quiet -e bifrost
