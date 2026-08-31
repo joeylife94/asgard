@@ -113,6 +113,9 @@ export JWT_SECRET=local-proof-jwt-secret-at-least-32-bytes-long
 export HEIMDALL_SECURITY_ADMIN_USERNAME=admin
 export HEIMDALL_SECURITY_ADMIN_PASSWORD=local-proof-admin-password
 export HEIMDALL_SECURITY_ADMIN_ROLES=ADMIN,USER
+# M1 proves one explicit operator-requested Job. Disable ingestion auto-request only
+# in this proof process so the deterministic Job does not compete for local Ollama.
+export HEIMDALL_ANALYSIS_AUTO_REQUEST=false
 export REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=redis_password GRPC_PORT=9091
 export KAFKA_ENABLED=true HEIMDALL_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
 export HEIMDALL_DATABASE_URL=postgresql://asgard:asgard_password@127.0.0.1:5432/heimdall
