@@ -121,7 +121,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m bifrost.main serve > m4-bifrost-first.log 2>&1 & echo $! > m4-bifrost-first.pid
+          python -m uvicorn bifrost.api:app --host 0.0.0.0 --port 8000 > m4-bifrost-first.log 2>&1 & echo $! > m4-bifrost-first.pid
           PID=$(cat m4-bifrost-first.pid)
           for attempt in {1..90}; do
             grep -q 'Processing analysis request' m4-bifrost-first.log && break
@@ -132,12 +132,15 @@ jobs:
           kill -9 "$PID"
           wait "$PID" 2>/dev/null || true
           printf 'pid=%s\nkill=SIGKILL\n' "$PID" > m4-restart-event.txt
+          sleep 1
+          ! kill -0 "$PID" 2>/dev/null
+          ! curl --fail --silent http://127.0.0.1:8000/health >/dev/null 2>&1
           ! grep -q 'Analysis request processed successfully' m4-bifrost-first.log
       - name: Restart Bifrost and await persisted success
         shell: bash
         run: |
           set -euo pipefail
-          python -m bifrost.main serve > m4-bifrost-second.log 2>&1 & echo $! > m4-bifrost-second.pid
+          python -m uvicorn bifrost.api:app --host 0.0.0.0 --port 8000 > m4-bifrost-second.log 2>&1 & echo $! > m4-bifrost-second.pid
           for attempt in {1..90}; do
             curl --fail --silent http://127.0.0.1:8000/health >/dev/null && break
             test "$attempt" -lt 90 || { cat m4-bifrost-second.log; exit 1; }
@@ -162,8 +165,9 @@ jobs:
             'status':'PASS','jobId':final.get('jobId') or final.get('id'),
             'preInterruptionStatus':pre.get('status'),'finalStatus':final.get('status'),
             'resultRef':result_ref,'firstProcessObserved':True,
-            'firstProcessKilledBeforeSuccessLog':True,'replayedAfterRestart':True,
-            'finalPersistedResultVisible':True,'synthetic':True,'cloudExecution':False,
+            'firstProcessKilledBeforeSuccessLog':True,'firstProcessConfirmedDown':True,
+            'replayedAfterRestart':True,'finalPersistedResultVisible':True,
+            'synthetic':True,'cloudExecution':False,
             'limitations':['single-node bounded SIGKILL/restart proof only','no HA/SLA/SLO claim','no Kafka outage or multi-node failover'],
           }
           json.dump(evidence, open('m4-evidence.json','w'), indent=2)
@@ -181,6 +185,7 @@ jobs:
           assert e['finalStatus']=='SUCCEEDED'
           assert e['resultRef'] is not None
           assert e['firstProcessKilledBeforeSuccessLog'] is True
+          assert e['firstProcessConfirmedDown'] is True
           assert e['replayedAfterRestart'] is True
           assert e['synthetic'] is True and e['cloudExecution'] is False
           PY
