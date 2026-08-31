@@ -9,18 +9,40 @@ PROOF_ID="${ASGARD_PROOF_ID:-local-proof-$$}"
 COMPOSE_PROJECT="asgard-proof-${PROOF_ID//[^a-zA-Z0-9_-]/-}"
 MODEL="${ASGARD_PROOF_MODEL:-smollm:135m}"
 OUTPUT="${ASGARD_PROOF_OUTPUT:-$ROOT_DIR/local-proof-summary.json}"
+EVIDENCE_DIR="${ASGARD_PROOF_EVIDENCE_DIR:-$ROOT_DIR/local-proof-evidence}"
 KEEP="${ASGARD_PROOF_KEEP:-0}"
 WORK_DIR="${ASGARD_PROOF_WORK_DIR:-$(mktemp -d)}"
 OWN_OLLAMA=0
 HEIMDALL_PID=""
 BIFROST_PID=""
+JOB_ID=""
+FINAL_STATUS=""
+POLL_ATTEMPT=0
 
 log() { printf '[asgard-proof] %s\n' "$*"; }
 fail() { printf '[asgard-proof] FAIL stage=%s: %s\n' "$STAGE" "$*" >&2; exit 1; }
 
+preserve_failure_evidence() {
+  local rc=$1
+  mkdir -p "$EVIDENCE_DIR" 2>/dev/null || return 0
+  printf '{\n  "proof": "v1.1-m1-local-proof",\n  "status": "FAIL",\n  "exitCode": %s,\n  "stage": "%s",\n  "proofId": "%s",\n  "model": "%s",\n  "jobId": "%s",\n  "finalJobStatus": "%s",\n  "pollAttempt": %s\n}\n' \
+    "$rc" "$STAGE" "$PROOF_ID" "$MODEL" "$JOB_ID" "$FINAL_STATUS" "$POLL_ATTEMPT" \
+    > "$EVIDENCE_DIR/failure-context.json" 2>/dev/null || true
+  for name in heimdall.log bifrost.log ollama-pull.json job-final.json; do
+    [[ -f "$WORK_DIR/$name" ]] && cp "$WORK_DIR/$name" "$EVIDENCE_DIR/$name" 2>/dev/null || true
+  done
+  if [[ "$OWN_OLLAMA" == "1" ]]; then
+    docker logs "$PROOF_ID-ollama" > "$EVIDENCE_DIR/ollama.log" 2>&1 || true
+  fi
+  log "failure diagnostics retained at $EVIDENCE_DIR"
+}
+
 cleanup() {
   local rc=$?
   set +e
+  if [[ "$rc" != "0" ]]; then
+    preserve_failure_evidence "$rc"
+  fi
   if [[ "$KEEP" != "1" ]]; then
     [[ -n "$HEIMDALL_PID" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
     [[ -n "$BIFROST_PID" ]] && kill "$BIFROST_PID" 2>/dev/null || true
@@ -141,9 +163,10 @@ ACCEPTED_JSON="$(curl --fail --silent --show-error -H "Authorization: Bearer $TO
   -d "{\"idempotencyKey\":\"$IDEMP\",\"modelPolicy\":{\"source\":\"local\"}}" \
   -X POST "http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis")"
 JOB_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["jobId"])' <<<"$ACCEPTED_JSON")"
-FINAL_STATUS=""
 for i in {1..180}; do
+  POLL_ATTEMPT=$i
   JOB_JSON="$(curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID")"
+  printf '%s\n' "$JOB_JSON" > "$WORK_DIR/job-final.json"
   FINAL_STATUS="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$JOB_JSON")"
   [[ "$FINAL_STATUS" == "SUCCEEDED" ]] && break
   [[ "$FINAL_STATUS" == "FAILED" ]] && fail "analysis job failed: $JOB_ID"
