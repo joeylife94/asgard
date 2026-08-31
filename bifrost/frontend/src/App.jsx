@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const API_BASE = (import.meta.env.VITE_HEIMDALL_API_URL || 'http://localhost:8080').replace(/\/$/, '')
+const RECOVERY_ENABLED = import.meta.env.VITE_ENABLE_RECOVERY === 'true'
 
 function formatTimestamp(value) {
   if (!value) return '—'
@@ -31,7 +32,9 @@ async function request(path, options = {}, token = null) {
   if (!response.ok) {
     const message = typeof body === 'object' && body?.error
       ? body.error
-      : `Request failed (${response.status})`
+      : response.status === 429
+        ? 'Redrive rate limit exceeded. Try again later.'
+        : `Request failed (${response.status})`
     throw new Error(message)
   }
 
@@ -88,7 +91,100 @@ function Login({ onLogin, busy, error }) {
   )
 }
 
-function JobDetail({ job, loading }) {
+function AuditHistory({ audits }) {
+  if (!RECOVERY_ENABLED) return null
+
+  return (
+    <div className="audit-block" data-testid="redrive-audit">
+      <h3>Redrive audit</h3>
+      {audits.length === 0 ? (
+        <p className="empty-audit">No redrive audit entries for this job.</p>
+      ) : (
+        <div className="audit-list">
+          {audits.map((audit) => (
+            <article className="audit-row" key={audit.id} data-testid={`audit-${audit.outcome}`}>
+              <div className="audit-heading">
+                <strong>{audit.outcome}</strong>
+                <span>{formatTimestamp(audit.performedAt)}</span>
+              </div>
+              <p>Previous: {audit.previousStatus || '—'} / attempt {audit.previousAttemptCount ?? '—'}</p>
+              <p>Reason: {audit.reason || '—'}</p>
+              <p>Operator: {audit.performedBy || '—'}</p>
+              {audit.errorMessage ? <p className="audit-error">{audit.errorMessage}</p> : null}
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RecoveryPanel({ job, audits, busy, onRedrive }) {
+  const [reason, setReason] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
+
+  useEffect(() => {
+    setReason('')
+    setConfirmed(false)
+  }, [job?.jobId])
+
+  if (!RECOVERY_ENABLED || !job) return null
+
+  const hasRecoveryAudit = audits.some((audit) => audit.outcome === 'SUCCESS')
+  const canRecover = job.status === 'FAILED'
+  const canVerifyDuplicate = job.status === 'SUCCEEDED' && hasRecoveryAudit
+
+  if (!canRecover && !canVerifyDuplicate) return null
+
+  const actionLabel = canRecover ? 'Redrive failed job' : 'Verify duplicate redrive'
+  const disabled = busy || !reason.trim() || !confirmed
+
+  async function submit(event) {
+    event.preventDefault()
+    await onRedrive(reason.trim())
+    setReason('')
+    setConfirmed(false)
+  }
+
+  return (
+    <form className="recovery-panel" onSubmit={submit} data-testid="recovery-panel">
+      <div>
+        <p className="section-label">Controlled recovery</p>
+        <h3>{actionLabel}</h3>
+        <p className="recovery-copy">
+          {canRecover
+            ? 'This sends one authorized retry through the existing recovery path.'
+            : 'This intentionally calls redrive again to confirm the backend records SKIPPED without incrementing attempts.'}
+        </p>
+      </div>
+      <label className="reason-field">
+        Operator reason
+        <textarea
+          data-testid="redrive-reason"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          rows="3"
+          placeholder="Why is this redrive being performed?"
+          required
+        />
+      </label>
+      <label className="confirmation-field">
+        <input
+          data-testid="redrive-confirmation"
+          type="checkbox"
+          checked={confirmed}
+          onChange={(event) => setConfirmed(event.target.checked)}
+        />
+        <span>I confirm this is an explicit operator recovery action for this selected job.</span>
+      </label>
+      <button className="danger-button" data-testid="redrive-button" type="submit" disabled={disabled}>
+        {busy ? 'Executing…' : actionLabel}
+      </button>
+    </form>
+  )
+}
+
+function JobDetail({ job, loading, audits, recoveryBusy, onRedrive }) {
   if (loading) {
     return <section className="detail-panel" data-testid="job-detail">Loading job detail…</section>
   }
@@ -119,7 +215,7 @@ function JobDetail({ job, loading }) {
         <div><dt>Created</dt><dd>{formatTimestamp(job.createdAt)}</dd></div>
         <div><dt>Started</dt><dd>{formatTimestamp(job.startedAt)}</dd></div>
         <div><dt>Finished</dt><dd>{formatTimestamp(job.finishedAt)}</dd></div>
-        <div><dt>Attempt</dt><dd>{job.attemptCount ?? 0}</dd></div>
+        <div><dt>Attempt</dt><dd data-testid="job-attempt">{job.attemptCount ?? 0}</dd></div>
         <div><dt>Log ID</dt><dd>{job.logId ?? '—'}</dd></div>
         <div><dt>Result ref</dt><dd>{job.resultRef ?? '—'}</dd></div>
         <div className="wide"><dt>Trace ID</dt><dd>{job.traceId || '—'}</dd></div>
@@ -141,6 +237,9 @@ function JobDetail({ job, loading }) {
           <p>{job.errorMessage || 'No error message was persisted.'}</p>
         </div>
       ) : null}
+
+      <RecoveryPanel job={job} audits={audits} busy={recoveryBusy} onRedrive={onRedrive} />
+      <AuditHistory audits={audits} />
     </section>
   )
 }
@@ -151,8 +250,10 @@ export default function App() {
   const [jobs, setJobs] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [selectedJob, setSelectedJob] = useState(null)
+  const [audits, setAudits] = useState([])
   const [busy, setBusy] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
   const [error, setError] = useState(null)
 
   const selectedListJob = useMemo(
@@ -167,6 +268,18 @@ export default function App() {
     setSelectedId((current) => current && content.some((job) => job.jobId === current)
       ? current
       : content[0]?.jobId || null)
+  }, [])
+
+  const loadSelected = useCallback(async (activeToken, jobId) => {
+    const job = await request(`/api/v1/analysis/jobs/${jobId}`, {}, activeToken)
+    setSelectedJob(job)
+    if (RECOVERY_ENABLED) {
+      const history = await request(`/api/v1/analysis/jobs/${jobId}/redrive/audit`, {}, activeToken)
+      setAudits(Array.isArray(history) ? history : [])
+    } else {
+      setAudits([])
+    }
+    return job
   }, [])
 
   async function login(nextUsername, password) {
@@ -196,6 +309,7 @@ export default function App() {
     setError(null)
     try {
       await loadJobs(token)
+      if (selectedId) await loadSelected(token, selectedId)
     } catch (nextError) {
       setError(nextError.message)
     } finally {
@@ -203,17 +317,64 @@ export default function App() {
     }
   }
 
+  async function redrive(reason) {
+    if (!token || !selectedId) return
+    setRecoveryBusy(true)
+    setError(null)
+    try {
+      const beforeAttempt = selectedJob?.attemptCount ?? selectedListJob?.attemptCount ?? 0
+      await request(`/api/v1/analysis/jobs/${selectedId}/redrive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      }, token)
+
+      let latest = null
+      for (let attempt = 0; attempt < 180; attempt += 1) {
+        latest = await request(`/api/v1/analysis/jobs/${selectedId}`, {}, token)
+        setSelectedJob(latest)
+        if (latest.status === 'SUCCEEDED' || latest.status === 'FAILED') break
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+      }
+
+      await loadJobs(token)
+      await loadSelected(token, selectedId)
+
+      if (latest?.status === 'SUCCEEDED' && latest.attemptCount < beforeAttempt) {
+        throw new Error('Persisted attempt count regressed after redrive.')
+      }
+    } catch (nextError) {
+      setError(nextError.message)
+      try {
+        await loadSelected(token, selectedId)
+      } catch {
+        // Preserve the primary redrive failure for the operator.
+      }
+    } finally {
+      setRecoveryBusy(false)
+    }
+  }
+
   useEffect(() => {
     if (!token || !selectedId) {
       setSelectedJob(null)
+      setAudits([])
       return
     }
 
     let cancelled = false
     setDetailLoading(true)
-    request(`/api/v1/analysis/jobs/${selectedId}`, {}, token)
-      .then((job) => {
-        if (!cancelled) setSelectedJob(job)
+    Promise.all([
+      request(`/api/v1/analysis/jobs/${selectedId}`, {}, token),
+      RECOVERY_ENABLED
+        ? request(`/api/v1/analysis/jobs/${selectedId}/redrive/audit`, {}, token)
+        : Promise.resolve([]),
+    ])
+      .then(([job, history]) => {
+        if (!cancelled) {
+          setSelectedJob(job)
+          setAudits(Array.isArray(history) ? history : [])
+        }
       })
       .catch((nextError) => {
         if (!cancelled) setError(nextError.message)
@@ -238,7 +399,7 @@ export default function App() {
         </div>
         <div className="topbar-actions">
           <span className="operator-chip">Operator: {username}</span>
-          <button className="secondary-button" type="button" onClick={refresh} disabled={busy}>
+          <button className="secondary-button" type="button" onClick={refresh} disabled={busy || recoveryBusy}>
             {busy ? 'Refreshing…' : 'Refresh'}
           </button>
           <button
@@ -250,6 +411,7 @@ export default function App() {
               setJobs([])
               setSelectedId(null)
               setSelectedJob(null)
+              setAudits([])
               setError(null)
             }}
           >
@@ -264,7 +426,7 @@ export default function App() {
         <aside className="jobs-panel" aria-label="Recent analysis jobs">
           <div className="panel-heading">
             <div>
-              <p className="section-label">Read-only</p>
+              <p className="section-label">{RECOVERY_ENABLED ? 'Operator workflow' : 'Read-only'}</p>
               <h2>Recent jobs</h2>
             </div>
             <span className="count-badge">{jobs.length}</span>
@@ -290,11 +452,19 @@ export default function App() {
           </div>
         </aside>
 
-        <JobDetail job={selectedJob || selectedListJob} loading={detailLoading} />
+        <JobDetail
+          job={selectedJob || selectedListJob}
+          loading={detailLoading}
+          audits={audits}
+          recoveryBusy={recoveryBusy}
+          onRedrive={redrive}
+        />
       </section>
 
       <footer className="read-only-note">
-        M2 is intentionally read-only. Recovery/redrive controls remain outside this milestone.
+        {RECOVERY_ENABLED
+          ? 'M3 enables only the bounded redrive/audit workflow for the selected job; arbitrary job mutation remains unavailable.'
+          : 'M2 is intentionally read-only. Recovery/redrive controls remain outside this milestone.'}
       </footer>
     </main>
   )
