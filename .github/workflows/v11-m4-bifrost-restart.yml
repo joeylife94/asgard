@@ -31,18 +31,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Prepare applications
         shell: bash
         run: |
@@ -51,7 +48,6 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r bifrost/requirements.txt
           python -m pip install -e bifrost
-
       - name: Start infrastructure
         shell: bash
         run: |
@@ -67,7 +63,6 @@ jobs:
             test "$attempt" -lt 45 || { docker compose logs kafka zookeeper; exit 1; }
             sleep 2
           done
-
       - name: Start real Ollama
         shell: bash
         run: |
@@ -80,7 +75,6 @@ jobs:
           done
           docker exec m4-ollama ollama pull smollm:135m | tee m4-ollama-pull.log
           curl --fail --silent http://127.0.0.1:11434/api/tags | grep -q 'smollm:135m'
-
       - name: Start Heimdall
         shell: bash
         env:
@@ -107,31 +101,22 @@ jobs:
             test "$attempt" -lt 90 || { cat m4-heimdall.log; exit 1; }
             sleep 2
           done
-
       - name: Create persisted target job
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error -H 'Content-Type: application/json' \
-            -d '{"username":"m4-operator","password":"m4-operator-password"}' \
-            http://127.0.0.1:8080/api/v1/auth/login > m4-login.json
+          curl --fail --silent --show-error -H 'Content-Type: application/json' -d '{"username":"m4-operator","password":"m4-operator-password"}' http://127.0.0.1:8080/api/v1/auth/login > m4-login.json
           TOKEN=$(python -c "import json; print(json.load(open('m4-login.json'))['token'])")
           printf '%s' "$TOKEN" > m4-token.txt
           cat > m4-input.json <<'JSON'
           {"source":"m4-restart-proof","serviceName":"restart-proof-service","environment":"proof","severity":"ERROR","logContent":"2026-09-01T00:00:00Z ERROR restart-proof-service deterministic synthetic worker restart proof","metadata":{"proof":"m4","synthetic":true}}
           JSON
-          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            --data @m4-input.json http://127.0.0.1:8080/api/v1/logs > m4-ingest.json
+          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data @m4-input.json http://127.0.0.1:8080/api/v1/logs > m4-ingest.json
           LOG_ID=$(python -c "import json; print(json.load(open('m4-ingest.json'))['logId'])")
-          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            -H 'Idempotency-Key: m4-restart-v1' -H 'X-Trace-Id: m4-restart-trace' \
-            -d '{"idempotencyKey":"m4-restart-v1","modelPolicy":{"source":"local"}}' \
-            -X POST http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis > m4-accepted.json
+          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -H 'Idempotency-Key: m4-restart-v1' -H 'X-Trace-Id: m4-restart-trace' -d '{"idempotencyKey":"m4-restart-v1","modelPolicy":{"source":"local"}}' -X POST http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis > m4-accepted.json
           JOB_ID=$(python -c "import json; print(json.load(open('m4-accepted.json'))['jobId'])")
           echo "$JOB_ID" > m4-job-id.txt
-          curl --fail --silent -H "Authorization: Bearer $TOKEN" \
-            http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > m4-pre-interruption-job.json
-
+          curl --fail --silent -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > m4-pre-interruption-job.json
       - name: Start Bifrost and kill during processing
         shell: bash
         run: |
@@ -148,7 +133,6 @@ jobs:
           wait "$PID" 2>/dev/null || true
           printf 'pid=%s\nkill=SIGKILL\n' "$PID" > m4-restart-event.txt
           ! grep -q 'Analysis request processed successfully' m4-bifrost-first.log
-
       - name: Restart Bifrost and await persisted success
         shell: bash
         run: |
@@ -162,8 +146,7 @@ jobs:
           TOKEN=$(cat m4-token.txt)
           JOB_ID=$(cat m4-job-id.txt)
           for attempt in {1..180}; do
-            curl --fail --silent -H "Authorization: Bearer $TOKEN" \
-              http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > m4-final-job.json
+            curl --fail --silent -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID > m4-final-job.json
             STATUS=$(python -c "import json; print(json.load(open('m4-final-job.json'))['status'])")
             [ "$STATUS" = 'SUCCEEDED' ] && break
             sleep 2
@@ -173,26 +156,20 @@ jobs:
           pre=json.load(open('m4-pre-interruption-job.json'))
           final=json.load(open('m4-final-job.json'))
           assert final['status']=='SUCCEEDED', final
-          assert final.get('analysisId') is not None, final
+          result_ref=final.get('resultRef')
+          assert result_ref is not None, final
           evidence={
-            'status':'PASS',
-            'jobId':final.get('jobId') or final.get('id'),
-            'preInterruptionStatus':pre.get('status'),
-            'finalStatus':final.get('status'),
-            'analysisId':final.get('analysisId'),
-            'firstProcessObserved':True,
-            'firstProcessKilledBeforeSuccessLog':True,
-            'replayedAfterRestart':True,
-            'finalPersistedResultVisible':True,
-            'synthetic':True,
-            'cloudExecution':False,
+            'status':'PASS','jobId':final.get('jobId') or final.get('id'),
+            'preInterruptionStatus':pre.get('status'),'finalStatus':final.get('status'),
+            'resultRef':result_ref,'firstProcessObserved':True,
+            'firstProcessKilledBeforeSuccessLog':True,'replayedAfterRestart':True,
+            'finalPersistedResultVisible':True,'synthetic':True,'cloudExecution':False,
             'limitations':['single-node bounded SIGKILL/restart proof only','no HA/SLA/SLO claim','no Kafka outage or multi-node failover'],
           }
           json.dump(evidence, open('m4-evidence.json','w'), indent=2)
           PY
           grep -q 'Processing analysis request' m4-bifrost-second.log
           grep -q 'Analysis request processed successfully' m4-bifrost-second.log
-
       - name: Verify evidence
         shell: bash
         run: |
@@ -202,12 +179,12 @@ jobs:
           e=json.load(open('m4-evidence.json'))
           assert e['status']=='PASS'
           assert e['finalStatus']=='SUCCEEDED'
+          assert e['resultRef'] is not None
           assert e['firstProcessKilledBeforeSuccessLog'] is True
           assert e['replayedAfterRestart'] is True
           assert e['synthetic'] is True and e['cloudExecution'] is False
           PY
           ! grep -R -E 'AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|Bearer [A-Za-z0-9._-]{20,}' m4-evidence.json m4-*.txt 2>/dev/null
-
       - name: Upload M4 evidence
         if: always()
         uses: actions/upload-artifact@v4
