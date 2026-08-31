@@ -44,7 +44,17 @@ jobs:
         shell: bash
         env:
           ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/v11-m1-local-proof-summary.json
+          ASGARD_PROOF_EVIDENCE_DIR: ${{ github.workspace }}/local-proof-evidence
         run: bash scripts/local-proof.sh
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v11-m1-local-proof-failure
+          path: local-proof-evidence/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Inspect synthetic-safe summary
         shell: bash
