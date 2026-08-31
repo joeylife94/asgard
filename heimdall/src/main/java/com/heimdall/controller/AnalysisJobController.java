@@ -35,6 +35,17 @@ public class AnalysisJobController {
     private final AnalysisOrchestratorService analysisOrchestratorService;
     private final RedriveAuditService redriveAuditService;
 
+    @GetMapping
+    public ResponseEntity<Page<AnalysisJobResponse>> listRecent(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        Page<AnalysisJobResponse> results = analysisJobService
+            .listRecent(PageRequest.of(page, size))
+            .map(this::toResponse);
+        return ResponseEntity.ok(results);
+    }
+
     @GetMapping("/{jobId}")
     public ResponseEntity<AnalysisJobResponse> getJob(@PathVariable UUID jobId) {
         AnalysisJob job = analysisJobService.get(jobId);
