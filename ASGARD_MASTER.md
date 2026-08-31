@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M2 ACCEPTED / FROZEN
-- **Current Batch**: M2 — Operator Console: Read-only Job Lifecycle — CLOSED
-- **Current Status**: **v1.0 FROZEN / VERIFIED BASELINE PRESERVED — M1 PASS / M2 PASS — RETURN TO PROGRESSION REVIEW**
+- **Current Phase**: Post-v1.0 Bounded Progression — M3 ACTIVE
+- **Current Batch**: M3 — Controlled Recovery Operator Workflow — IN PROGRESS
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN — M3 ACTIVE**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -21,14 +21,14 @@
 - **Accepted M1 merge main SHA**: `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`
 - **Accepted M2 exact PR head**: `224e53814bc33e565189acd0b2c45866be32f2a0`
 - **Accepted M2 merge main SHA**: `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86`
-- **Active Implementation Issue**: none
+- **Active Implementation Issue**: #33 — v1.1 M3 controlled recovery operator workflow
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: none — Progression Review required before selecting the next bounded milestone
+- **Selected Next Milestone**: M3 — Controlled Recovery Operator Workflow
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-01
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS — ACCEPTED / FROZEN — NEXT: PROGRESSION REVIEW**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS — M3 IN PROGRESS**
 
 ---
 
@@ -223,7 +223,7 @@ Post-v1.0 milestone acceptance may add new supported claims only when the new cl
 | R-009 | agent self-report | never substitute for executed evidence |
 | R-010 | redrive audit pre-state correctness | CLOSED for accepted UC-04 bounded path (`FAILED / 0` proven) |
 | R-011 | short-window Grafana delta/rate semantics | do not generalize bounded screenshot values into production observability claims |
-| R-012 | M2 operator console is bounded/read-only | accepted only for recent persisted Job list/detail and success/failure inspection; no recovery mutation or generic admin claims |
+| R-012 | M2 operator console is bounded/read-only | accepted only for recent persisted Job list/detail and success/failure inspection; no generic admin claims |
 
 Known risks do not reopen or weaken the frozen v1.0 baseline. A risk may become active work only when it blocks the selected bounded milestone or creates a regression against an accepted path.
 
@@ -445,24 +445,37 @@ A technical operator can inspect recent persisted Job lifecycle state, select Jo
 ## M3 — Controlled Recovery Operator Workflow
 
 ### Why
-Backend redrive/audit is accepted proof, and M2 now exposes failed Jobs read-only. The remaining bounded operator-usability gap is a controlled recovery action rather than hidden API-only mutation.
+Backend redrive/audit is accepted proof, and M2 exposes failed Jobs read-only. The next bounded operator-usability gap is a controlled recovery action rather than hidden API-only mutation.
 
-### Candidate Scope
-- failed Job selection;
-- explicit redrive reason;
-- confirmation boundary;
-- supported rate-limit/error feedback;
-- attempt transition visibility;
-- duplicate-redrive behavior visibility;
-- redrive audit history in the bounded operator surface.
+### Active Scope — Issue #33
+- select an existing persisted `FAILED` Job from the M2 operator surface;
+- require an explicit redrive reason and visible confirmation boundary;
+- invoke only the existing authorized production redrive endpoint;
+- show status/attempt transition;
+- show bounded redrive audit history;
+- expose supported rate-limit/error feedback;
+- make duplicate redrive visible as non-creation / `SKIPPED` with attempt unchanged;
+- reuse existing UC-04 semantics and M2 read contracts before adding backend machinery.
 
-### Candidate Executable Acceptance
-A deterministic failure is observed in the operator surface, redriven through the authorized production endpoint, reaches `SUCCEEDED`, and displays resulting audit. Duplicate redrive remains visible as bounded non-creation / `SKIPPED` behavior without silently mutating attempt state.
+### Executable Acceptance
+1. Browser E2E starts from a real persisted deterministic `FAILED` Job visible in the operator console.
+2. Recovery requires an explicit reason and confirmation.
+3. Existing authorized redrive endpoint drives the Job through real Local Ollama retry to `SUCCEEDED`.
+4. UI attempt/status matches persisted backend state before and after.
+5. SUCCESS audit is visible with accepted pre-redrive snapshot semantics.
+6. Duplicate redrive is visibly `SKIPPED` / non-creation with attempt unchanged.
+7. Existing v1.0, M1, and M2 regression paths remain GREEN on the exact PR head.
 
-### Stop Condition
-Stop when already-accepted recovery semantics are safely usable through the minimal operator workflow. Do not add arbitrary write tools or autonomous retry control.
+### Non-goals
+- autonomous/background retry policy changes;
+- arbitrary Job mutation/admin tooling;
+- AWS/Bedrock/OIDC/cloud;
+- generic admin expansion;
+- RAG;
+- broad Checkstyle cleanup;
+- production-readiness, HA, SLA/SLO, or stable performance claims.
 
-**Current: FUTURE CANDIDATE / NOT STARTED**
+**Current: ACTIVE / IN PROGRESS — Issue #33**
 
 ---
 
@@ -502,14 +515,14 @@ Stop when a clean independent handoff can start the system, run a real Local AI 
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**.
 - M1 — Local Reproduction & First Job is **PASS / ACCEPTED / FROZEN**.
 - M2 — Operator Console: Read-only Job Lifecycle is **PASS / ACCEPTED / FROZEN**.
-- no active implementation Issue or PR remains.
-- next milestone is not automatic; return to Progression Review against current `main`.
+- Progression Review selected **M3 — Controlled Recovery Operator Workflow** because M2 exposes failed Jobs but accepted recovery remains API-only.
+- Issue #33 is the only active bounded implementation work item; no M3 PR exists yet.
 
 ## Changed by M2
-- added an authenticated read-only recent-job API for persisted Analysis Jobs;
-- added a bounded browser operator console for recent Job list/detail, success result, and failed/error inspection;
-- added an exact-head real-stack browser proof using one real Local Ollama success and one deterministic failure;
-- preserved v1.0/M1 Local-first behavior and did not introduce mutation controls, cloud execution, RAG, HA, or generic admin scope.
+- added authenticated read-only recent-job API;
+- added bounded browser operator console for recent Job list/detail, success result, and failed/error inspection;
+- added exact-head real-stack browser proof using one real Local Ollama success and one deterministic failure;
+- preserved v1.0/M1 Local-first behavior and introduced no recovery mutation controls, cloud execution, RAG, HA, or generic admin scope.
 
 ## Actually Executed / Verified for M2
 - Issue #31 CLOSED / COMPLETED after merge.
@@ -518,16 +531,19 @@ Stop when a clean independent handoff can start the system, run a real Local AI 
 - primary CI `33405406555`: SUCCESS.
 - accepted v1.0/M1 regression proofs on the exact head remained GREEN.
 - artifact `9763096595`, digest `sha256:ff363841b4c4754870ab40a33f630284e39b3820123d503e847096ccc1e19b05`.
-- supporting CI/CD RED remained the known Heimdall build/Checkstyle debt; Bifrost/frontend/dependency security were GREEN.
+- supporting CI/CD RED remained known Heimdall build/Checkstyle debt; Bifrost/frontend/dependency security were GREEN.
 
 ## Not Verified / Known Limitations
-- browser recovery/redrive controls remain NOT VERIFIED / NOT IMPLEMENTED;
+- M3 browser recovery/redrive controls are not yet implemented or verified;
 - full admin-platform behavior remains outside scope;
 - production readiness, SLA/SLO, stable performance, HA/Kubernetes, cloud-provider execution, enterprise identity, and legal compliance remain non-claims;
-- M3/M4/M5 remain candidates only until a new Progression Review justifies one bounded Issue.
+- M4/M5 remain candidates only.
 
-## Closure Evaluation
-M2 satisfies its bounded acceptance. The operator can inspect real persisted Job lifecycle state and success/failure details through a read-only browser surface, with exact-head real-stack Playwright evidence and no recovery mutation controls. **M2 is accepted and frozen as a new post-v1.0 baseline slice.** This FREEZE does not terminate progression.
+## M2 Acceptance
+M2 satisfies its bounded acceptance and is frozen. The operator can inspect real persisted Job lifecycle state and success/failure details through a read-only browser surface with exact-head real-stack Playwright evidence.
+
+## M3 Milestone Gate
+M3 has concrete use/show/delivery value, executable acceptance criteria, bounded scope suitable for one Issue/PR, and requires no unresolved product-direction decision. Issue #33 therefore activates M3 without altering frozen v1.0/M1/M2 claims.
 
 ## Exact Next Action
-**Return to Progression Review. Re-read current `main`, preserve v1.0 + M1 + M2 evidence, and select exactly one next bounded milestone only if it has concrete use/show/delivery value. M3 is the directional candidate because M2 now exposes failed Jobs but recovery remains API-only; it must still pass the Milestone Gate before becoming active work.**
+**Under Issue #33, inspect the current merged M2 frontend together with the existing redrive and audit APIs, identify the smallest API/read gap required for confirmation/reason/redrive/audit visibility, then create one Issue-linked branch and one bounded PR. Do not add unrelated write controls or new recovery semantics.**
