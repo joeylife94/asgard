@@ -150,10 +150,10 @@ done
 RESULT_JSON="$(curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:8080/api/v1/logs/$LOG_ID/analysis")"
 
 mkdir -p "$(dirname "$OUTPUT")"
-JOB_ID="$JOB_ID" LOG_ID="$LOG_ID" MODEL_EXPECTED="$MODEL" OUTPUT="$OUTPUT" \
-python3 - <<'PY' <<<"$RESULT_JSON"
-import json, os, sys
-result = json.load(sys.stdin)
+JOB_ID="$JOB_ID" LOG_ID="$LOG_ID" MODEL_EXPECTED="$MODEL" OUTPUT="$OUTPUT" RESULT_JSON="$RESULT_JSON" \
+python3 - <<'PY'
+import json, os
+result = json.loads(os.environ["RESULT_JSON"])
 model = result.get("model") or ""
 if not model or model.lower() == "fallback" or not (result.get("summary") or "").strip():
     raise SystemExit(f"invalid local result: {result}")
