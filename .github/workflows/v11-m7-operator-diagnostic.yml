@@ -1,0 +1,107 @@
+name: v1.1 M7 Operator Diagnostic Snapshot
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/operator-diagnostic-snapshot.sh'
+      - '.github/workflows/v11-m7-operator-diagnostic.yml'
+      - 'scripts/local-proof.sh'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'docker-compose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WORK_DIR: ${{ runner.temp }}/asgard-m7-session
+      EVIDENCE_DIR: ${{ runner.temp }}/asgard-m7-evidence
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Execute accepted Local-first proof and retain bounded session
+        env:
+          ASGARD_PROOF_ID: m7-${{ github.run_id }}-${{ github.run_attempt }}
+          ASGARD_PROOF_KEEP: '1'
+          ASGARD_PROOF_WORK_DIR: ${{ runner.temp }}/asgard-m7-session
+          ASGARD_PROOF_OUTPUT: ${{ runner.temp }}/asgard-m7-session/local-proof-summary.json
+        run: bash scripts/local-proof.sh
+
+      - name: Capture read-only operator diagnostic snapshot
+        run: bash scripts/operator-diagnostic-snapshot.sh "$WORK_DIR/retained-session.env" "$EVIDENCE_DIR"
+
+      - name: Verify M7 evidence contract
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          path = Path(os.environ['EVIDENCE_DIR']) / 'diagnostic-snapshot.json'
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data['snapshot'] == 'asgard-v1.1-m7-operator-diagnostic'
+          assert data['status'] == 'PASS'
+          assert data['readOnly'] is True
+          assert data['synthetic'] is True
+          assert data['cloudExecution'] is False
+          assert all(data['health'].values()), data['health']
+          assert data['job']['status'] == 'SUCCEEDED'
+          assert data['job']['resultRef'] is not None
+          assert Path(os.environ['EVIDENCE_DIR'], 'diagnostic-snapshot.md').is_file()
+          text = path.read_text(encoding='utf-8')
+          for forbidden in (
+              'local-proof-admin-password',
+              'local-proof-jwt-secret-at-least-32-bytes-long',
+              'redis_password',
+              'asgard_password',
+              'Authorization: Bearer',
+          ):
+              assert forbidden not in text, forbidden
+          print(json.dumps({
+              'status': data['status'],
+              'jobId': data['job']['jobId'],
+              'jobStatus': data['job']['status'],
+              'health': data['health'],
+              'readOnly': data['readOnly'],
+              'synthetic': data['synthetic'],
+              'cloudExecution': data['cloudExecution'],
+          }, indent=2))
+          PY
+
+      - name: Upload M7 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: asgard-v11-m7-operator-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/asgard-m7-evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Cleanup retained proof environment
+        if: always()
+        run: |
+          set +e
+          SESSION="$WORK_DIR/retained-session.env"
+          if [[ -f "$SESSION" ]]; then
+            # shellcheck disable=SC1090
+            source "$SESSION"
+            [[ -n "${HEIMDALL_PID:-}" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
+            [[ -n "${BIFROST_PID:-}" ]] && kill "$BIFROST_PID" 2>/dev/null || true
+            [[ -n "${OLLAMA_CONTAINER:-}" ]] && docker rm -f "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
+            [[ -n "${COMPOSE_PROJECT:-}" ]] && docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans || true
+          fi
