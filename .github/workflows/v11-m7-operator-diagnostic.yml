@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      WORK_DIR: ${{ runner.temp }}/asgard-m7-session
-      EVIDENCE_DIR: ${{ runner.temp }}/asgard-m7-evidence
+      WORK_DIR: ${{ github.workspace }}/.m7-session
+      EVIDENCE_DIR: ${{ github.workspace }}/.m7-evidence
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
@@ -40,8 +40,8 @@ jobs:
         env:
           ASGARD_PROOF_ID: m7-${{ github.run_id }}-${{ github.run_attempt }}
           ASGARD_PROOF_KEEP: '1'
-          ASGARD_PROOF_WORK_DIR: ${{ runner.temp }}/asgard-m7-session
-          ASGARD_PROOF_OUTPUT: ${{ runner.temp }}/asgard-m7-session/local-proof-summary.json
+          ASGARD_PROOF_WORK_DIR: ${{ github.workspace }}/.m7-session
+          ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/.m7-session/local-proof-summary.json
         run: bash scripts/local-proof.sh
 
       - name: Capture read-only operator diagnostic snapshot
@@ -92,7 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: asgard-v11-m7-operator-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/asgard-m7-evidence/
+          path: ${{ github.workspace }}/.m7-evidence/
           if-no-files-found: error
           retention-days: 14
 
