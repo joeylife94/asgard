@@ -1,0 +1,75 @@
+name: v1.1 M6 Backup Restore Proof
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/m6-backup-restore-proof.sh'
+      - 'scripts/local-proof.sh'
+      - 'docker-compose.yml'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - '.github/workflows/v11-m6-backup-restore.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  m6-backup-restore-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Docker Compose
+        run: |
+          docker version
+          docker compose version
+
+      - name: Execute bounded persisted-state backup restore proof
+        env:
+          ASGARD_M6_PROOF_ID: m6-${{ github.run_id }}-${{ github.run_attempt }}
+          ASGARD_M6_WORK_DIR: ${{ runner.temp }}/asgard-m6-work
+          ASGARD_M6_EVIDENCE_DIR: ${{ github.workspace }}/m6-backup-restore-evidence
+        run: bash scripts/m6-backup-restore-proof.sh
+
+      - name: Verify evidence contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('m6-backup-restore-evidence/m6-evidence.json')
+          data = json.loads(p.read_text())
+          assert data['status'] == 'PASS'
+          assert data['cleanRestoreBoundary'] is True
+          assert data['sourceDatabase'] == 'heimdall'
+          assert data['restoreDatabase'] != data['sourceDatabase']
+          assert data['before'] == data['after']
+          assert data['before']['job'].startswith('SUCCEEDED|')
+          assert data['before']['resultCount'] == 1
+          assert data['backup']['bytes'] > 0
+          assert len(data['backup']['sha256']) == 64
+          assert 'point-in-time recovery' in data['notVerified']
+          print(json.dumps(data, indent=2))
+          PY
+
+      - name: Upload M6 proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asgard-v11-m6-backup-restore-${{ github.run_id }}-${{ github.run_attempt }}
+          path: m6-backup-restore-evidence/
+          if-no-files-found: warn
+          retention-days: 14
