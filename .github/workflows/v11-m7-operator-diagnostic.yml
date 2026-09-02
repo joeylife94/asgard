@@ -60,6 +60,8 @@ jobs:
           assert data['readOnly'] is True
           assert data['synthetic'] is True
           assert data['cloudExecution'] is False
+          assert data['session']['proofId'], data['session']
+          assert data['session']['composeProject'], data['session']
           assert all(data['health'].values()), data['health']
           assert data['job']['status'] == 'SUCCEEDED'
           assert data['job']['resultRef'] is not None
@@ -75,6 +77,8 @@ jobs:
               assert forbidden not in text, forbidden
           print(json.dumps({
               'status': data['status'],
+              'proofId': data['session']['proofId'],
+              'composeProject': data['session']['composeProject'],
               'jobId': data['job']['jobId'],
               'jobStatus': data['job']['status'],
               'health': data['health'],
