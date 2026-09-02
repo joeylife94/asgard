@@ -13,7 +13,7 @@ The executable source of truth is `scripts/local-proof.sh`. Its preflight curren
 - Linux shell with Bash;
 - Docker daemon and Docker Compose plugin;
 - Java 21;
-- Python 3.8+ with `venv` support;
+- Python 3.9+ with `venv` support;
 - `curl`;
 - free local ports `5432`, `6379`, `8080`, `8000`, `9091`, and `9200`.
 
@@ -48,7 +48,7 @@ ASGARD_PROOF_EVIDENCE_DIR="$PWD/local-proof-evidence" \
 bash scripts/local-proof.sh
 ```
 
-Use `ASGARD_PROOF_KEEP=1` deliberately: retained processes/containers require operator cleanup after inspection.
+When `KEEP=1` is used, the runner prints the retained work directory and writes `retained-session.env` there. That file contains only bounded session metadata needed for cleanup: proof id, Compose project, process ids, optional proof-owned Ollama container, repository root, and work directory.
 
 ## Inspect result and health
 
@@ -56,21 +56,34 @@ The proof runner performs its own readiness and final persisted Job checks. Trea
 
 Do not convert one proof run into stable latency, throughput, cost, availability, or SLO claims.
 
-## Supported restart semantics
+## Accepted restart semantics
 
-M4 accepted one bounded single-node case: Bifrost was killed after it entered processing, confirmed down, then restarted with the same Kafka consumer-group semantics; the persisted target Job subsequently reached `SUCCEEDED` with a result reference. The executable reference is `.github/workflows/v11-m4-bifrost-restart.yml`.
+M4 accepted one bounded single-node case: Bifrost was killed after it entered processing, confirmed down, then restarted with the same Kafka consumer-group semantics; the persisted target Job subsequently reached `SUCCEEDED` with a result reference. The executable acceptance reference is `.github/workflows/v11-m4-bifrost-restart.yml`.
+
+This handoff records that accepted behavior and its exact proof reference. It does **not** claim that the retained M1 handoff session is itself a supported manual M4 replay procedure: `scripts/local-proof.sh` returns only after its target Job is already complete, while the M4 acceptance harness deliberately interrupts Bifrost during an in-flight Job. Reproducing that exact interruption remains the responsibility of the M4 workflow rather than an undocumented operator reconstruction.
 
 This proves **that bounded replay case only**. It does not prove Kafka outage recovery, multi-node failover, HA, recovery-time objectives, or unattended autonomous retry.
-
-For a delivery review, use the M4 workflow as the executable restart reference rather than inventing a second process-management/deployment path.
 
 ## Persistence and cleanup
 
 - Job/result state is persisted through the accepted Heimdall/PostgreSQL path.
 - Kafka participates in request/result handoff; M4 validates one replay-after-Bifrost-kill case.
 - The default local proof cleanup uses `docker compose ... down -v`, so proof-owned Compose volumes are intentionally removed after the run.
-- `ASGARD_PROOF_KEEP=1` retains the environment for bounded inspection; the operator then owns cleanup.
 - **Backup/restore: NOT VERIFIED.** Do not represent proof-volume persistence or retained inspection state as a tested backup/restore procedure.
+
+For a retained `ASGARD_PROOF_KEEP=1` session, use the exact work-directory path printed by the runner:
+
+```bash
+source /printed/work/dir/retained-session.env
+
+[[ -n "$HEIMDALL_PID" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
+[[ -n "$BIFROST_PID" ]] && kill "$BIFROST_PID" 2>/dev/null || true
+[[ -n "$OLLAMA_CONTAINER" ]] && docker rm -f "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
+cd "$ROOT_DIR"
+docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans
+```
+
+If the runner used an already-running local Ollama endpoint, `OLLAMA_CONTAINER` is empty and cleanup deliberately leaves that external operator-owned Ollama process untouched. The retained work directory is not deleted automatically under `KEEP=1`; remove it manually only after evidence/log inspection is complete.
 
 ## Troubleshooting
 
@@ -80,11 +93,12 @@ For a delivery review, use the M4 workflow as the executable restart reference r
 | `Docker daemon is not available` | Start/fix the local Docker daemon; do not bypass the check. |
 | `Docker Compose plugin is required` | Install/enable Compose v2 and rerun. |
 | `Java 21 required` | Select a Java 21 runtime before rerunning. |
+| `Python 3.9+ required` | Select Python 3.9 or newer with `venv` support before rerunning. |
 | `required port already in use` | Stop the conflicting local process or use a clean host/session; the accepted proof expects those ports. |
 | caller-owned work directory rejected | Supply an empty directory or omit `ASGARD_PROOF_WORK_DIR`. |
 | infrastructure/readiness failure | Inspect `local-proof-evidence/` (or configured evidence path) before changing runtime code. |
 | Ollama/model failure | Check retained Ollama/pull diagnostics; do not substitute a cloud provider and call the Local-first gate PASS. |
-| Bifrost interruption/restart question | Use the accepted M4 workflow semantics; do not generalize beyond the proven single-node case. |
+| Bifrost interruption/restart question | Use the accepted M4 workflow as the exact executable evidence; the retained M1 session is not represented as a manual replay harness. |
 | broad Heimdall Checkstyle RED | Known pre-existing debt unless a selected milestone makes that gate material; do not mass-fix as handoff work. |
 
 ## Exact references
@@ -96,4 +110,4 @@ For a delivery review, use the M4 workflow as the executable restart reference r
 
 ## Explicitly not verified by this handoff
 
-Production readiness; production SLA/SLO; stable performance/cost; backup/restore; Kubernetes/HA/multi-node recovery; cloud-provider execution; enterprise identity/RBAC; legal/security certification; unattended autonomous operations.
+Production readiness; production SLA/SLO; stable performance/cost; backup/restore; Kubernetes/HA/multi-node recovery; cloud-provider execution; enterprise identity/RBAC; legal/security certification; unattended autonomous operations; a general-purpose manual restart/replay procedure outside the accepted M4 harness.
