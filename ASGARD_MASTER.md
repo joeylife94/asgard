@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M4 SELECTED
-- **Current Batch**: M4 — Runtime Resilience: persisted Job survives bounded worker restart — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN — M4 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M5 SELECTED
+- **Current Batch**: M5 — Single-node Delivery Handoff — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN — M5 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -23,14 +23,16 @@
 - **Accepted M2 merge main SHA**: `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86`
 - **Accepted M3 exact PR head**: `b4e79a00dc3677746a244a08c6fd36dfccba620c`
 - **Accepted M3 merge main SHA**: `c97dfa2d79f81b7b0172833769a71164934a103e`
+- **Accepted M4 exact PR head**: `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b`
+- **Accepted M4 merge main SHA**: `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M4 — Runtime Resilience: bounded Bifrost restart around persisted Job
+- **Selected Next Milestone**: M5 — Single-node Delivery Handoff
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-09-01
+- **Updated**: 2026-09-02
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS — M4 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS — M5 SELECTED**
 
 ---
 
@@ -223,6 +225,7 @@ Post-v1.0 milestone acceptance may add new supported claims only when the claim 
 | R-011 | short-window Grafana delta/rate semantics | do not generalize bounded screenshot values into production observability claims |
 | R-012 | M2 operator console is bounded/read-only by default | accepted for recent persisted Job list/detail and success/failure inspection; M3 recovery appears only under its explicit recovery feature flag |
 | R-013 | proof harness ordering can race queued analysis requests | M3 exact-head proof explicitly consumed the seed request before starting Bifrost; do not generalize this harness isolation into autonomous runtime guarantees |
+| R-014 | Bifrost restart proof is one bounded single-node replay case | accepted M4 proves one SIGKILL/restart path only; do not generalize to Kafka outage, HA, recovery time, or autonomous retry |
 
 Known risks do not reopen or weaken frozen accepted milestones. A risk becomes active work only when it blocks the selected bounded milestone or creates regression against an accepted path.
 
@@ -492,48 +495,49 @@ A technical operator can start from a persisted deterministic `FAILED` Job, expl
 
 ## M4 — Runtime Resilience: Bounded Bifrost Restart Around Persisted Job
 
-### Why selected
-M1–M3 now prove reproducible execution, inspection, and controlled recovery. The highest-priority remaining useful gap is reliability/recovery correctness under a real process interruption. The bounded product destination is single-node; therefore a worker restart around a persisted Job has direct use/show/delivery value without implying HA.
+### Accepted Scope
+One bounded single-node failure mode: **Bifrost process interruption/restart while a target Analysis Job is already persisted and actively processing**.
 
-### Selected Scope
-Choose exactly one failure mode: **Bifrost process interruption/restart while a target Analysis Job is already persisted and queued/eligible for processing**.
+### Actually Changed
+- one dedicated exact-head M4 workflow only;
+- real persisted target Job + Kafka + Bifrost + real Local Ollama;
+- first Bifrost started without the development reloader so the workflow controlled the actual server PID;
+- workflow waits for real target processing, SIGKILLs the first Bifrost process, verifies the process/health endpoint are down, restarts Bifrost with the same consumer group, and waits for final persisted success;
+- synthetic-safe artifact captures pre-interruption Job, process lifecycle, replay observation, final Job/result, and explicit limitations;
+- no product runtime retry subsystem, AWS/Bedrock/OIDC/cloud, Kafka-outage, HA, Kubernetes, multi-node, or broad cleanup.
 
-The milestone must determine and prove the smallest supported behavior from current architecture, preferring existing Kafka/persistence semantics over new machinery:
-- create one deterministic persisted target Job;
-- establish the target state immediately before Bifrost interruption;
-- stop/kill Bifrost at a controlled point before final persisted success;
-- restart Bifrost in the same bounded single-node environment;
-- verify the target reaches one correct final persisted state without silent loss;
-- verify result/idempotency behavior prevents an incorrect duplicate final result if the current architecture already supports it;
-- capture operator-visible state/evidence sufficient to explain what happened;
-- preserve M1/M2/M3 and v1.0 accepted paths.
+### Actually Executed / Verified
+- Issue #36 — **CLOSED / COMPLETED**;
+- Draft PR #37 — CLOSED / NOT MERGED only after repeated Draft→Ready connector GraphQL failure; exact implementation head preserved;
+- replacement PR #38 — **SQUASH MERGED** with expected-head guard;
+- accepted exact head `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b`;
+- merge main SHA `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578`;
+- M4 Bifrost Restart Proof run `33444318573`: **SUCCESS**;
+- primary CI run `33444318725`: **SUCCESS**;
+- artifact `9777540907`, digest `sha256:d1a078d52d9fb70a3c9931f6e5065e2fd4220f863fffbf5acc1e1ba07d020ea4`;
+- pre-interruption persisted Job: `RUNNING`, `attemptCount=0`, `resultRef=null`;
+- first process observed processing target Job, killed with `SIGKILL`, and confirmed down before restart;
+- second Bifrost process restarted with `bifrost-consumer-group` and replayed the target request;
+- final persisted Job: `SUCCEEDED`, `attemptCount=0`, `resultRef=1`;
+- evidence records `firstProcessObserved=true`, `firstProcessKilledBeforeSuccessLog=true`, `firstProcessConfirmedDown=true`, `replayedAfterRestart=true`, `finalPersistedResultVisible=true`, `synthetic=true`, `cloudExecution=false`;
+- Bifrost build/test GREEN and Dependency Security Check GREEN on the exact head;
+- broad CI/CD remained RED at `Build & Test Heimdall → Build with Gradle`, classified as pre-existing R-002 debt because the PR changed only the M4 workflow and the accepted contract does not require this broad debt gate to be GREEN.
 
-### Executable Acceptance
-1. Exact-head real-stack proof uses persisted Job + Kafka + Bifrost + real Local Ollama.
-2. Bifrost is actually terminated/restarted during the bounded scenario; a mere mocked exception is insufficient.
-3. Target Job is not silently lost; final persisted state is deterministic and evidence-backed.
-4. If replay occurs, accepted idempotency/result boundary is explicitly verified; if current architecture cannot safely provide that behavior, record RED and correct the smallest current-use blocker in the same Issue/PR.
-5. Evidence records pre-interruption state, restart event, post-restart state, final Job/result identifiers, and any duplicate/replay observation.
-6. Existing v1.0/M1/M2/M3 regression paths remain GREEN on exact head.
-7. No HA, SLA/SLO, autonomous recovery, Kubernetes, multi-node, or cloud claim is added.
+### Limitations / Non-claims
+- one bounded single-node SIGKILL/restart scenario only;
+- no Kafka outage, multi-node failover, HA/autoscaling/Kubernetes, recovery-time guarantee, SLA/SLO, autonomous recovery, or cloud-provider execution claim;
+- replay proof validates the accepted scenario and does not establish all crash windows or distributed delivery semantics.
 
-### Non-goals
-- Kafka cluster outage simulation;
-- multi-node failover;
-- HA/autoscaling/Kubernetes;
-- generic chaos engineering framework;
-- autonomous retry policy expansion;
-- AWS/Bedrock/OIDC/cloud;
-- broad refactor or Checkstyle cleanup;
-- production SLA/SLO or stable recovery-time claim.
+### Milestone Acceptance
+A persisted target Job observed `RUNNING` during real Bifrost processing was not silently lost when that actual Bifrost server process was SIGKILLed. Restarting Bifrost in the same bounded single-node environment and consumer group replayed the request and produced one visible persisted final result with `SUCCEEDED / resultRef=1`. Exact-head primary CI, Bifrost regression, and dependency security gates were GREEN; the broad Heimdall RED remained demonstrably pre-existing debt. **M4 PASS / ACCEPTED / FROZEN.**
 
-**Current: SELECTED — ISSUE NOT YET OPEN**
+**Current: ACCEPTED / FROZEN — PASS**
 
 ---
 
 ## M5 — Single-node Delivery Handoff
 
-### Candidate Scope
+### Selected Scope
 - supported single-node environment boundary;
 - prerequisites / configuration ownership;
 - start / stop / restart;
@@ -542,10 +546,19 @@ The milestone must determine and prove the smallest supported behavior from curr
 - explicit backup/restore boundary: verified procedure or explicit NOT VERIFIED statement;
 - proof/reproduction command reference.
 
+### Executable Acceptance
+1. A clean supported Linux handoff path names prerequisites, configuration ownership, and the exact supported Local-first boundary without private operator knowledge.
+2. Handoff instructions reuse accepted M1 startup/first-job proof and M4 restart semantics rather than introducing a second deployment path.
+3. A technical operator can follow the documented path to start the supported stack, run one real Local Ollama Job, inspect the final persisted result/health, and perform the bounded supported restart path.
+4. Persistence expectations and cleanup are explicit; backup/restore is either separately executed and evidenced or explicitly marked NOT VERIFIED.
+5. Troubleshooting maps concrete current failure symptoms to bounded actions without claiming HA, autonomous recovery, production support, SLA/SLO, or cloud execution.
+6. Exact-head executable verification confirms referenced commands/paths do not drift from the accepted repository behavior.
+7. No AWS/Bedrock/OIDC/cloud, Kubernetes/HA, enterprise identity, broad refactor, or new product capability is introduced.
+
 ### Stop Condition
 Stop when a clean independent handoff can start the system, run a real Local AI Job, inspect result/health, restart within the supported boundary, and identify known limitations without private steps. Do not expand into HA/Kubernetes/enterprise identity/legal compliance.
 
-**Current: FUTURE CANDIDATE / NOT STARTED**
+**Current: SELECTED — ISSUE NOT YET OPEN**
 
 ---
 
@@ -556,37 +569,36 @@ Stop when a clean independent handoff can start the system, run a real Local AI 
 - M1 is **PASS / ACCEPTED / FROZEN**;
 - M2 is **PASS / ACCEPTED / FROZEN**;
 - M3 is **PASS / ACCEPTED / FROZEN**;
-- M3 accepted exact head `b4e79a00dc3677746a244a08c6fd36dfccba620c`, merged through PR #35 at `c97dfa2d79f81b7b0172833769a71164934a103e`;
-- Issue #33 CLOSED / COMPLETED;
-- Progression Review selected exactly one next milestone: **M4 — bounded Bifrost restart around a persisted Job**.
+- M4 is **PASS / ACCEPTED / FROZEN**;
+- M4 accepted exact head `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b`, merged through replacement PR #38 at `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578`;
+- Issue #36 CLOSED / COMPLETED;
+- Progression Review selected exactly one next milestone: **M5 — Single-node Delivery Handoff**.
 
-## Changed by M3
-- added feature-flagged controlled recovery UI over existing authorized redrive/audit semantics;
-- mandatory reason + confirmation;
-- persisted status/attempt and audit visibility;
-- duplicate redrive visible as `SKIPPED`;
-- deterministic browser proof with real Local Ollama;
-- no cloud execution, autonomous retry, generic admin platform, or unrelated recovery subsystem.
+## Changed by M4
+- added a dedicated bounded proof workflow for a real Bifrost server-process SIGKILL/restart around a persisted target Job;
+- eliminated false restart evidence by controlling the actual server PID and verifying the endpoint is down before restart;
+- reused existing Kafka manual-commit/replay behavior and Local Ollama path;
+- no runtime retry subsystem, cloud execution, HA, multi-node, or unrelated product feature.
 
-## Actually Executed / Verified for M3
-- M3 run `33422708481`: SUCCESS;
-- artifact `9769683333`, digest `sha256:2c1bdfe47287dc3e88061259ee2d93f9b8025310721e3a2b66b7ae3fd05d6d78`;
-- `FAILED / attempt 0 → SUCCEEDED / attempt 1` persisted;
-- SUCCESS audit visible with pre-redrive `FAILED / 0` snapshot;
-- duplicate redrive persisted as `SKIPPED` with attempt unchanged;
+## Actually Executed / Verified for M4
+- M4 run `33444318573`: SUCCESS;
+- artifact `9777540907`, digest `sha256:d1a078d52d9fb70a3c9931f6e5065e2fd4220f863fffbf5acc1e1ba07d020ea4`;
+- pre-interruption Job `RUNNING / attempt 0 / resultRef null`;
+- actual first Bifrost PID killed with SIGKILL and confirmed down;
+- same consumer group replayed after restart;
+- final persisted Job `SUCCEEDED / attempt 0 / resultRef 1`;
 - `synthetic=true`, `cloudExecution=false`;
-- primary CI, M1, M2, UC-02, UC-03, UC-04 all GREEN on exact head;
-- dependency security GREEN;
-- secondary Heimdall CI/CD RED remains pre-existing broad Checkstyle debt.
+- primary CI, Bifrost build/test, and dependency security GREEN on exact head;
+- broad Heimdall CI/CD RED remains pre-existing R-002 debt and was not silently called GREEN.
 
 ## Not Verified / Known Limitations
-- Bifrost restart/replay correctness has not yet been accepted; this is the selected M4 gap;
 - Kafka outage, multi-node failover, HA, autoscaling, production recovery time, SLA/SLO remain unverified/non-claims;
+- backup/restore is not yet accepted as verified;
 - full admin-platform behavior remains outside scope;
-- M5 remains candidate only.
+- M5 must not create a second deployment model or imply production operations readiness.
 
-## M4 Milestone Gate
-M4 has concrete use/show/delivery value, executable acceptance criteria, bounded scope suitable for one Issue/PR, and no unresolved product-direction decision. It is limited to one real process-interruption scenario and does not imply HA.
+## M5 Milestone Gate
+M5 has concrete use/show/delivery value because M1–M4 now prove the main local execution, operator inspection/recovery, and one bounded restart path, but a clean technical handoff still requires those accepted pieces to be assembled into one supported single-node delivery contract. Scope is documentation/executable handoff validation, bounded to one Issue/PR, with no unresolved product-direction decision.
 
 ## Exact Next Action
-**Open exactly one M4 Issue for the bounded Bifrost restart scenario, then inspect current consumer/persistence/idempotency behavior before implementing the smallest executable proof or correction. Do not add a chaos framework, new retry subsystem, cloud execution, or multi-node behavior.**
+**Open exactly one M5 Issue for the single-node delivery handoff. Reuse accepted M1/M4 commands and evidence, inspect current docs/scripts for drift, then implement only the smallest handoff/runbook or executable validation gap. Backup/restore must be verified separately or stated NOT VERIFIED; do not imply HA, production readiness, cloud execution, or autonomous operations.**
