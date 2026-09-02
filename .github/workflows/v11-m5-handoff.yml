@@ -1,0 +1,56 @@
+name: v1.1 M5 Delivery Handoff
+
+on:
+  pull_request:
+    paths:
+      - 'docs/SINGLE_NODE_HANDOFF.md'
+      - 'scripts/local-proof.sh'
+      - '.github/workflows/v11-m1-local-proof.yml'
+      - '.github/workflows/v11-m4-bifrost-restart.yml'
+      - '.github/workflows/v11-m5-handoff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  handoff-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate referenced handoff paths and proof syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f docs/SINGLE_NODE_HANDOFF.md
+          test -f scripts/local-proof.sh
+          test -f .github/workflows/v11-m1-local-proof.yml
+          test -f .github/workflows/v11-m4-bifrost-restart.yml
+          bash -n scripts/local-proof.sh
+
+      - name: Validate bounded handoff contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          text = Path('docs/SINGLE_NODE_HANDOFF.md').read_text()
+          required = [
+              'bash scripts/local-proof.sh',
+              'ASGARD_PROOF_KEEP=1',
+              '.github/workflows/v11-m1-local-proof.yml',
+              '.github/workflows/v11-m4-bifrost-restart.yml',
+              'Backup/restore: NOT VERIFIED',
+              'Java 21',
+              'Docker Compose plugin',
+              'Local-first',
+          ]
+          missing = [item for item in required if item not in text]
+          assert not missing, f'missing handoff contract items: {missing}'
+          print('M5 handoff contract PASS')
+          PY
+
+  real-local-proof:
+    uses: ./.github/workflows/v11-m1-local-proof.yml
