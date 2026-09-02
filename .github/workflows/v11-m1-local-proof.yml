@@ -84,7 +84,7 @@ jobs:
     timeout-minutes: 45
     env:
       WORK_DIR: ${{ github.workspace }}/.m7-session
-      EVIDENCE_DIR: ${{ github.workspace }}/.m7-evidence
+      EVIDENCE_DIR: ${{ github.workspace }}/m7-evidence
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
@@ -138,7 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: asgard-v11-m7-operator-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ github.workspace }}/.m7-evidence/
+          path: ${{ github.workspace }}/m7-evidence/
           if-no-files-found: error
           retention-days: 14
       - name: Cleanup retained proof environment
