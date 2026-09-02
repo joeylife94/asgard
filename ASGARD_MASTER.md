@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M5 SELECTED
-- **Current Batch**: M5 — Single-node Delivery Handoff — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN — M5 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M6 SELECTED
+- **Current Batch**: M6 — Persisted-state Backup/Restore Proof — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN — M6 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -25,14 +25,16 @@
 - **Accepted M3 merge main SHA**: `c97dfa2d79f81b7b0172833769a71164934a103e`
 - **Accepted M4 exact PR head**: `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b`
 - **Accepted M4 merge main SHA**: `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578`
+- **Accepted M5 exact PR head**: `b13438d91ca13ac9a889bad4f31a2b33550533e9`
+- **Accepted M5 merge main SHA**: `3f6eb40793991adba82c7d5b60920a5f60c80a04`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M5 — Single-node Delivery Handoff
+- **Selected Next Milestone**: M6 — Persisted-state Backup/Restore Proof
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-09-02
+- **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS — M5 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS — M6 SELECTED**
 
 ---
 
@@ -226,6 +228,7 @@ Post-v1.0 milestone acceptance may add new supported claims only when the claim 
 | R-012 | M2 operator console is bounded/read-only by default | accepted for recent persisted Job list/detail and success/failure inspection; M3 recovery appears only under its explicit recovery feature flag |
 | R-013 | proof harness ordering can race queued analysis requests | M3 exact-head proof explicitly consumed the seed request before starting Bifrost; do not generalize this harness isolation into autonomous runtime guarantees |
 | R-014 | Bifrost restart proof is one bounded single-node replay case | accepted M4 proves one SIGKILL/restart path only; do not generalize to Kafka outage, HA, recovery time, or autonomous retry |
+| R-015 | backup/restore remains unverified after delivery handoff | M5 states this explicitly; M6 may verify one bounded persisted-state backup/restore path without implying DR/HA |
 
 Known risks do not reopen or weaken frozen accepted milestones. A risk becomes active work only when it blocks the selected bounded milestone or creates regression against an accepted path.
 
@@ -537,26 +540,72 @@ A persisted target Job observed `RUNNING` during real Bifrost processing was not
 
 ## M5 — Single-node Delivery Handoff
 
+### Accepted Scope
+- one technical-operator handoff for the accepted single-node Linux Local-first path;
+- prerequisites and configuration ownership aligned to executable dependencies;
+- reuse of `scripts/local-proof.sh` rather than a second deployment path;
+- retained-session metadata and explicit cleanup commands for `ASGARD_PROOF_KEEP=1`;
+- bounded reference to accepted M4 restart semantics without falsely claiming an independent local replay proof;
+- explicit `Backup/restore: NOT VERIFIED` boundary;
+- exact-head handoff contract validation plus real Local-first proof execution.
+
+### Actually Changed
+- added `docs/SINGLE_NODE_HANDOFF.md`;
+- added `.github/workflows/v11-m5-handoff.yml`;
+- aligned `scripts/local-proof.sh` Python preflight to Python 3.9+;
+- added `retained-session.env` metadata for retained proof cleanup;
+- documented proof-owned process/container/Compose cleanup;
+- preserved AWS/cloud, HA/Kubernetes, enterprise identity, SLA/SLO, production-readiness and legal-certification non-claims.
+
+### Actually Executed / Verified
+- Issue #39 — **CLOSED / COMPLETED**;
+- PR #40 — **SQUASH MERGED** with expected-head guard;
+- accepted exact head `b13438d91ca13ac9a889bad4f31a2b33550533e9`;
+- merge main SHA `3f6eb40793991adba82c7d5b60920a5f60c80a04`;
+- M5 Delivery Handoff run `33652535194`: **SUCCESS**;
+- primary CI `33652535236`: **SUCCESS**;
+- M1 Local Proof `33652535181`: **SUCCESS**;
+- P1-B1 Real Local AI Golden Path `33652535237`: **SUCCESS**;
+- artifact `9855507091`, digest `sha256:f26aa953bcb5a855bc4f628ec1edd56f7e61a750a432ed0d2e4d12a7fbc09683`;
+- Bifrost build/test and Dependency Security Check GREEN on exact head;
+- three earlier Codex review threads were corrected on the same PR and resolved as outdated;
+- broad CI/CD remained RED first at `Build & Test Heimdall → Build with Gradle`, consistent with pre-existing R-002 debt rather than the bounded M5 diff.
+
+### Limitations / Non-claims
+- backup/restore is explicitly NOT VERIFIED by M5;
+- the handoff is bounded to the supported Linux Local-first proof path, not a production deployment guide;
+- M4 restart semantics remain the executable restart/replay acceptance reference; M5 does not independently broaden that claim;
+- no HA/Kubernetes/multi-node, production support, SLA/SLO, autonomous operations, cloud execution, enterprise identity, or legal compliance claim.
+
+### Milestone Acceptance
+A technical operator now has one repository-owned handoff for the accepted single-node Linux Local-first path, with executable prerequisites, configuration ownership, real Local-first proof command, retained-session cleanup metadata, troubleshooting boundaries and explicit non-claims. Exact-head M5, primary CI, M1 and real Local AI regression gates were GREEN, with security/Bifrost gates GREEN and broad Heimdall RED retained as pre-existing debt. **M5 PASS / ACCEPTED / FROZEN.**
+
+**Current: ACCEPTED / FROZEN — PASS**
+
+---
+
+## M6 — Persisted-state Backup/Restore Proof
+
 ### Selected Scope
-- supported single-node environment boundary;
-- prerequisites / configuration ownership;
-- start / stop / restart;
-- persistence expectations;
-- bounded troubleshooting/runbook;
-- explicit backup/restore boundary: verified procedure or explicit NOT VERIFIED statement;
-- proof/reproduction command reference.
+- one bounded single-node PostgreSQL backup/restore path for Asgard-owned persisted Job/result/audit state;
+- create accepted persisted state using the existing Local-first path;
+- take an explicit database backup using current repository infrastructure;
+- restore into a clean proof-owned database/volume boundary;
+- verify the target Job/result/audit records are queryable after restore;
+- document operator commands and failure limitations;
+- no claim of continuous backup, PITR, disaster recovery, HA, RPO/RTO, encrypted off-site storage, or production retention policy.
 
 ### Executable Acceptance
-1. A clean supported Linux handoff path names prerequisites, configuration ownership, and the exact supported Local-first boundary without private operator knowledge.
-2. Handoff instructions reuse accepted M1 startup/first-job proof and M4 restart semantics rather than introducing a second deployment path.
-3. A technical operator can follow the documented path to start the supported stack, run one real Local Ollama Job, inspect the final persisted result/health, and perform the bounded supported restart path.
-4. Persistence expectations and cleanup are explicit; backup/restore is either separately executed and evidenced or explicitly marked NOT VERIFIED.
-5. Troubleshooting maps concrete current failure symptoms to bounded actions without claiming HA, autonomous recovery, production support, SLA/SLO, or cloud execution.
-6. Exact-head executable verification confirms referenced commands/paths do not drift from the accepted repository behavior.
-7. No AWS/Bedrock/OIDC/cloud, Kubernetes/HA, enterprise identity, broad refactor, or new product capability is introduced.
+1. Exact-head proof creates one identifiable persisted Asgard Job/result state using the accepted Local-first path.
+2. A concrete PostgreSQL backup artifact is produced by an operator-executable command.
+3. The original proof database/volume is not reused as evidence for restore success; restore occurs into a clean proof-owned persistence boundary.
+4. Restored state contains the expected target Job identity, terminal status/result reference, and bounded related audit/result data that was present before backup.
+5. Evidence records backup command/path, restore command/path, before/after identifiers, and synthetic-safe limitations.
+6. Relevant primary regression/security gates remain independently GREEN; pre-existing broad Heimdall debt is not silently called GREEN.
+7. No HA/DR/RPO/RTO/cloud-storage/production-retention claim is introduced.
 
 ### Stop Condition
-Stop when a clean independent handoff can start the system, run a real Local AI Job, inspect result/health, restart within the supported boundary, and identify known limitations without private steps. Do not expand into HA/Kubernetes/enterprise identity/legal compliance.
+Stop after one reproducible single-node persisted-state backup/restore case is independently executed and verified. Do not expand into continuous backup infrastructure, cloud object storage, cross-region DR, Kubernetes volume recovery, or production policy.
 
 **Current: SELECTED — ISSUE NOT YET OPEN**
 
@@ -570,35 +619,36 @@ Stop when a clean independent handoff can start the system, run a real Local AI 
 - M2 is **PASS / ACCEPTED / FROZEN**;
 - M3 is **PASS / ACCEPTED / FROZEN**;
 - M4 is **PASS / ACCEPTED / FROZEN**;
-- M4 accepted exact head `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b`, merged through replacement PR #38 at `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578`;
-- Issue #36 CLOSED / COMPLETED;
-- Progression Review selected exactly one next milestone: **M5 — Single-node Delivery Handoff**.
+- M5 is **PASS / ACCEPTED / FROZEN**;
+- M5 accepted exact head `b13438d91ca13ac9a889bad4f31a2b33550533e9`, merged via PR #40 at `3f6eb40793991adba82c7d5b60920a5f60c80a04`;
+- Issue #39 CLOSED / COMPLETED;
+- Progression Review selected exactly one next milestone: **M6 — Persisted-state Backup/Restore Proof**.
 
-## Changed by M4
-- added a dedicated bounded proof workflow for a real Bifrost server-process SIGKILL/restart around a persisted target Job;
-- eliminated false restart evidence by controlling the actual server PID and verifying the endpoint is down before restart;
-- reused existing Kafka manual-commit/replay behavior and Local Ollama path;
-- no runtime retry subsystem, cloud execution, HA, multi-node, or unrelated product feature.
+## Changed by M5
+- added one bounded technical-operator delivery handoff;
+- aligned Python support boundary to actual Bifrost dependency requirements;
+- added retained-session metadata and executable cleanup ownership;
+- added exact-head contract validation and re-executed the accepted real Local-first proof;
+- no cloud execution, HA/multi-node, generic admin platform, or production-readiness feature expansion.
 
-## Actually Executed / Verified for M4
-- M4 run `33444318573`: SUCCESS;
-- artifact `9777540907`, digest `sha256:d1a078d52d9fb70a3c9931f6e5065e2fd4220f863fffbf5acc1e1ba07d020ea4`;
-- pre-interruption Job `RUNNING / attempt 0 / resultRef null`;
-- actual first Bifrost PID killed with SIGKILL and confirmed down;
-- same consumer group replayed after restart;
-- final persisted Job `SUCCEEDED / attempt 0 / resultRef 1`;
-- `synthetic=true`, `cloudExecution=false`;
-- primary CI, Bifrost build/test, and dependency security GREEN on exact head;
-- broad Heimdall CI/CD RED remains pre-existing R-002 debt and was not silently called GREEN.
+## Actually Executed / Verified for M5
+- M5 Delivery Handoff run `33652535194`: SUCCESS;
+- primary CI `33652535236`: SUCCESS;
+- M1 Local Proof `33652535181`: SUCCESS;
+- P1-B1 Real Local AI Golden Path `33652535237`: SUCCESS;
+- artifact `9855507091`, digest `sha256:f26aa953bcb5a855bc4f628ec1edd56f7e61a750a432ed0d2e4d12a7fbc09683`;
+- Bifrost build/test and Dependency Security Check GREEN;
+- broad CI/CD first failure remained `Build & Test Heimdall → Build with Gradle`, consistent with accepted R-002 pre-existing debt;
+- three stale Codex review threads were corrected and resolved before merge.
 
 ## Not Verified / Known Limitations
-- Kafka outage, multi-node failover, HA, autoscaling, production recovery time, SLA/SLO remain unverified/non-claims;
-- backup/restore is not yet accepted as verified;
+- backup/restore remains unverified until M6 executes it;
+- no continuous backup, PITR, DR, HA, RPO/RTO, cloud-storage durability, production retention, or production operations readiness claim;
 - full admin-platform behavior remains outside scope;
-- M5 must not create a second deployment model or imply production operations readiness.
+- v1.0/M1–M5 accepted evidence and non-claims remain frozen.
 
-## M5 Milestone Gate
-M5 has concrete use/show/delivery value because M1–M4 now prove the main local execution, operator inspection/recovery, and one bounded restart path, but a clean technical handoff still requires those accepted pieces to be assembled into one supported single-node delivery contract. Scope is documentation/executable handoff validation, bounded to one Issue/PR, with no unresolved product-direction decision.
+## M6 Milestone Gate
+M6 has concrete delivery/reliability value because M5 now provides a truthful single-node handoff but explicitly leaves persisted-state backup/restore unverified. A single proof-owned PostgreSQL backup/restore case is executable, bounded to one Issue/PR, and does not require a product-direction decision or cloud/HA expansion.
 
 ## Exact Next Action
-**Open exactly one M5 Issue for the single-node delivery handoff. Reuse accepted M1/M4 commands and evidence, inspect current docs/scripts for drift, then implement only the smallest handoff/runbook or executable validation gap. Backup/restore must be verified separately or stated NOT VERIFIED; do not imply HA, production readiness, cloud execution, or autonomous operations.**
+**Open exactly one M6 Issue for a bounded persisted-state backup/restore proof. Reuse the accepted Local-first stack and current PostgreSQL infrastructure, create one identifiable persisted Job/result state, back it up, restore into a clean proof-owned persistence boundary, and verify the restored records. Keep DR/HA/RPO/RTO/cloud storage and production retention explicitly out of scope.**
