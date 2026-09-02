@@ -43,6 +43,24 @@ preserve_failure_evidence() {
   log "failure diagnostics retained at $EVIDENCE_DIR"
 }
 
+write_retained_session() {
+  local session_file="$WORK_DIR/retained-session.env"
+  {
+    printf 'PROOF_ID=%q\n' "$PROOF_ID"
+    printf 'COMPOSE_PROJECT=%q\n' "$COMPOSE_PROJECT"
+    printf 'HEIMDALL_PID=%q\n' "$HEIMDALL_PID"
+    printf 'BIFROST_PID=%q\n' "$BIFROST_PID"
+    if [[ "$OWN_OLLAMA" == "1" ]]; then
+      printf 'OLLAMA_CONTAINER=%q\n' "$PROOF_ID-ollama"
+    else
+      printf 'OLLAMA_CONTAINER=%q\n' ""
+    fi
+    printf 'ROOT_DIR=%q\n' "$ROOT_DIR"
+    printf 'WORK_DIR=%q\n' "$WORK_DIR"
+  } > "$session_file"
+  log "retained session metadata=$session_file"
+}
+
 cleanup() {
   local rc=$?
   set +e
@@ -60,6 +78,7 @@ cleanup() {
       log "caller-owned work dir retained at $WORK_DIR"
     fi
   else
+    write_retained_session
     log "KEEP=1; work dir retained at $WORK_DIR"
   fi
   exit "$rc"
@@ -93,9 +112,9 @@ docker info >/dev/null 2>&1 || fail "Docker daemon is not available"
 docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is required"
 JAVA_MAJOR="$(java -version 2>&1 | awk -F'[".]' '/version/ {print $2; exit}')"
 [[ "$JAVA_MAJOR" == "21" ]] || fail "Java 21 required; detected ${JAVA_MAJOR:-unknown}"
-python3 - <<'PY' || fail "Python 3.8+ required"
+python3 - <<'PY' || fail "Python 3.9+ required"
 import sys
-assert sys.version_info >= (3, 8), sys.version
+assert sys.version_info >= (3, 9), sys.version
 PY
 python3 -m venv "$WORK_DIR/venv" || fail "python venv creation failed"
 for port in 5432 6379 8080 8000 9091 9200; do
@@ -150,14 +169,10 @@ export JWT_SECRET=local-proof-jwt-secret-at-least-32-bytes-long
 export HEIMDALL_SECURITY_ADMIN_USERNAME=admin
 export HEIMDALL_SECURITY_ADMIN_PASSWORD=local-proof-admin-password
 export HEIMDALL_SECURITY_ADMIN_ROLES=ADMIN,USER
-# M1 proves one explicit operator-requested Job. Disable ingestion auto-request only
-# in this proof process so the deterministic Job does not compete for local Ollama.
 export HEIMDALL_ANALYSIS_AUTO_REQUEST=false
 export REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=redis_password GRPC_PORT=9091
 export KAFKA_ENABLED=true HEIMDALL_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
 export HEIMDALL_DATABASE_URL=postgresql://asgard:asgard_password@127.0.0.1:5432/heimdall
-# Bound generation only for the reproducibility proof. Production/default behavior is unchanged
-# unless this opt-in environment variable is explicitly set.
 export BIFROST_OLLAMA_URL=http://127.0.0.1:11434 BIFROST_OLLAMA_MODEL="$MODEL" BIFROST_OLLAMA_ALLOW_FALLBACK=false BIFROST_OLLAMA_NUM_PREDICT=256
 java -jar "$HEIMDALL_JAR" > "$WORK_DIR/heimdall.log" 2>&1 & HEIMDALL_PID=$!
 "$WORK_DIR/venv/bin/python" -m bifrost.main serve > "$WORK_DIR/bifrost.log" 2>&1 & BIFROST_PID=$!
