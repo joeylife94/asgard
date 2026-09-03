@@ -5,6 +5,7 @@ on:
     paths:
       - 'docs/SINGLE_NODE_HANDOFF.md'
       - 'scripts/local-proof.sh'
+      - 'scripts/m6-backup-restore-proof.sh'
       - '.github/workflows/v11-m1-local-proof.yml'
       - '.github/workflows/v11-m4-bifrost-restart.yml'
       - '.github/workflows/v11-m5-handoff.yml'
@@ -25,9 +26,11 @@ jobs:
           set -Eeuo pipefail
           test -f docs/SINGLE_NODE_HANDOFF.md
           test -f scripts/local-proof.sh
+          test -f scripts/m6-backup-restore-proof.sh
           test -f .github/workflows/v11-m1-local-proof.yml
           test -f .github/workflows/v11-m4-bifrost-restart.yml
           bash -n scripts/local-proof.sh
+          bash -n scripts/m6-backup-restore-proof.sh
 
       - name: Validate bounded handoff contract
         shell: bash
@@ -41,14 +44,15 @@ jobs:
               'ASGARD_PROOF_KEEP=1',
               '.github/workflows/v11-m1-local-proof.yml',
               '.github/workflows/v11-m4-bifrost-restart.yml',
-              'Backup/restore: NOT VERIFIED',
+              'scripts/m6-backup-restore-proof.sh',
               'Java 21',
               'Docker Compose plugin',
               'Local-first',
           ]
           missing = [item for item in required if item not in text]
           assert not missing, f'missing handoff contract items: {missing}'
-          print('M5 handoff contract PASS')
+          assert 'Backup/restore: NOT VERIFIED' not in text, 'obsolete backup/restore non-claim remains'
+          print('M5 handoff contract PASS against current accepted handoff truth')
           PY
 
   real-local-proof:
