@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       heimdall: ${{ steps.filter.outputs.heimdall }}
-      bifrost: ${{ steps.filter.outputs.bifrost }}
+      bifrost: ${{ steps.bifrost-filter.outputs.bifrost }}
       frontend: ${{ steps.filter.outputs.frontend }}
       infrastructure: ${{ steps.filter.outputs.infrastructure }}
     steps:
@@ -31,9 +31,6 @@ jobs:
             - 'settings.gradle'
             - 'gradle/**'
             - 'gradlew*'
-          bifrost:
-            - 'bifrost/**'
-            - '!bifrost/frontend/**'
           frontend:
             - 'bifrost/frontend/**'
           infrastructure:
@@ -41,6 +38,16 @@ jobs:
             - '.github/workflows/**'
             - 'monitoring/**'
             - 'scripts/**'
+
+    - name: Check for Bifrost backend changes
+      uses: dorny/paths-filter@v3
+      id: bifrost-filter
+      with:
+        predicate-quantifier: 'every'
+        filters: |
+          bifrost:
+            - 'bifrost/**'
+            - '!bifrost/frontend/**'
 
   # Build and test Heimdall (Spring Boot) - Only if Heimdall/shared Gradle inputs changed
   build-heimdall:
