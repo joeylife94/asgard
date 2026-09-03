@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M11 SELECTED
-- **Current Batch**: M11 — Change-scoped CI/CD Signal Isolation — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN / M9 FROZEN / M10 FROZEN — M11 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M12 SELECTED
+- **Current Batch**: M12 — Retained Proof Cleanup Command — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN / M9 FROZEN / M10 FROZEN / M11 FROZEN — M12 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -37,14 +37,16 @@
 - **Accepted M9 merge main SHA**: `05ed2bea167153c30a403a18a55f742149ebec7f`
 - **Accepted M10 exact PR head**: `bc06a16145897884c3c0be2bf78ee214477bc89a`
 - **Accepted M10 merge main SHA**: `8abd9b6cf4ee23a80c86a28a305c2c873c8de025`
+- **Accepted M11 exact PR head**: `a6d62af5071010ebcb6ec7f7848be869a08843b9`
+- **Accepted M11 merge main SHA**: `96b27d105dc0453b33a00f8d7259b789b836b29b`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M11 — Change-scoped CI/CD Signal Isolation
+- **Selected Next Milestone**: M12 — Retained Proof Cleanup Command
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS / M9 PASS / M10 PASS — M11 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS / M9 PASS / M10 PASS / M11 PASS — M12 SELECTED**
 
 ---
 
@@ -148,7 +150,8 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-017 | M8 Kafka restart proof is one bounded persisted-request replay case | no multi-broker/HA/autonomous failover/recovery-time/production-durability generalization |
 | R-018 | M9 PostgreSQL restart proof is one bounded same-volume recovery case | no replication/HA/PITR/DR/RPO-RTO/recovery-time/production-durability generalization |
 | R-019 | stale single-node handoff truth after M6/M8/M9 | CLOSED by accepted M10 handoff truth reconciliation; no claim expansion |
-| R-020 | broad `infrastructure` CI/CD filter causes unrelated workflow/script changes to execute Heimdall/Bifrost application builds | selected M11 must isolate change-scoped signal without hiding R-002 when Heimdall/shared Gradle inputs actually change |
+| R-020 | broad `infrastructure` CI/CD filter caused unrelated workflow/script changes to execute Heimdall/Bifrost application builds | CLOSED by accepted M11 change-scoped signal isolation; R-002 remains visible when Heimdall/shared Gradle inputs actually change |
+| R-021 | retained proof cleanup logic is duplicated in handoff/workflow snippets and requires manual session metadata handling | selected M12 must provide one bounded repository-owned cleanup command without broadening lifecycle or production-operation claims |
 
 ---
 
@@ -195,35 +198,37 @@ Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion,
 | M8 — Kafka Restart Recovery | #45 / #46 | `5fb86a99a2e98f237c0d516391128ef9a86bd500` | `5748d33953c7b46abd945d682618a409c7b9125b` | M8 `33697888620`; artifact `9872527893` / `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486` | one single-broker persisted-request replay case; no HA/multi-broker claim |
 | M9 — PostgreSQL Restart Recovery | #47 / #48 | `c68c246c2d86672451425b5bb459234cb263794d` | `05ed2bea167153c30a403a18a55f742149ebec7f` | M9 `33702303430` SUCCESS; artifact `9874023335` / `sha256:1ce95b2a206500ab8de72d9af54bb778b1b0128e3a2e7edd0edc3d2f9537151c`; Bifrost and relevant security/quality gates independently GREEN while broad Heimdall R-002 remained separately classified | one proof-owned same-volume PostgreSQL restart/recovery case; no replication/HA/PITR/DR/RPO-RTO/SLA-SLO/production durability/cloud claim |
 | M10 — Single-node Handoff Truth Reconciliation | #49 / #50 | `bc06a16145897884c3c0be2bf78ee214477bc89a` | `8abd9b6cf4ee23a80c86a28a305c2c873c8de025` | M10 `33713410047` SUCCESS; M5 handoff regression `33713410083` SUCCESS; primary CI `33713410094` SUCCESS; Local AI golden path `33713409968` SUCCESS; broad CI/CD `33713410364` RED only at pre-existing Heimdall R-002 with Bifrost and dependency security GREEN | delivery-facing truth reconciliation only; no runtime capability or production/HA/DR/cloud claim expansion |
+| M11 — Change-scoped CI/CD Signal Isolation | #51 / #52 | `a6d62af5071010ebcb6ec7f7848be869a08843b9` | `96b27d105dc0453b33a00f8d7259b789b836b29b` | CI/CD `33721456071` SUCCESS; primary CI `33721456054` SUCCESS | workflow-only changes no longer force unrelated application builds; direct service/shared-input gates and R-002 visibility remain bounded by actual changed inputs |
 
-**M1–M10 PASS / ACCEPTED / FROZEN.**
+**M1–M11 PASS / ACCEPTED / FROZEN.**
 
 ---
 
-# 8. M11 — Change-scoped CI/CD Signal Isolation — SELECTED
+# 8. M12 — Retained Proof Cleanup Command — SELECTED
 
 ## Progression Review Decision
-M10 showed a recurring delivery-readiness problem in the broad CI/CD workflow: any change under `.github/workflows/**` or `scripts/**` is classified as `infrastructure`, and `infrastructure == true` currently forces both Heimdall and Bifrost application builds. This means a handoff/proof workflow-only change can surface the known Heimdall R-002 RED even when no Heimdall or shared Gradle input changed. The RED remains real debt, but its attachment to unrelated changes makes the broad status less useful as a change-scoped delivery signal.
+The accepted local proof can intentionally retain a proof-owned environment via `ASGARD_PROOF_KEEP=1`, and M10 documents a correct cleanup sequence using `retained-session.env`. The same cleanup mechanics also appear in multiple workflows. This is usable but unnecessarily manual and duplicated: a technical operator must source metadata and reproduce process/container/Compose teardown logic rather than invoke one repository-owned bounded command.
 
-M11 is not a Checkstyle cleanup and must not hide R-002. It is a bounded CI orchestration correction so application builds run when their own code/shared build inputs change, while infrastructure/proof workflow changes receive their relevant workflow/security checks without manufacturing an unrelated application build failure.
+M12 is an operator-usability and handoff milestone, not a new runtime capability. It should centralize the accepted retained-session cleanup boundary into one script and make the handoff/workflows consume that command where practical, without changing default proof cleanup semantics or expanding production-operation claims.
 
 ## Selected Scope
-- adjust `.github/workflows/ci-cd.yml` change routing only;
-- preserve Heimdall build execution for `heimdall/**`, root/shared Gradle inputs, or other inputs that materially affect Heimdall;
-- preserve Bifrost build execution for `bifrost/**` and inputs that materially affect Bifrost;
-- stop treating every `.github/workflows/**` or `scripts/**` change as an unconditional reason to build both applications;
-- keep dependency/security checking and truthful summary behavior;
-- do not modify Heimdall source/Checkstyle debt, product runtime, Local-first boundaries, or cloud/provider behavior.
+- add one repository-owned cleanup command for a retained proof session described by `retained-session.env`;
+- fail closed on a missing/invalid session file rather than guessing identities;
+- stop only recorded proof-owned Heimdall/Bifrost PIDs, remove a recorded proof-owned Ollama container only when present, and tear down the recorded proof-owned Compose project/volumes;
+- make repeated invocation safe enough for bounded handoff cleanup;
+- update the single-node handoff to use the command instead of a pasted teardown recipe;
+- optionally replace duplicated workflow cleanup snippets only where this does not broaden scope;
+- do not alter runtime Job lifecycle, persistence semantics, Local-first routing, cloud/provider behavior, HA/DR, or production claims.
 
 ## Executable Acceptance
-1. A workflow/script-only PR path does not execute Heimdall/Bifrost application builds solely because `infrastructure == true`.
-2. A Heimdall/shared-Gradle path still schedules Heimdall and therefore still exposes R-002 if the broad build remains RED.
-3. A Bifrost path still schedules Bifrost tests.
-4. Relevant dependency/security signal remains present.
-5. Primary accepted proof/regression workflows remain independently GREEN where applicable.
+1. A retained local proof produces `retained-session.env` and remains running after proof completion.
+2. The new cleanup command consumes that exact session file and removes the recorded proof-owned processes/container/Compose project and volumes.
+3. A second cleanup invocation does not damage unrelated resources and exits with a bounded truthful result.
+4. A missing or malformed session file fails closed without guessed broad process/container deletion.
+5. Primary accepted proof/regression checks remain independently GREEN where applicable.
 
 ## Stop Condition
-Stop after one bounded CI/CD routing correction and executable path-filter evidence. Do not perform broad Checkstyle cleanup or convert R-002 into GREEN by suppression.
+Stop after one bounded cleanup command plus executable retained-session cleanup evidence and minimal handoff/workflow adoption. Do not turn this into a generic host process manager, container janitor, deployment system, or unattended operations capability.
 
 **Current: SELECTED — ISSUE NOT YET OPEN**
 
@@ -233,12 +238,12 @@ Stop after one bounded CI/CD routing correction and executable path-filter evide
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M10 are **PASS / ACCEPTED / FROZEN**;
-- M10 exact head `bc06a16145897884c3c0be2bf78ee214477bc89a`, PR #50 merge `8abd9b6cf4ee23a80c86a28a305c2c873c8de025`, Issue #49 CLOSED / COMPLETED;
-- M10 truth contract `33713410047`, M5 handoff regression `33713410083`, primary CI `33713410094`, and P1-B1 Local AI golden path `33713409968` all SUCCESS;
-- broad CI/CD `33713410364` remained RED only at Heimdall `Build with Gradle`; Bifrost and Dependency Security Check were GREEN, preserving R-002 as pre-existing/non-blocking debt rather than silently calling it GREEN;
-- M10 introduced no runtime capability and preserved all production/HA/DR/PITR/RPO-RTO/SLA-SLO/cloud/autonomous-operation non-claims;
-- Progression Review selected exactly one next milestone: **M11 — Change-scoped CI/CD Signal Isolation**.
+- M1–M11 are **PASS / ACCEPTED / FROZEN**;
+- M11 exact head `a6d62af5071010ebcb6ec7f7848be869a08843b9`, PR #52 merge `96b27d105dc0453b33a00f8d7259b789b836b29b`, Issue #51 CLOSED / COMPLETED;
+- M11 CI/CD `33721456071` and primary CI `33721456054` are SUCCESS on the accepted exact head;
+- M11 closed R-020 by isolating application builds to relevant changed inputs, while preserving R-002 visibility when Heimdall/shared Gradle inputs actually change;
+- M11 introduced no runtime capability and preserved all production/HA/DR/PITR/RPO-RTO/SLA-SLO/cloud/autonomous-operation non-claims;
+- Progression Review selected exactly one next milestone: **M12 — Retained Proof Cleanup Command**.
 
 ## Exact Next Action
-**Open exactly one M11 Issue. Make the smallest CI/CD path-routing correction so unrelated workflow/script changes do not force Heimdall/Bifrost builds, while direct Heimdall/shared-Gradle and Bifrost changes still execute their real gates and R-002 remains visible when actually relevant.**
+**Open exactly one M12 Issue. Add the smallest repository-owned cleanup command that safely consumes one retained proof session file, prove cleanup and fail-closed behavior executably, and replace only the directly duplicated handoff/workflow cleanup path needed for the milestone.**
