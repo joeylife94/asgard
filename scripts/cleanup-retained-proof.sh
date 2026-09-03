@@ -50,16 +50,28 @@ docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is require
 stop_recorded_pid() {
   local name=$1 pid=$2
   [[ -n "$pid" ]] || { log "$name pid not recorded; skip"; return 0; }
-  if kill -0 "$pid" 2>/dev/null; then
-    kill "$pid"
-    for _ in {1..20}; do
-      kill -0 "$pid" 2>/dev/null || { log "$name stopped pid=$pid"; return 0; }
-      sleep 0.25
-    done
-    fail "$name did not stop cleanly pid=$pid"
-  else
+  if ! kill -0 "$pid" 2>/dev/null; then
     log "$name already stopped pid=$pid"
+    return 0
   fi
+
+  log "$name stopping pid=$pid"
+  kill "$pid"
+  for _ in {1..40}; do
+    kill -0 "$pid" 2>/dev/null || { log "$name stopped pid=$pid"; return 0; }
+    sleep 0.25
+  done
+
+  # Retained proof processes are proof-owned exact PIDs. If graceful TERM does
+  # not complete within the bounded grace period, force only that recorded PID
+  # rather than widening cleanup to process-name matching.
+  log "$name did not stop after TERM; forcing recorded pid=$pid"
+  kill -KILL "$pid" 2>/dev/null || true
+  for _ in {1..20}; do
+    kill -0 "$pid" 2>/dev/null || { log "$name force-stopped pid=$pid"; return 0; }
+    sleep 0.25
+  done
+  fail "$name still present after bounded TERM/KILL pid=$pid"
 }
 
 stop_recorded_pid "Heimdall" "$HEIMDALL_PID"
