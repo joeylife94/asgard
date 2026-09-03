@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M9 SELECTED
-- **Current Batch**: M9 — Bounded PostgreSQL Restart Recovery — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN — M9 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M10 SELECTED
+- **Current Batch**: M10 — Single-node Handoff Truth Reconciliation — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN / M9 FROZEN — M10 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -33,14 +33,16 @@
 - **Accepted M7 merge main SHA**: `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`
 - **Accepted M8 exact PR head**: `5fb86a99a2e98f237c0d516391128ef9a86bd500`
 - **Accepted M8 merge main SHA**: `5748d33953c7b46abd945d682618a409c7b9125b`
+- **Accepted M9 exact PR head**: `c68c246c2d86672451425b5bb459234cb263794d`
+- **Accepted M9 merge main SHA**: `05ed2bea167153c30a403a18a55f742149ebec7f`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M9 — Bounded PostgreSQL Restart Recovery
+- **Selected Next Milestone**: M10 — Single-node Handoff Truth Reconciliation
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS — M9 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS / M9 PASS — M10 SELECTED**
 
 ---
 
@@ -67,9 +69,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다.
-
-Post-v1.0의 목적은 이 검증된 lifecycle을 무한 확장하는 것이 아니라, **기술 운영자가 단일 로컬/서버 환경에 재현 가능하게 설치하고, 비동기 Local AI Job을 실행·조회·복구·감사하며 시스템 상태를 이해할 수 있는 usable operational tool로 발전시키는 것**이다.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. Post-v1.0 progression은 이 baseline을 무한 확장하지 않고, 기술 운영자가 단일 로컬/서버 환경에서 재현 가능하게 설치·실행·조회·복구·감사·진단할 수 있는 bounded operational tool로 발전시키는 데 한정한다.
 
 ---
 
@@ -94,7 +94,6 @@ Post-v1.0의 목적은 이 검증된 lifecycle을 무한 확장하는 것이 아
 - replacing AWS with OpenAI / Gemini / another cloud provider
 - multi-provider routing expansion
 - RAG as the primary Asgard Proof
-- feedback / quality scoring / A-B testing / smart caching expansion
 - advanced React admin dashboard
 - HP AI Server reference deployment
 - Kubernetes production / HA / autoscaling / multi-region
@@ -103,9 +102,7 @@ Post-v1.0의 목적은 이 검증된 lifecycle을 무한 확장하는 것이 아
 - production SLA/SLO
 - legal GDPR or security certification
 
-Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0 requirement or accepted claim.**
-
-The v1.0 boundary is permanently preserved as a frozen verified baseline. Post-v1.0 progression must not rewrite historical v1.0 PASS claims, accepted evidence, or non-claims merely to make a later milestone look stronger.
+Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0 requirement or accepted claim.** The v1.0 boundary is permanently preserved as a frozen verified baseline. Post-v1.0 work must not rewrite historical v1.0 PASS claims, accepted evidence, or non-claims.
 
 ---
 
@@ -122,10 +119,7 @@ The v1.0 boundary is permanently preserved as a frozen verified baseline. Post-v
 
 **ASGARD PROOF v1.0 CLOSED / FREEZE — HUMAN REVIEW PASSED.**
 
-### v1.0 claim boundary
-Supported: event-driven Java/Python AI operations architecture; persistent async Job lifecycle; Kafka request/result handoff; real local Ollama inference; result persistence; fail-closed Local-first routing; bounded FAILED/DLQ→Redrive→Audit→Retry→SUCCEEDED; duplicate redrive visibility; bounded Prometheus/Grafana lifecycle visibility.
-
-Not verified: production readiness; enterprise-grade operational readiness; legal compliance certification; production SLA/SLO; stable latency/throughput/cost claims; Kubernetes/HA/multi-region; cloud-provider execution; full admin platform; unattended autonomous operations.
+Supported claims remain limited to the accepted Local-first asynchronous Job lifecycle, result persistence, fail-closed routing, bounded DLQ/redrive/audit recovery, and bounded observability. Not verified: production readiness, enterprise operational readiness, legal compliance certification, production SLA/SLO, stable latency/throughput/cost, Kubernetes/HA/multi-region, cloud-provider execution, full admin platform, or unattended autonomous operations.
 
 ---
 
@@ -146,10 +140,12 @@ Not verified: production readiness; enterprise-grade operational readiness; lega
 | R-011 | short-window Grafana delta/rate semantics | do not generalize into production observability claims |
 | R-012 | M2 console bounded/read-only by default | recovery only under explicit M3 feature flag |
 | R-013 | proof harness queue-order race | bounded harness isolation only; no autonomous-runtime guarantee |
-| R-014 | Bifrost restart proof is one bounded single-node replay case | no HA/Kafka-outage/recovery-time generalization |
-| R-015 | backup/restore was unverified after M5 | **CLOSED for one bounded M6 PostgreSQL backup/restore case only**; DR/PITR/RPO/RTO remain unverified |
+| R-014 | M4 Bifrost restart proof is one bounded single-node replay case | no HA/Kafka-outage/recovery-time generalization |
+| R-015 | backup/restore gap after M5 | CLOSED for one bounded M6 PostgreSQL backup/restore case only; DR/PITR/RPO/RTO remain unverified |
 | R-016 | M7 diagnostic snapshot proves one bounded read-only support bundle | no alerting, autonomous remediation, generic monitoring-platform, production monitoring/SLA/SLO claim |
 | R-017 | M8 Kafka restart proof is one bounded persisted-request replay case | no multi-broker/HA/autonomous failover/recovery-time/production-durability generalization |
+| R-018 | M9 PostgreSQL restart proof is one bounded same-volume recovery case | no replication/HA/PITR/DR/RPO-RTO/recovery-time/production-durability generalization |
+| R-019 | `docs/SINGLE_NODE_HANDOFF.md` still carries pre-M6/M8/M9 non-claims | selected M10 must reconcile delivery-facing truth without broadening claims |
 
 ---
 
@@ -174,189 +170,55 @@ Not verified: production readiness; enterprise-grade operational readiness; lega
 # 6. Post-v1.0 Progression Contract
 
 ## Product Destination
-
 > **A bounded, single-node Local AI Operations Tool that a technical operator can reproducibly deploy, use to submit and inspect asynchronous Local AI analysis jobs, recover supported failures, audit operator actions, and understand system health without requiring a cloud AI provider.**
 
 Priority: reproducibility → reliability/recovery → operator usability/observability → delivery readiness → maintainability/security only when blocking use → new capability only when earlier axes cannot produce useful progress.
 
 Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion, Kubernetes/HA/autoscaling/multi-region, multi-tenancy, full RBAC/SSO, billing, autonomous operations, broad RAG, generic refactors, broad Checkstyle cleanup, or full admin-platform competition.
 
-Disable/queue only for explicit user/product stop, repository archival/supersession, unsafe material product-direction decision, external WIP cap, or no useful bounded milestone remaining.
-
 ---
 
 # 7. Accepted Post-v1.0 Milestones
 
-## M1 — Local Reproduction & First Job — ACCEPTED / FROZEN
-- Issue #25 CLOSED; PR #30 merged with expected-head guard.
-- exact head `0db87a1a1feb54bf677533d88516d72f3bda73ec`; merge `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab`.
-- primary CI `33399015985`; M1 `33399015962`; UC-02 `33399016060`; UC-03 `33399016019`; UC-04 `33399015968`: SUCCESS.
-- artifact `9760584618` / `sha256:f8011b67f5c49a87ddef93356295d403d37d4dc731b82811bfe087c2399c361`.
-- bounded GitHub-hosted Linux path only; no macOS/Windows/stable-performance claim.
+| Milestone | Issue / PR | Accepted exact head | Merge main SHA | Executed evidence | Boundary |
+|---|---|---|---|---|---|
+| M1 — Local Reproduction & First Job | #25 / #30 | `0db87a1a1feb54bf677533d88516d72f3bda73ec` | `3e90bbd7eedca5f71c341ea91691b0cf2bc121ab` | M1 `33399015962`; primary CI `33399015985`; artifact `9760584618` / `sha256:f8011b67f5c49a87ddef93356295d403d37d4dc731b82811bfe087c2399c361` | bounded GitHub-hosted Linux path only |
+| M2 — Read-only Job Lifecycle Console | #31 / #32 | `224e53814bc33e565189acd0b2c45866be32f2a0` | `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86` | M2 `33405406557`; artifact `9763096595` / `sha256:ff363841b4c4754870ab40a33f630284e39b3820123d503e847096ccc1e19b05` | bounded read-only console, not full admin |
+| M3 — Controlled Recovery Workflow | #33 / #35 | `b4e79a00dc3677746a244a08c6fd36dfccba620c` | `c97dfa2d79f81b7b0172833769a71164934a103e` | M3 `33422708481`; artifact `9769683333` / `sha256:2c1bdfe47287dc3e88061259ee2d93f9b8025310721e3a2b66b7ae3fd05d6d78` | explicit operator redrive only; no autonomous retry claim |
+| M4 — Bifrost Restart | #36 / #38 | `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b` | `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578` | M4 `33444318573`; artifact `9777540907` / `sha256:d1a078d52d9fb70a3c9931f6e5065e2fd4220f863fffbf5acc1e1ba07d020ea4` | one bounded Bifrost kill/restart replay case |
+| M5 — Single-node Delivery Handoff | #39 / #40 | `b13438d91ca13ac9a889bad4f31a2b33550533e9` | `3f6eb40793991adba82c7d5b60920a5f60c80a04` | M5 `33652535194`; artifact `9855507091` / `sha256:f26aa953bcb5a855bc4f628ec1edd56f7e61a750a432ed0d2e4d12a7fbc09683` | repository-owned Linux handoff; later milestones add bounded evidence only |
+| M6 — PostgreSQL Backup/Restore | #41 / #42 | `08c047b35c55b693615d3bdf055a0250d838817a` | `cbd8a1ef74ae55b5636b81ecbf757e50adb268da` | M6 `33664446061`; artifact `9860123355` / `sha256:d9e7bb833ed1eaa265baa19bead70b528762c0939160e17c30013385be7c668c` | one bounded backup/restore case; no DR/PITR/RPO-RTO |
+| M7 — Operator Diagnostic Snapshot | #43 / #44 | `c4de490bab6d1f3709cf7ce32c4d7b2212131fce` | `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7` | M7 `33693038558`; artifact `9870849376` / `sha256:4961998526b32c5af5cf7b39f8df9159e2cb7c13bdb71743a5116e5bec5ec30b` | one bounded read-only support bundle |
+| M8 — Kafka Restart Recovery | #45 / #46 | `5fb86a99a2e98f237c0d516391128ef9a86bd500` | `5748d33953c7b46abd945d682618a409c7b9125b` | M8 `33697888620`; artifact `9872527893` / `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486` | one single-broker persisted-request replay case; no HA/multi-broker claim |
+| M9 — PostgreSQL Restart Recovery | #47 / #48 | `c68c246c2d86672451425b5bb459234cb263794d` | `05ed2bea167153c30a403a18a55f742149ebec7f` | M9 `33702303430` SUCCESS; artifact `9874023335` / `sha256:1ce95b2a206500ab8de72d9af54bb778b1b0128e3a2e7edd0edc3d2f9537151c`; Bifrost and relevant security/quality gates independently GREEN while broad Heimdall R-002 remained separately classified | one proof-owned same-volume PostgreSQL restart/recovery case; no replication/HA/PITR/DR/RPO-RTO/SLA-SLO/production durability/cloud claim |
 
-## M2 — Operator Console: Read-only Job Lifecycle — ACCEPTED / FROZEN
-- Issue #31 CLOSED; PR #32 merged.
-- exact head `224e53814bc33e565189acd0b2c45866be32f2a0`; merge `07875ef2c9f6784d54c23c2bb19b326d2ff6ed86`.
-- M2 `33405406557`; primary CI `33405406555`; M1 `33405406603`; UC-02/03/04/05 all SUCCESS.
-- artifact `9763096595` / `sha256:ff363841b4c4754870ab40a33f630284e39b3820123d503e847096ccc1e19b05`.
-- bounded read-only console; not a generic/full admin dashboard.
-
-## M3 — Controlled Recovery Operator Workflow — ACCEPTED / FROZEN
-- Issue #33 CLOSED; PR #35 merged; draft PR #34 closed only due connector Draft→Ready failure.
-- exact head `b4e79a00dc3677746a244a08c6fd36dfccba620c`; merge `c97dfa2d79f81b7b0172833769a71164934a103e`.
-- M3 `33422708481`; primary CI `33422708448`; M1/M2/UC-02/03/04 all SUCCESS.
-- artifact `9769683333` / `sha256:2c1bdfe47287dc3e88061259ee2d93f9b8025310721e3a2b66b7ae3fd05d6d78`.
-- proves explicit reason/confirmation, redrive to SUCCEEDED, SUCCESS audit, duplicate SKIPPED without attempt inflation.
-- no autonomous/background retry guarantee.
-
-## M4 — Runtime Resilience: Bounded Bifrost Restart — ACCEPTED / FROZEN
-- Issue #36 CLOSED; PR #38 merged; draft PR #37 closed only after repeated Draft→Ready connector failure.
-- exact head `e46f11cc9cccd7763cc8d6e7b3dbcd8907af934b`; merge `d853f8b5fe248ee2e0fd0032f6e0ffccadc5f578`.
-- M4 `33444318573`; primary CI `33444318725`: SUCCESS.
-- artifact `9777540907` / `sha256:d1a078d52d9fb70a3c9931f6e5065e2fd4220f863fffbf5acc1e1ba07d020ea4`.
-- proves one persisted RUNNING Job survives bounded actual Bifrost SIGKILL/restart via same consumer group to SUCCEEDED/resultRef=1.
-- no Kafka outage, HA, autonomous recovery, recovery-time, distributed-delivery generalization.
-
-## M5 — Single-node Delivery Handoff — ACCEPTED / FROZEN
-- Issue #39 CLOSED; PR #40 merged.
-- exact head `b13438d91ca13ac9a889bad4f31a2b33550533e9`; merge `3f6eb40793991adba82c7d5b60920a5f60c80a04`.
-- M5 `33652535194`; primary CI `33652535236`; M1 `33652535181`; Real Local AI `33652535237`: SUCCESS.
-- artifact `9855507091` / `sha256:f26aa953bcb5a855bc4f628ec1edd56f7e61a750a432ed0d2e4d12a7fbc09683`.
-- repository-owned Linux handoff, prerequisites/config ownership, retained-session cleanup metadata/troubleshooting.
-- M5 explicitly left backup/restore NOT VERIFIED; M6 later closed one bounded case.
-
-## M6 — Persisted-state Backup/Restore Proof — ACCEPTED / FROZEN
-
-### Accepted Scope
-- one bounded single-node PostgreSQL backup/restore case for Asgard-owned Job/result/audit state;
-- create real accepted Local-first persisted state;
-- stop proof-owned writers before snapshot;
-- produce concrete custom-format `pg_dump` backup artifact;
-- restore into a newly created proof-owned database rather than source `heimdall` database;
-- compare target Job identity/status/result_ref/attempt_count plus referenced result presence and target redrive-audit count before/after restore.
-
-### Actually Changed
-- added `scripts/m6-backup-restore-proof.sh`;
-- added `.github/workflows/v11-m6-backup-restore.yml`;
-- no product runtime, schema, Kafka/Bifrost/Heimdall behavior, cloud provider, HA, or DR infrastructure change.
-
-### Actually Executed / Verified
-- Issue #41 — **CLOSED / COMPLETED**;
-- PR #42 — **SQUASH MERGED** with expected-head guard;
-- accepted exact head `08c047b35c55b693615d3bdf055a0250d838817a`;
-- merge main SHA `cbd8a1ef74ae55b5636b81ecbf757e50adb268da`;
-- M6 Backup Restore Proof run `33664446061`: **SUCCESS**;
-- artifact `9860123355`, digest `sha256:d9e7bb833ed1eaa265baa19bead70b528762c0939160e17c30013385be7c668c`;
-- primary CI and Real Local AI regression independently GREEN on the accepted exact head;
-- Bifrost build/test and Dependency Security Check GREEN;
-- broad CI/CD remained RED first at `Build & Test Heimdall → Build with Gradle`, retained as known pre-existing R-002 debt rather than silently called GREEN.
-
-### Limitations / Non-claims
-- one proof-owned single-node PostgreSQL case only;
-- no continuous backup, PITR, disaster-recovery certification, HA, Kubernetes volume recovery, RPO/RTO, off-site/cloud durability, production retention/encryption policy, or production-operations claim;
-- no AWS/Bedrock/OIDC/cloud AI execution claim.
-
-### Milestone Acceptance
-One identifiable persisted Asgard Job/result state was produced through the accepted Local-first path, snapshotted with an explicit PostgreSQL backup artifact, restored into a distinct proof-owned database, and the bounded persisted identity/status/result/audit contract was independently verified on the exact PR head. **M6 PASS / ACCEPTED / FROZEN.**
-
-## M7 — Operator Diagnostic Snapshot — ACCEPTED / FROZEN
-
-### Accepted Scope
-- one bounded read-only repository-owned operator diagnostic snapshot for the accepted single-node Local-first proof environment;
-- capture supported service health/reachability, one identifiable persisted Job state, bounded lifecycle metrics, proof/session correlation metadata, and sanitized bounded recent Heimdall/Bifrost log evidence;
-- emit machine-readable JSON and human-readable Markdown;
-- fail closed if known proof credentials or synthetic secrets leak into the evidence;
-- no mutation/recovery action in the snapshot path.
-
-### Actually Changed
-- added `scripts/operator-diagnostic-snapshot.sh`;
-- added `.github/workflows/v11-m7-operator-diagnostic.yml`;
-- bounded M7 verification was also wired through the registered M1 proof workflow so exact-head execution did not depend on default-branch registration;
-- no product runtime, persistence schema, cloud-provider path, HA, alerting, or autonomous remediation change.
-
-### Actually Executed / Verified
-- Issue #43 — **CLOSED / COMPLETED**;
-- PR #44 — **SQUASH MERGED** with expected-head guard;
-- accepted exact head `c4de490bab6d1f3709cf7ce32c4d7b2212131fce`;
-- merge main SHA `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`;
-- M7 Operator Diagnostic Snapshot run `33693038558`: **SUCCESS**;
-- Local-first proof, snapshot capture, M7 evidence-contract verification, artifact upload and cleanup all GREEN;
-- artifact `9870849376`, digest `sha256:4961998526b32c5af5cf7b39f8df9159e2cb7c13bdb71743a5116e5bec5ec30b`;
-- primary CI `33693038562`, M1 `33693038581`, Real Local AI `33693038595`, M5 handoff `33693038583`: SUCCESS;
-- Bifrost build/test and Dependency Security Check GREEN;
-- broad CI/CD `33693038579` remained RED first at `Build & Test Heimdall → Build with Gradle`, retained as known pre-existing R-002 debt rather than silently called GREEN.
-
-### Limitations / Non-claims
-- one bounded support/handoff diagnostic snapshot only;
-- no alerting platform, autonomous remediation, distributed tracing rollout, cloud observability, HA/Kubernetes monitoring, production monitoring certification, stable SLA/SLO, or generic admin/observability-platform claim;
-- no AWS/Bedrock/OIDC/cloud AI execution claim.
-
-### Milestone Acceptance
-One repository-owned read-only command produced a contract-checked, human- and machine-readable diagnostic snapshot against an actually executed accepted Local-first proof session, including non-empty correlation identifiers and successful artifact publication. **M7 PASS / ACCEPTED / FROZEN.**
-
-## M8 — Bounded Kafka Restart Recovery — ACCEPTED / FROZEN
-
-### Accepted Scope
-- one proof-owned single-node Kafka restart case using the accepted Local-first path;
-- persist one identifiable target Job and publish its request before Bifrost consumer startup;
-- actually stop the proof-owned Kafka broker and independently verify it is unavailable;
-- restart the same broker/container with the same bounded storage boundary;
-- start Bifrost after broker restart and verify the persisted request reaches SUCCEEDED with exactly one accepted persisted result identity;
-- contract-check bounded attempt/audit/result state and publish evidence.
-
-### Actually Changed
-- added `.github/workflows/v11-m8-kafka-restart.yml` only;
-- no product runtime, schema, Kafka architecture, cloud provider, HA, Kubernetes, or persistence redesign.
-
-### Actually Executed / Verified
-- Issue #45 — **CLOSED / COMPLETED**;
-- PR #46 — **SQUASH MERGED** with expected-head guard;
-- accepted exact head `5fb86a99a2e98f237c0d516391128ef9a86bd500`;
-- merge main SHA `5748d33953c7b46abd945d682618a409c7b9125b`;
-- M8 Kafka Restart Recovery run `33697888620`: **SUCCESS**;
-- actual broker stop/unavailable check, same-broker restart/readiness, Bifrost post-restart processing, M8 evidence contract, artifact upload, and cleanup all GREEN;
-- artifact `9872527893`, digest `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486`;
-- primary CI `33697887580`: **SUCCESS**;
-- CI/CD `33697888516`: Bifrost build/test and Dependency Security Check GREEN; first material RED remained `Build & Test Heimdall → Build with Gradle → :heimdall:checkstyleMain` with 41 files / 111 warnings / 2 info, matching known pre-existing R-002 and unrelated to the one-file M8 workflow diff.
-
-### Limitations / Non-claims
-- one bounded single-node Kafka broker restart and persisted-request replay case only;
-- no multi-broker Kafka, replication/cluster redesign, HA, autonomous failover, cross-node recovery, Kubernetes, recovery-time guarantee, SLA/SLO, stable performance, or production durability claim;
-- no AWS/Bedrock/OIDC/cloud AI execution claim.
-
-### Milestone Acceptance
-One identifiable persisted Local-first Job request was published before an actual proof-owned Kafka interruption, the same broker/storage boundary was restarted, and the request then completed through Bifrost to a single persisted accepted result under an independently verified exact-head workflow. **M8 PASS / ACCEPTED / FROZEN.**
+**M1–M9 PASS / ACCEPTED / FROZEN.**
 
 ---
 
-# 8. M9 — Bounded PostgreSQL Restart Recovery — SELECTED
+# 8. M10 — Single-node Handoff Truth Reconciliation — SELECTED
 
 ## Progression Review Decision
-M4 and M8 now cover bounded Bifrost-process and Kafka-broker restart behavior, while M6 proves offline backup/restore into a distinct proof-owned database. A remaining direct reliability/handoff gap is the primary persistence service itself: the accepted progression does not yet prove that one already persisted Local-first Job/result remains truthful and queryable after an actual restart of the proof-owned PostgreSQL container using the same data volume.
+M1–M9 now provide accepted executable evidence for local reproduction, operator lifecycle inspection, controlled redrive, bounded Bifrost/Kafka/PostgreSQL restart behavior, PostgreSQL backup/restore, diagnostics, and single-node handoff. The current delivery-facing `docs/SINGLE_NODE_HANDOFF.md` is materially stale: it still states `Backup/restore: NOT VERIFIED`, says Kafka outage recovery is not proved, and omits accepted M7/M8/M9 evidence. That mismatch can mislead a technical operator during handoff even though the underlying evidence exists.
 
-This is narrower than HA/DR and requires no product-direction decision. It has concrete operator value because a single-node delivery must tolerate a routine bounded database service restart without silently losing accepted state.
+This is not random polishing or a claim expansion. It is a bounded delivery-readiness correction: align one operator-facing handoff document with accepted executable evidence while preserving every non-claim.
 
 ## Selected Scope
-- one proof-owned single-node PostgreSQL restart case using the existing `postgres-data` persistence boundary;
-- create one identifiable accepted Local-first Job/result state before interruption;
-- stop the proof-owned PostgreSQL container and independently confirm database unavailability;
-- restart the same PostgreSQL service using the same volume, then prove readiness;
-- verify the pre-existing target Job identity/status/result_ref/attempt_count and referenced result remain present and consistent after restart;
-- verify supported Heimdall read/query health resumes after database recovery;
-- make only the smallest same-gap proof/runtime correction if a milestone-caused defect is demonstrated;
-- no database architecture redesign.
+- reconcile `docs/SINGLE_NODE_HANDOFF.md` to accepted M6/M7/M8/M9 evidence;
+- replace obsolete `NOT VERIFIED` wording only where a later accepted milestone actually closed the bounded gap;
+- add exact workflow/evidence references for backup/restore, diagnostics, Kafka restart, and PostgreSQL restart;
+- preserve narrow limits: no HA, DR certification, PITR, RPO/RTO, multi-broker, replication, SLA/SLO, production durability, cloud execution, or autonomous operations claim;
+- add a small repository-owned executable contract check that fails if the handoff reintroduces obsolete non-claims or drops required accepted references.
 
 ## Executable Acceptance
-1. Exact-head execution establishes one identifiable persisted target Job/result through the accepted Local-first path.
-2. The proof actually stops the proof-owned PostgreSQL container and independently confirms the database is unavailable before restart.
-3. The same database service and same proof-owned data volume are restarted; no substitute database or restore-from-backup shortcut is used.
-4. PostgreSQL readiness returns and the exact pre-interruption Job identity/status/result_ref/attempt_count plus referenced result presence remain consistent.
-5. Supported Heimdall health/read behavior resumes against the recovered database.
-6. Relevant primary regression/security gates are independently GREEN; broad Heimdall R-002 remains separately classified unless this milestone changes that code.
-7. No HA, replication/failover, PITR, DR, RPO/RTO, SLA/SLO, production durability, Kubernetes, or cloud-execution claim is introduced.
+1. Exact-head handoff document references M6/M7/M8/M9 accepted workflow paths and states their bounded accepted scope accurately.
+2. `Backup/restore: NOT VERIFIED` and `Kafka outage recovery ... not proved` are removed or rewritten to their accepted bounded truth; no broader production/HA/DR claim is introduced.
+3. A repository-owned script/workflow verifies required handoff references and forbidden overclaim/obsolete strings.
+4. Relevant primary regression/security gates remain independently classified; R-002 is not silently called GREEN.
+5. v1.0 and M1–M9 frozen evidence/claim boundaries remain unchanged.
 
 ## Stop Condition
-Stop after one bounded same-volume PostgreSQL restart/recovery case is independently executed and verified. Do not expand into streaming replication, Patroni, managed databases, Kubernetes operators, production DR, performance tuning, or cloud-provider work.
+Stop after one bounded operator-handoff document and its executable truth contract are independently verified. Do not expand into README rewrites, generic documentation cleanup, cloud-provider work, HA/DR architecture, or product re-positioning.
 
 **Current: SELECTED — ISSUE NOT YET OPEN**
 
@@ -366,13 +228,12 @@ Stop after one bounded same-volume PostgreSQL restart/recovery case is independe
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M8 are **PASS / ACCEPTED / FROZEN**;
-- M8 exact head `5fb86a99a2e98f237c0d516391128ef9a86bd500`, PR #46 merge `5748d33953c7b46abd945d682618a409c7b9125b`, Issue #45 CLOSED / COMPLETED;
-- M8 run `33697888620`: SUCCESS; artifact `9872527893` / `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486`;
-- exact-head primary CI `33697887580` SUCCESS; Bifrost build/test and Dependency Security Check GREEN;
-- broad CI/CD `33697888516` remained RED first at Heimdall `:heimdall:checkstyleMain`, demonstrably the accepted pre-existing R-002 debt rather than an M8 workflow regression;
-- M8 non-claims remain multi-broker/HA/autonomous failover/cross-node recovery/recovery-time/SLA-SLO/production durability/cloud execution;
-- Progression Review selected exactly one next milestone: **M9 — Bounded PostgreSQL Restart Recovery**.
+- M1–M9 are **PASS / ACCEPTED / FROZEN**;
+- M9 exact head `c68c246c2d86672451425b5bb459234cb263794d`, PR #48 merge `05ed2bea167153c30a403a18a55f742149ebec7f`, Issue #47 CLOSED / COMPLETED;
+- M9 run `33702303430`: SUCCESS; artifact `9874023335` / `sha256:1ce95b2a206500ab8de72d9af54bb778b1b0128e3a2e7edd0edc3d2f9537151c`;
+- broad Heimdall R-002 remains pre-existing/non-blocking debt and is not converted into GREEN by milestone acceptance;
+- M9 non-claims remain replication/HA/PITR/DR/RPO-RTO/recovery-time/SLA-SLO/production durability/Kubernetes/cloud execution;
+- Progression Review selected exactly one next milestone: **M10 — Single-node Handoff Truth Reconciliation**.
 
 ## Exact Next Action
-**Open exactly one M9 Issue for a bounded proof-owned same-volume PostgreSQL restart/recovery case. Reuse the accepted Local-first proof path; establish one persisted target Job/result before interruption, actually stop/restart PostgreSQL with the same data volume, and verify persisted identity/result plus supported Heimdall read health after recovery. Keep HA/replication/PITR/DR/RPO-RTO/SLA-SLO/Kubernetes/cloud work out of scope.**
+**Open exactly one M10 Issue. Reconcile `docs/SINGLE_NODE_HANDOFF.md` with accepted M6/M7/M8/M9 evidence and add one bounded executable handoff-truth contract check. Preserve all frozen claim boundaries and do not expand into generic documentation cleanup or new infrastructure capability.**
