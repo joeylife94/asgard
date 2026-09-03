@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M7 SELECTED
-- **Current Batch**: M7 — Operator Diagnostic Snapshot — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN — M7 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M8 SELECTED
+- **Current Batch**: M8 — Bounded Kafka Restart Recovery — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN — M8 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -29,14 +29,16 @@
 - **Accepted M5 merge main SHA**: `3f6eb40793991adba82c7d5b60920a5f60c80a04`
 - **Accepted M6 exact PR head**: `08c047b35c55b693615d3bdf055a0250d838817a`
 - **Accepted M6 merge main SHA**: `cbd8a1ef74ae55b5636b81ecbf757e50adb268da`
+- **Accepted M7 exact PR head**: `c4de490bab6d1f3709cf7ce32c4d7b2212131fce`
+- **Accepted M7 merge main SHA**: `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M7 — Operator Diagnostic Snapshot
+- **Selected Next Milestone**: M8 — Bounded Kafka Restart Recovery
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS — M7 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS — M8 SELECTED**
 
 ---
 
@@ -144,6 +146,7 @@ Not verified: production readiness; enterprise-grade operational readiness; lega
 | R-013 | proof harness queue-order race | bounded harness isolation only; no autonomous-runtime guarantee |
 | R-014 | Bifrost restart proof is one bounded single-node replay case | no HA/Kafka-outage/recovery-time generalization |
 | R-015 | backup/restore was unverified after M5 | **CLOSED for one bounded M6 PostgreSQL backup/restore case only**; DR/PITR/RPO/RTO remain unverified |
+| R-016 | M7 diagnostic snapshot proves one bounded read-only support bundle | no alerting, autonomous remediation, generic monitoring-platform, production monitoring/SLA/SLO claim |
 
 ---
 
@@ -253,34 +256,70 @@ Disable/queue only for explicit user/product stop, repository archival/supersess
 ### Milestone Acceptance
 One identifiable persisted Asgard Job/result state was produced through the accepted Local-first path, snapshotted with an explicit PostgreSQL backup artifact, restored into a distinct proof-owned database, and the bounded persisted identity/status/result/audit contract was independently verified on the exact PR head. **M6 PASS / ACCEPTED / FROZEN.**
 
+## M7 — Operator Diagnostic Snapshot — ACCEPTED / FROZEN
+
+### Accepted Scope
+- one bounded read-only repository-owned operator diagnostic snapshot for the accepted single-node Local-first proof environment;
+- capture supported service health/reachability, one identifiable persisted Job state, bounded lifecycle metrics, proof/session correlation metadata, and sanitized bounded recent Heimdall/Bifrost log evidence;
+- emit machine-readable JSON and human-readable Markdown;
+- fail closed if known proof credentials or synthetic secrets leak into the evidence;
+- no mutation/recovery action in the snapshot path.
+
+### Actually Changed
+- added `scripts/operator-diagnostic-snapshot.sh`;
+- added `.github/workflows/v11-m7-operator-diagnostic.yml`;
+- bounded M7 verification was also wired through the registered M1 proof workflow so exact-head execution did not depend on default-branch registration;
+- no product runtime, persistence schema, cloud-provider path, HA, alerting, or autonomous remediation change.
+
+### Actually Executed / Verified
+- Issue #43 — **CLOSED / COMPLETED**;
+- PR #44 — **SQUASH MERGED** with expected-head guard;
+- accepted exact head `c4de490bab6d1f3709cf7ce32c4d7b2212131fce`;
+- merge main SHA `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`;
+- M7 Operator Diagnostic Snapshot run `33693038558`: **SUCCESS**;
+- Local-first proof, snapshot capture, M7 evidence-contract verification, artifact upload and cleanup all GREEN;
+- artifact `9870849376`, digest `sha256:4961998526b32c5af5cf7b39f8df9159e2cb7c13bdb71743a5116e5bec5ec30b`;
+- primary CI `33693038562`, M1 `33693038581`, Real Local AI `33693038595`, M5 handoff `33693038583`: SUCCESS;
+- Bifrost build/test and Dependency Security Check GREEN;
+- broad CI/CD `33693038579` remained RED first at `Build & Test Heimdall → Build with Gradle`, retained as known pre-existing R-002 debt rather than silently called GREEN.
+
+### Limitations / Non-claims
+- one bounded support/handoff diagnostic snapshot only;
+- no alerting platform, autonomous remediation, distributed tracing rollout, cloud observability, HA/Kubernetes monitoring, production monitoring certification, stable SLA/SLO, or generic admin/observability-platform claim;
+- no AWS/Bedrock/OIDC/cloud AI execution claim.
+
+### Milestone Acceptance
+One repository-owned read-only command produced a contract-checked, human- and machine-readable diagnostic snapshot against an actually executed accepted Local-first proof session, including non-empty correlation identifiers and successful artifact publication. **M7 PASS / ACCEPTED / FROZEN.**
+
 ---
 
-# 8. M7 — Operator Diagnostic Snapshot — SELECTED
+# 8. M8 — Bounded Kafka Restart Recovery — SELECTED
 
 ## Progression Review Decision
-M1–M6 now cover reproducible local execution, bounded recovery, read/recovery operator workflows, Bifrost restart resilience, technical handoff, and one bounded persisted-state backup/restore path. The next useful gap is **low-friction operator diagnosis**: today the operator can inspect the UI, logs, Prometheus/Grafana, and handoff material, but there is no single bounded repository-owned command that captures a truthful synthetic-safe diagnostic snapshot for support/handoff/demo triage.
+M1–M7 cover reproducible local execution, controlled operator recovery, Bifrost process restart resilience, delivery handoff, persisted-state backup/restore, and low-friction operator diagnosis. The remaining reliability gap with direct use/show/delivery value is the event transport itself: M4 explicitly did **not** verify Kafka outage/restart behavior.
 
-This has concrete use/show/delivery value, stays Local-first, reuses existing health/metrics/job/log assets, and does not require a product-direction decision.
+A single bounded Kafka restart case can test whether one identifiable persisted Local-first Job remains truthful and can complete after the proof-owned Kafka broker is restarted, without claiming HA, clustered Kafka, autonomous failover, or recovery-time guarantees. This stays within the current single-node Local-first product direction and requires no cloud/product-direction decision.
 
 ## Selected Scope
-- one repository-owned operator command/script that captures a bounded diagnostic snapshot from a running accepted single-node environment;
-- include service reachability/health for the supported core path, bounded recent Job summary, relevant lifecycle metric values, proof/config ownership metadata that is safe to expose, and bounded recent logs or log references needed for triage;
-- output one deterministic human-readable summary plus machine-readable evidence suitable for handoff/support;
-- redact or exclude secrets/tokens/passwords and synthetic credentials;
-- exact-head workflow must execute the snapshot against an actual accepted Local-first proof environment and validate the evidence contract;
-- no mutation/recovery action is introduced by the snapshot.
+- one proof-owned single-node Kafka restart case using the existing accepted Local-first path;
+- create or hold one identifiable persisted Job at a controlled point where transport interruption is material;
+- stop the proof-owned Kafka broker/container, verify the interruption is real, then restart the same bounded broker/storage boundary;
+- verify the target Job reaches a truthful supported terminal state and, when success is the accepted behavior, exactly one persisted result identity for the target Job;
+- preserve bounded audit/attempt/result semantics and collect executable evidence;
+- make only the smallest same-gap runtime/proof correction if the current behavior fails because of the milestone;
+- no broad Kafka architecture refactor.
 
 ## Executable Acceptance
-1. Exact-head execution starts/reuses the accepted Local-first proof environment and reaches one identifiable Job state.
-2. One operator command produces the diagnostic snapshot without requiring private repository knowledge.
-3. Snapshot records supported service health/reachability, target/recent Job state, bounded lifecycle metrics, and useful triage metadata/log evidence.
-4. Snapshot contains no authorization token, password, API key, cloud credential, or raw synthetic secret values.
-5. Machine-readable evidence can be contract-checked and a human-readable summary is usable for handoff.
+1. Exact-head proof establishes one identifiable target Job in the accepted Local-first environment.
+2. The proof actually stops the proof-owned Kafka broker and confirms it is unavailable before restart.
+3. The same bounded broker/storage boundary is restarted; the proof does not substitute a new cloud/cluster service.
+4. The target Job reaches a truthful supported terminal state after restart; any success claim requires a persisted result identity and no duplicate accepted result for the target Job.
+5. Relevant Job attempt/audit/result state is contract-checked before/after the interruption.
 6. Relevant primary regression/security gates are independently GREEN; known broad Heimdall R-002 debt remains separately classified.
-7. No production monitoring/SLA/SLO, autonomous remediation, cloud execution, HA, or generic observability-platform claim is introduced.
+7. No HA, clustered Kafka, autonomous failover, recovery-time/SLA/SLO, production durability, or cloud-execution claim is introduced.
 
 ## Stop Condition
-Stop after one bounded read-only diagnostic snapshot path is independently executed and verified. Do not expand into log aggregation products, alerting platforms, autonomous remediation, distributed tracing rollout, cloud observability, or generic admin features.
+Stop after one bounded single-node Kafka restart case is independently executed and verified. Do not expand into multi-broker Kafka, replication-factor design, Kubernetes, cross-node failover, production DR, or performance tuning.
 
 **Current: SELECTED — ISSUE NOT YET OPEN**
 
@@ -290,11 +329,12 @@ Stop after one bounded read-only diagnostic snapshot path is independently execu
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M6 are **PASS / ACCEPTED / FROZEN**;
-- M6 exact head `08c047b35c55b693615d3bdf055a0250d838817a`, PR #42 merge `cbd8a1ef74ae55b5636b81ecbf757e50adb268da`, Issue #41 CLOSED / COMPLETED;
-- M6 run `33664446061`: SUCCESS; artifact `9860123355` / `sha256:d9e7bb833ed1eaa265baa19bead70b528762c0939160e17c30013385be7c668c`;
-- M6 non-claims remain PITR/continuous backup/DR/HA/RPO-RTO/cloud-storage durability/production retention;
-- Progression Review selected exactly one next milestone: **M7 — Operator Diagnostic Snapshot**.
+- M1–M7 are **PASS / ACCEPTED / FROZEN**;
+- M7 exact head `c4de490bab6d1f3709cf7ce32c4d7b2212131fce`, PR #44 merge `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`, Issue #43 CLOSED / COMPLETED;
+- M7 run `33693038558`: SUCCESS; artifact `9870849376` / `sha256:4961998526b32c5af5cf7b39f8df9159e2cb7c13bdb71743a5116e5bec5ec30b`;
+- M7 non-claims remain alerting/autonomous remediation/distributed tracing/cloud observability/HA/production monitoring/SLA-SLO/generic platform expansion;
+- broad CI/CD RED remains the pre-existing R-002 Heimdall build debt, while primary CI, M1, M5, Real Local AI, Bifrost build/test and dependency security were independently GREEN on the accepted M7 exact head;
+- Progression Review selected exactly one next milestone: **M8 — Bounded Kafka Restart Recovery**.
 
 ## Exact Next Action
-**Open exactly one M7 Issue for a bounded read-only operator diagnostic snapshot. Reuse current health, Job, metrics, logs and M1/M5 handoff assets; add the smallest repository-owned command plus exact-head executable evidence. Keep alerting, autonomous remediation, cloud observability, HA, production monitoring/SLA/SLO, and generic platform expansion out of scope.**
+**Open exactly one M8 Issue for a bounded proof-owned single-node Kafka restart/recovery case. Reuse the accepted Local-first proof path and persistence evidence; actually stop/restart Kafka and verify one identifiable target Job/result contract. Keep HA, clustered Kafka, production durability, recovery-time/SLA/SLO, cloud execution, broad Kafka redesign and generic refactors out of scope.**
