@@ -88,7 +88,21 @@ For a retained accepted proof session, `scripts/operator-diagnostic-snapshot.sh`
 - M9 proves one bounded same-volume PostgreSQL service restart/recovery case.
 - The default local proof cleanup removes proof-owned Compose volumes intentionally; retained inspection requires `ASGARD_PROOF_KEEP=1`.
 
-For a retained proof session, use the exact generated cleanup metadata rather than guessing process/container identities. If the runner used an already-running operator-owned Ollama endpoint, cleanup deliberately leaves that external Ollama process untouched.
+For a retained proof session, use the generated `retained-session.env` rather than guessing process/container identities. The following bounded cleanup stops the retained Heimdall/Bifrost processes, removes a proof-owned Ollama container only when one was created, and tears down the proof-owned Compose project and volumes:
+
+```bash
+SESSION_FILE="/path/to/retained-session.env"
+# shellcheck disable=SC1090
+source "$SESSION_FILE"
+
+[[ -n "${HEIMDALL_PID:-}" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
+[[ -n "${BIFROST_PID:-}" ]] && kill "$BIFROST_PID" 2>/dev/null || true
+[[ -n "${OLLAMA_CONTAINER:-}" ]] && docker rm -f "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
+cd "$ROOT_DIR"
+docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans
+```
+
+If the proof reused an already-running operator-owned Ollama endpoint, `OLLAMA_CONTAINER` is empty and cleanup deliberately leaves that external Ollama process untouched. The retained work directory is evidence/workspace data and may be removed separately only after the operator no longer needs it.
 
 ## Troubleshooting
 
@@ -121,4 +135,16 @@ For a retained proof session, use the exact generated cleanup metadata rather th
 
 ## Explicitly not verified by this handoff
 
-Production readiness; production SLA/SLO; stable performance/cost; continuous backup; PITR; disaster-recovery certification; RPO/RTO; Kafka multi-broker/cluster failover; PostgreSQL replication/HA; Kubernetes/HA/multi-node recovery; cloud-provider execution; enterprise identity/RBAC; legal/security certification; unattended autonomous operations; generic monitoring/admin-platform capability.
+- Production readiness is not verified.
+- Production SLA/SLO is not verified.
+- Stable performance/cost is not verified.
+- Continuous backup and PITR are not verified.
+- Disaster-recovery certification and RPO/RTO are not verified.
+- Kafka multi-broker/cluster failover is not verified.
+- PostgreSQL replication/HA is not verified.
+- Kubernetes/HA/multi-node recovery is not verified.
+- Cloud-provider execution is not verified.
+- Enterprise identity/RBAC is not verified.
+- Legal/security certification is not verified.
+- Unattended autonomous operations are not verified.
+- Generic monitoring/admin-platform capability is not verified.
