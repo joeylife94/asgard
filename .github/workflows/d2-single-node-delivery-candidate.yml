@@ -40,6 +40,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           ROOT="dist/$artifact_name"
+          ARCHIVE="dist/$artifact_name.tar.gz"
+          LISTING="dist/$artifact_name.contents.txt"
+
           test -s "$ROOT/PROVENANCE.txt"
           grep -Fxq "commit=$GITHUB_SHA" "$ROOT/PROVENANCE.txt"
           grep -Fq 'Production readiness is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
@@ -59,10 +62,14 @@ jobs:
           bash -n "$ROOT/scripts/m6-backup-restore-proof.sh"
           bash -n "$ROOT/scripts/cleanup-retained-proof.sh"
 
-          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/gradlew"
-          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/docker-compose.yml"
-          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/scripts/local-proof.sh"
-          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/scripts/cleanup-retained-proof.sh"
+          # Materialize the archive listing once. Avoid `tar | grep -q` under
+          # pipefail: with a full repository archive grep can exit early after
+          # a match and cause tar to receive SIGPIPE, producing a false RED.
+          tar -tzf "$ARCHIVE" > "$LISTING"
+          grep -Fxq "$artifact_name/gradlew" "$LISTING"
+          grep -Fxq "$artifact_name/docker-compose.yml" "$LISTING"
+          grep -Fxq "$artifact_name/scripts/local-proof.sh" "$LISTING"
+          grep -Fxq "$artifact_name/scripts/cleanup-retained-proof.sh" "$LISTING"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifact_name }}
