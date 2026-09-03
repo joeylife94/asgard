@@ -88,21 +88,17 @@ For a retained accepted proof session, `scripts/operator-diagnostic-snapshot.sh`
 - M9 proves one bounded same-volume PostgreSQL service restart/recovery case.
 - The default local proof cleanup removes proof-owned Compose volumes intentionally; retained inspection requires `ASGARD_PROOF_KEEP=1`.
 
-For a retained proof session, use the generated `retained-session.env` rather than guessing process/container identities. The following bounded cleanup stops the retained Heimdall/Bifrost processes, removes a proof-owned Ollama container only when one was created, and tears down the proof-owned Compose project and volumes:
+For a retained proof session, use the generated `retained-session.env` rather than guessing process/container identities. Run the repository-owned bounded cleanup command:
 
 ```bash
-SESSION_FILE="/path/to/retained-session.env"
-# shellcheck disable=SC1090
-source "$SESSION_FILE"
-
-[[ -n "${HEIMDALL_PID:-}" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
-[[ -n "${BIFROST_PID:-}" ]] && kill "$BIFROST_PID" 2>/dev/null || true
-[[ -n "${OLLAMA_CONTAINER:-}" ]] && docker rm -f "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
-cd "$ROOT_DIR"
-docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans
+bash scripts/cleanup-retained-proof.sh /path/to/retained-session.env
 ```
 
-If the proof reused an already-running operator-owned Ollama endpoint, `OLLAMA_CONTAINER` is empty and cleanup deliberately leaves that external Ollama process untouched. The retained work directory is evidence/workspace data and may be removed separately only after the operator no longer needs it.
+The command validates the recorded proof ownership boundary before acting, stops only the recorded Heimdall/Bifrost processes, removes a proof-owned Ollama container only when one was created, and tears down the recorded proof-owned Compose project and volumes. A successful cleanup writes a sidecar `.cleaned` marker so a repeated invocation returns safely without acting on stale recorded PIDs.
+
+If the proof reused an already-running operator-owned Ollama endpoint, `OLLAMA_CONTAINER` is empty and cleanup deliberately leaves that external Ollama process untouched. The retained work directory is evidence/workspace data and remains separate; remove it only after the operator no longer needs it.
+
+Missing or malformed session metadata is a fail-closed condition. Do not replace it with guessed `kill`, broad `docker rm`, or generic Compose/project deletion commands.
 
 ## Troubleshooting
 
@@ -115,6 +111,7 @@ If the proof reused an already-running operator-owned Ollama endpoint, `OLLAMA_C
 | required port already in use | Stop the conflicting local process or use a clean host/session. |
 | infrastructure/readiness failure | Inspect configured local-proof evidence before changing runtime code. |
 | Ollama/model failure | Check retained Ollama/pull diagnostics; do not substitute a cloud provider and call the Local-first gate PASS. |
+| retained cleanup needed | Run `bash scripts/cleanup-retained-proof.sh /path/to/retained-session.env`; do not guess proof-owned resource identities. |
 | Bifrost interruption/restart question | Use `.github/workflows/v11-m4-bifrost-restart.yml` as the exact bounded evidence. |
 | backup/restore question | Use `scripts/m6-backup-restore-proof.sh` / `.github/workflows/v11-m6-backup-restore.yml`; do not generalize to DR/PITR. |
 | support snapshot needed | Use `scripts/operator-diagnostic-snapshot.sh`; keep it read-only. |
@@ -125,6 +122,7 @@ If the proof reused an already-running operator-owned Ollama endpoint, `OLLAMA_C
 ## Exact references
 
 - Local proof runner: `scripts/local-proof.sh`
+- Retained proof cleanup: `scripts/cleanup-retained-proof.sh`
 - M1 local proof: `.github/workflows/v11-m1-local-proof.yml`
 - M4 Bifrost restart: `.github/workflows/v11-m4-bifrost-restart.yml`
 - M6 backup/restore: `scripts/m6-backup-restore-proof.sh`, `.github/workflows/v11-m6-backup-restore.yml`
