@@ -8,6 +8,8 @@ This candidate packages the already accepted D1 Local-first single-node operator
 
 The CI-produced bundle MUST record `GITHUB_SHA` in `PROVENANCE.txt`. Acceptance is valid only for that exact artifact-producing commit.
 
+The bundle is a **provenance-matched tracked repository snapshot** of that exact commit, plus generated `PROVENANCE.txt`. This is intentional: the accepted proof runner resolves Gradle/build inputs, Heimdall/Bifrost sources, Compose definitions, and operator scripts from repository-relative paths. A partial helper-script archive is not a valid D2 delivery candidate.
+
 ## Coherent operator path
 
 1. **Preflight / start / real Local AI job** — `scripts/local-proof.sh` (use `ASGARD_PROOF_KEEP=1` when subsequent retained-session inspection/support/cleanup is required).
@@ -18,17 +20,24 @@ The CI-produced bundle MUST record `GITHUB_SHA` in `PROVENANCE.txt`. Acceptance 
 
 The bundle is an executable handoff surface: operators should read `docs/SINGLE_NODE_HANDOFF.md` for prerequisites, exact boundaries, troubleshooting, and accepted evidence references.
 
-## Required bundle files
+## Required bundle surface
+
+The archive must preserve the tracked exact-commit repository layout required by the accepted local proof. At minimum its verification gate checks:
 
 - `delivery/single-node-candidate/VERSION`
 - `delivery/single-node-candidate/MANIFEST.md`
-- `PROVENANCE.txt`
+- generated `PROVENANCE.txt`
 - `ASGARD_MASTER.md`
 - `docs/SINGLE_NODE_HANDOFF.md`
+- Gradle wrapper/build inputs including `gradlew`
+- `docker-compose.yml`
+- Heimdall and Bifrost sources/build inputs
 - `scripts/local-proof.sh`
 - `scripts/operator-diagnostic-snapshot.sh`
 - `scripts/m6-backup-restore-proof.sh`
 - `scripts/cleanup-retained-proof.sh`
+
+Because the candidate packages the tracked exact-commit tree, its D2 workflow runs for every pull request rather than using a partial path filter that could miss a packaged dependency change.
 
 ## Limitations / non-claims
 
