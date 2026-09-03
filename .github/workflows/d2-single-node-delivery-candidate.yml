@@ -1,0 +1,80 @@
+name: D2 Single-node Delivery Candidate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify delivery contract
+        run: bash scripts/check-d2-delivery-candidate.sh
+      - name: Assemble exact-head candidate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          VERSION="$(tr -d '\r\n' < delivery/single-node-candidate/VERSION)"
+          OUT="dist/$VERSION"
+          mkdir -p "$OUT"
+
+          # The delivery candidate is a provenance-matched tracked repository
+          # snapshot, not a loose collection of helper scripts. The accepted
+          # proof runner requires Gradle wrapper/build inputs, service sources,
+          # compose definitions, and the operator scripts at repository-relative
+          # paths, so package the exact commit tree as one runnable checkout.
+          git archive "$GITHUB_SHA" | tar -x -C "$OUT"
+          printf 'version=%s\ncommit=%s\nrepository=%s\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_REPOSITORY" > "$OUT/PROVENANCE.txt"
+
+          test "$(sed -n 's/^commit=//p' "$OUT/PROVENANCE.txt")" = "$GITHUB_SHA"
+          tar -C dist -czf "dist/$VERSION.tar.gz" "$VERSION"
+          printf 'artifact_name=%s\n' "$VERSION" >> "$GITHUB_ENV"
+      - name: Verify assembled bundle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="dist/$artifact_name"
+          ARCHIVE="dist/$artifact_name.tar.gz"
+          LISTING="dist/$artifact_name.contents.txt"
+
+          test -s "$ROOT/PROVENANCE.txt"
+          grep -Fxq "commit=$GITHUB_SHA" "$ROOT/PROVENANCE.txt"
+          grep -Fq 'Production readiness is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
+          grep -Fq 'Cloud-provider execution is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
+
+          # The accepted local proof invokes Gradle and the operator scripts
+          # explicitly via bash, so executable mode is not part of the accepted
+          # contract. Verify the required tracked inputs are present and valid.
+          test -s "$ROOT/gradlew"
+          test -s "$ROOT/docker-compose.yml"
+          test -s "$ROOT/bifrost/requirements.txt"
+          test -d "$ROOT/heimdall"
+          test -d "$ROOT/bifrost"
+          test -s "$ROOT/scripts/local-proof.sh"
+          test -s "$ROOT/scripts/cleanup-retained-proof.sh"
+          bash -n "$ROOT/gradlew"
+          bash -n "$ROOT/scripts/local-proof.sh"
+          bash -n "$ROOT/scripts/operator-diagnostic-snapshot.sh"
+          bash -n "$ROOT/scripts/m6-backup-restore-proof.sh"
+          bash -n "$ROOT/scripts/cleanup-retained-proof.sh"
+
+          # Materialize the archive listing once. Avoid `tar | grep -q` under
+          # pipefail: with a full repository archive grep can exit early after
+          # a match and cause tar to receive SIGPIPE, producing a false RED.
+          tar -tzf "$ARCHIVE" > "$LISTING"
+          grep -Fxq "$artifact_name/gradlew" "$LISTING"
+          grep -Fxq "$artifact_name/docker-compose.yml" "$LISTING"
+          grep -Fxq "$artifact_name/scripts/local-proof.sh" "$LISTING"
+          grep -Fxq "$artifact_name/scripts/cleanup-retained-proof.sh" "$LISTING"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.artifact_name }}
+          path: dist/${{ env.artifact_name }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
