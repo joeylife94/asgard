@@ -12,9 +12,9 @@ required=(
   '.github/workflows/v11-m7-operator-diagnostic.yml'
   '.github/workflows/v11-m8-kafka-restart.yml'
   '.github/workflows/v11-m9-postgres-restart.yml'
+  'scripts/cleanup-retained-proof.sh'
   'ASGARD_MASTER.md'
   'retained-session.env'
-  'docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans'
 )
 
 for token in "${required[@]}"; do
@@ -25,16 +25,15 @@ obsolete=(
   'Backup/restore: NOT VERIFIED.'
   'It does not prove Kafka outage recovery'
   'backup/restore; Kubernetes/HA'
+  'docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans'
 )
 for token in "${obsolete[@]}"; do
   if grep -Fq "$token" "$DOC"; then
-    echo "obsolete pre-progression handoff claim remains: $token" >&2
+    echo "obsolete handoff text remains: $token" >&2
     exit 1
   fi
 done
 
-# Bind material boundaries to complete explicit negative assertions rather than
-# merely checking that a capability token appears somewhere in the document.
 nonclaims=(
   'Production readiness is not verified.'
   'Production SLA/SLO is not verified.'
@@ -49,7 +48,6 @@ for statement in "${nonclaims[@]}"; do
   grep -Fq -- "$statement" "$DOC" || { echo "missing explicit non-claim boundary: $statement" >&2; exit 1; }
 done
 
-# Guard against obvious claim broadening in the delivery-facing document.
 forbidden=(
   'production-ready'
   'production ready'
@@ -73,4 +71,4 @@ for token in "${forbidden[@]}"; do
   fi
 done
 
-echo 'M10 handoff truth contract: PASS'
+echo 'handoff truth contract: PASS'
