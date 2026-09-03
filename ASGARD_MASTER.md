@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M12 SELECTED
-- **Current Batch**: M12 — Retained Proof Cleanup Command — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN / M9 FROZEN / M10 FROZEN / M11 FROZEN — M12 SELECTED**
+- **Current Phase**: **DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**
+- **Current Batch**: none — D1 accepted / D2 progression review pending
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN — DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -39,14 +39,16 @@
 - **Accepted M10 merge main SHA**: `8abd9b6cf4ee23a80c86a28a305c2c873c8de025`
 - **Accepted M11 exact PR head**: `a6d62af5071010ebcb6ec7f7848be869a08843b9`
 - **Accepted M11 merge main SHA**: `96b27d105dc0453b33a00f8d7259b789b836b29b`
+- **Accepted M12 exact PR head**: `58c57c96c9c32049e6cf4df4d2149dafbc20e96f`
+- **Accepted M12 merge main SHA**: `649207c81f1fecbfd251ba59ab55826117b722ff`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M12 — Retained Proof Cleanup Command
+- **Selected Next Milestone**: none — D1 destination reached; perform D2 destination review before opening work
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS / M9 PASS / M10 PASS / M11 PASS — M12 SELECTED**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN — DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**
 
 ---
 
@@ -151,7 +153,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-018 | M9 PostgreSQL restart proof is one bounded same-volume recovery case | no replication/HA/PITR/DR/RPO-RTO/recovery-time/production-durability generalization |
 | R-019 | stale single-node handoff truth after M6/M8/M9 | CLOSED by accepted M10 handoff truth reconciliation; no claim expansion |
 | R-020 | broad `infrastructure` CI/CD filter caused unrelated workflow/script changes to execute Heimdall/Bifrost application builds | CLOSED by accepted M11 change-scoped signal isolation; R-002 remains visible when Heimdall/shared Gradle inputs actually change |
-| R-021 | retained proof cleanup logic is duplicated in handoff/workflow snippets and requires manual session metadata handling | selected M12 must provide one bounded repository-owned cleanup command without broadening lifecycle or production-operation claims |
+| R-021 | retained proof cleanup logic is duplicated in handoff/workflow snippets and requires manual session metadata handling | CLOSED by accepted M12 repository-owned retained cleanup command; executable evidence is bounded to proof-owned retained sessions and does not establish generic host/process-management safety |
 
 ---
 
@@ -168,17 +170,28 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 9. Reconcile MASTER on `main` after merge.
 10. Evaluate Milestone Acceptance before selecting another Issue.
 11. Frozen accepted milestone becomes a preserved baseline slice; **FREEZE does not mean project development ends**.
-12. After acceptance, return to Progression Review and select the next bounded milestone only when it has clear use/show/delivery value.
-13. Do not manufacture work for activity.
+12. After acceptance, return to Destination/Progression Review and select another bounded milestone only when it materially advances the current product-level destination.
+13. Do not manufacture work for activity or accumulate test-only variants after a destination is already supported.
 
 ---
 
 # 6. Post-v1.0 Progression Contract
 
-## Product Destination
-> **A bounded, single-node Local AI Operations Tool that a technical operator can reproducibly deploy, use to submit and inspect asynchronous Local AI analysis jobs, recover supported failures, audit operator actions, and understand system health without requiring a cloud AI provider.**
+## Product Destination D1 — ACCEPTED
+> **A bounded, single-node Local AI Operations Tool that a technical operator can reproducibly run, use for real Local Ollama jobs, inspect job/result state, perform controlled recovery, audit/diagnose the system, preserve/restore bounded persistence, and cleanly hand off/tear down without requiring a cloud AI provider.**
 
-Priority: reproducibility → reliability/recovery → operator usability/observability → delivery readiness → maintainability/security only when blocking use → new capability only when earlier axes cannot produce useful progress.
+**DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL.**
+
+Accepted evidence now spans reproducible Local-first execution and real Ollama work, bounded read-only inspection, controlled recovery/audit, Bifrost/Kafka/PostgreSQL restart cases, delivery handoff, one bounded PostgreSQL backup/restore case, diagnostic snapshot, truthful handoff reconciliation, change-scoped CI signal isolation, and repository-owned retained-proof cleanup.
+
+## Farther Destination D2 — REVIEW PENDING
+> **Versioned Single-node Delivery Candidate** — one bounded delivery package/acceptance path that a clean technical environment can use without private tribal knowledge to obtain the accepted single-node workflow: start/preflight → real Local AI job → inspect → controlled recovery/audit → diagnostics → bounded backup/restore where claimed → cleanup, with explicit version/provenance and limitations.
+
+D2 must reuse existing accepted assets first. Do not add another isolated lifecycle/restart/cleanup variant unless it is a concrete blocker to this coherent delivery candidate. A versioned CI artifact/bundle and truthful handoff contract are acceptable; packaging alone does not create production/enterprise claims.
+
+After D2, if meaningful progression requires multi-user identity/RBAC, public production deployment, cloud providers, HA/Kubernetes, SLA/SLO, or another major product-direction/security choice, stop at **HUMAN REVIEW — NEXT DESTINATION DECISION**.
+
+Priority: coherent delivery/use evidence → only concrete blockers → no micro-loop accumulation.
 
 Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion, Kubernetes/HA/autoscaling/multi-region, multi-tenancy, full RBAC/SSO, billing, autonomous operations, broad RAG, generic refactors, broad Checkstyle cleanup, or full admin-platform competition.
 
@@ -199,38 +212,34 @@ Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion,
 | M9 — PostgreSQL Restart Recovery | #47 / #48 | `c68c246c2d86672451425b5bb459234cb263794d` | `05ed2bea167153c30a403a18a55f742149ebec7f` | M9 `33702303430` SUCCESS; artifact `9874023335` / `sha256:1ce95b2a206500ab8de72d9af54bb778b1b0128e3a2e7edd0edc3d2f9537151c`; Bifrost and relevant security/quality gates independently GREEN while broad Heimdall R-002 remained separately classified | one proof-owned same-volume PostgreSQL restart/recovery case; no replication/HA/PITR/DR/RPO-RTO/SLA-SLO/production durability/cloud claim |
 | M10 — Single-node Handoff Truth Reconciliation | #49 / #50 | `bc06a16145897884c3c0be2bf78ee214477bc89a` | `8abd9b6cf4ee23a80c86a28a305c2c873c8de025` | M10 `33713410047` SUCCESS; M5 handoff regression `33713410083` SUCCESS; primary CI `33713410094` SUCCESS; Local AI golden path `33713409968` SUCCESS; broad CI/CD `33713410364` RED only at pre-existing Heimdall R-002 with Bifrost and dependency security GREEN | delivery-facing truth reconciliation only; no runtime capability or production/HA/DR/cloud claim expansion |
 | M11 — Change-scoped CI/CD Signal Isolation | #51 / #52 | `a6d62af5071010ebcb6ec7f7848be869a08843b9` | `96b27d105dc0453b33a00f8d7259b789b836b29b` | CI/CD `33721456071` SUCCESS; primary CI `33721456054` SUCCESS | workflow-only changes no longer force unrelated application builds; direct service/shared-input gates and R-002 visibility remain bounded by actual changed inputs |
+| M12 — Retained Proof Cleanup Command | #53 / #54 | `58c57c96c9c32049e6cf4df4d2149dafbc20e96f` | `649207c81f1fecbfd251ba59ab55826117b722ff` | M12 `33736638004` SUCCESS; artifact `9886113574` / `sha256:0313cef7765963493d890be046f23f3a7d1747af3037080a8f1e612c140b87b2`; M10 handoff truth `33736638010` SUCCESS; M5 delivery handoff `33736638012` SUCCESS; primary CI `33736638000` SUCCESS; Real Local AI Golden Path `33736638005` SUCCESS; CI/CD `33736637997` SUCCESS | proof-owned retained-session cleanup only; metadata parsed as data, PID ownership verified before signaling; no generic process manager, production operations, HA/DR/SLA-SLO/cloud claim |
 
-**M1–M11 PASS / ACCEPTED / FROZEN.**
+**M1–M12 PASS / ACCEPTED / FROZEN.**
 
 ---
 
-# 8. M12 — Retained Proof Cleanup Command — SELECTED
+# 8. Destination D1 Acceptance — REACHED
 
-## Progression Review Decision
-The accepted local proof can intentionally retain a proof-owned environment via `ASGARD_PROOF_KEEP=1`, and M10 documents a correct cleanup sequence using `retained-session.env`. The same cleanup mechanics also appear in multiple workflows. This is usable but unnecessarily manual and duplicated: a technical operator must source metadata and reproduce process/container/Compose teardown logic rather than invoke one repository-owned bounded command.
+## Destination
+`A bounded, single-node Local AI Operations Tool that a technical operator can reproducibly run, use for real Local Ollama jobs, inspect job/result state, perform controlled recovery, audit/diagnose the system, preserve/restore bounded persistence, and cleanly hand off/tear down without requiring a cloud AI provider.`
 
-M12 is an operator-usability and handoff milestone, not a new runtime capability. It should centralize the accepted retained-session cleanup boundary into one script and make the handoff/workflows consume that command where practical, without changing default proof cleanup semantics or expanding production-operation claims.
+## Acceptance Mapping
+- reproducibly run / real Local Ollama jobs → frozen v1.0 UC-01/UC-02 plus M1 and latest exact-head Real Local AI Golden Path;
+- inspect job/result state → M2 bounded read-only lifecycle console;
+- controlled recovery / audit → frozen UC-04 plus M3;
+- controlled service recovery → M4 Bifrost restart, M8 Kafka restart, M9 PostgreSQL same-volume restart;
+- diagnose system → frozen observability boundary plus M7 diagnostic snapshot;
+- preserve/restore bounded persistence → M6 one bounded PostgreSQL backup/restore case;
+- handoff truth → M5 delivery handoff plus M10 truth reconciliation;
+- clean teardown → M12 repository-owned retained-proof cleanup command;
+- Local-first/no cloud requirement → frozen v1.0 routing boundary preserved throughout.
 
-## Selected Scope
-- add one repository-owned cleanup command for a retained proof session described by `retained-session.env`;
-- fail closed on a missing/invalid session file rather than guessing identities;
-- stop only recorded proof-owned Heimdall/Bifrost PIDs, remove a recorded proof-owned Ollama container only when present, and tear down the recorded proof-owned Compose project/volumes;
-- make repeated invocation safe enough for bounded handoff cleanup;
-- update the single-node handoff to use the command instead of a pasted teardown recipe;
-- optionally replace duplicated workflow cleanup snippets only where this does not broaden scope;
-- do not alter runtime Job lifecycle, persistence semantics, Local-first routing, cloud/provider behavior, HA/DR, or production claims.
+## Destination Decision
+**DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL.**
 
-## Executable Acceptance
-1. A retained local proof produces `retained-session.env` and remains running after proof completion.
-2. The new cleanup command consumes that exact session file and removes the recorded proof-owned processes/container/Compose project and volumes.
-3. A second cleanup invocation does not damage unrelated resources and exits with a bounded truthful result.
-4. A missing or malformed session file fails closed without guessed broad process/container deletion.
-5. Primary accepted proof/regression checks remain independently GREEN where applicable.
+This is not a production-readiness claim. It does not establish enterprise security/identity, public production deployment, legal compliance certification, stable performance/cost, production SLA/SLO, HA/Kubernetes/multi-region, cloud-provider execution, generic autonomous operations, or DR/PITR/RPO-RTO beyond the specifically accepted bounded evidence.
 
-## Stop Condition
-Stop after one bounded cleanup command plus executable retained-session cleanup evidence and minimal handoff/workflow adoption. Do not turn this into a generic host process manager, container janitor, deployment system, or unattended operations capability.
-
-**Current: SELECTED — ISSUE NOT YET OPEN**
+No additional restart/cleanup/test permutation is justified merely to increase milestone count.
 
 ---
 
@@ -238,12 +247,14 @@ Stop after one bounded cleanup command plus executable retained-session cleanup 
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M11 are **PASS / ACCEPTED / FROZEN**;
-- M11 exact head `a6d62af5071010ebcb6ec7f7848be869a08843b9`, PR #52 merge `96b27d105dc0453b33a00f8d7259b789b836b29b`, Issue #51 CLOSED / COMPLETED;
-- M11 CI/CD `33721456071` and primary CI `33721456054` are SUCCESS on the accepted exact head;
-- M11 closed R-020 by isolating application builds to relevant changed inputs, while preserving R-002 visibility when Heimdall/shared Gradle inputs actually change;
-- M11 introduced no runtime capability and preserved all production/HA/DR/PITR/RPO-RTO/SLA-SLO/cloud/autonomous-operation non-claims;
-- Progression Review selected exactly one next milestone: **M12 — Retained Proof Cleanup Command**.
+- M1–M12 are **PASS / ACCEPTED / FROZEN**;
+- M12 exact head `58c57c96c9c32049e6cf4df4d2149dafbc20e96f`, PR #54 merge `649207c81f1fecbfd251ba59ab55826117b722ff`, Issue #53 CLOSED / COMPLETED;
+- exact-head M12 `33736638004`, M10 handoff truth `33736638010`, M5 delivery handoff `33736638012`, primary CI `33736638000`, Real Local AI Golden Path `33736638005`, and CI/CD `33736637997` are all SUCCESS;
+- M12 artifact `9886113574` / `sha256:0313cef7765963493d890be046f23f3a7d1747af3037080a8f1e612c140b87b2` records the bounded cleanup evidence;
+- review corrections are accepted: retained metadata is parsed as data rather than sourced, and recorded PIDs are ownership-checked before signaling;
+- R-021 is CLOSED only for proof-owned retained-session cleanup;
+- accepted evidence satisfies D1, so the authoritative product state is **DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**;
+- no new micro-milestone is active.
 
 ## Exact Next Action
-**Open exactly one M12 Issue. Add the smallest repository-owned cleanup command that safely consumes one retained proof session file, prove cleanup and fail-closed behavior executably, and replace only the directly duplicated handoff/workflow cleanup path needed for the milestone.**
+**Perform a D2 Destination Review before opening any new Issue. If justified, select one coherent `Versioned Single-node Delivery Candidate` milestone that reuses existing assets and proves a clean technical environment can follow a versioned/provenance-bearing acceptance path. Do not add another isolated restart/cleanup proof. If D2 cannot be bounded without a product/security decision, HOLD for human review instead.**
