@@ -2,12 +2,6 @@ name: D2 Single-node Delivery Candidate
 
 on:
   pull_request:
-    paths:
-      - 'delivery/single-node-candidate/**'
-      - 'scripts/check-d2-delivery-candidate.sh'
-      - 'docs/SINGLE_NODE_HANDOFF.md'
-      - 'ASGARD_MASTER.md'
-      - '.github/workflows/d2-single-node-delivery-candidate.yml'
   workflow_dispatch:
 
 permissions:
@@ -18,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Verify delivery contract
         run: bash scripts/check-d2-delivery-candidate.sh
       - name: Assemble exact-head candidate
@@ -26,16 +22,16 @@ jobs:
           set -Eeuo pipefail
           VERSION="$(tr -d '\r\n' < delivery/single-node-candidate/VERSION)"
           OUT="dist/$VERSION"
-          mkdir -p "$OUT/delivery/single-node-candidate" "$OUT/docs" "$OUT/scripts"
-          cp delivery/single-node-candidate/VERSION "$OUT/delivery/single-node-candidate/"
-          cp delivery/single-node-candidate/MANIFEST.md "$OUT/delivery/single-node-candidate/"
-          cp ASGARD_MASTER.md "$OUT/"
-          cp docs/SINGLE_NODE_HANDOFF.md "$OUT/docs/"
-          cp scripts/local-proof.sh "$OUT/scripts/"
-          cp scripts/operator-diagnostic-snapshot.sh "$OUT/scripts/"
-          cp scripts/m6-backup-restore-proof.sh "$OUT/scripts/"
-          cp scripts/cleanup-retained-proof.sh "$OUT/scripts/"
+          mkdir -p "$OUT"
+
+          # The delivery candidate is a provenance-matched tracked repository
+          # snapshot, not a loose collection of helper scripts. The accepted
+          # proof runner requires Gradle wrapper/build inputs, service sources,
+          # compose definitions, and the operator scripts at repository-relative
+          # paths, so package the exact commit tree as one runnable checkout.
+          git archive "$GITHUB_SHA" | tar -x -C "$OUT"
           printf 'version=%s\ncommit=%s\nrepository=%s\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_REPOSITORY" > "$OUT/PROVENANCE.txt"
+
           test "$(sed -n 's/^commit=//p' "$OUT/PROVENANCE.txt")" = "$GITHUB_SHA"
           tar -C dist -czf "dist/$VERSION.tar.gz" "$VERSION"
           printf 'artifact_name=%s\n' "$VERSION" >> "$GITHUB_ENV"
@@ -43,10 +39,28 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test -s "dist/$artifact_name/PROVENANCE.txt"
-          grep -Fxq "commit=$GITHUB_SHA" "dist/$artifact_name/PROVENANCE.txt"
-          grep -Fq 'Production readiness is not verified.' "dist/$artifact_name/delivery/single-node-candidate/MANIFEST.md"
-          grep -Fq 'Cloud-provider execution is not verified.' "dist/$artifact_name/delivery/single-node-candidate/MANIFEST.md"
+          ROOT="dist/$artifact_name"
+          test -s "$ROOT/PROVENANCE.txt"
+          grep -Fxq "commit=$GITHUB_SHA" "$ROOT/PROVENANCE.txt"
+          grep -Fq 'Production readiness is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
+          grep -Fq 'Cloud-provider execution is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
+
+          # Verify the artifact contains the runtime/build inputs that the
+          # bundled local proof actually resolves from its extracted root.
+          test -x "$ROOT/gradlew"
+          test -s "$ROOT/docker-compose.yml"
+          test -s "$ROOT/bifrost/requirements.txt"
+          test -d "$ROOT/heimdall"
+          test -d "$ROOT/bifrost"
+          test -x "$ROOT/scripts/local-proof.sh"
+          test -x "$ROOT/scripts/cleanup-retained-proof.sh"
+          bash -n "$ROOT/scripts/local-proof.sh"
+          bash -n "$ROOT/scripts/operator-diagnostic-snapshot.sh"
+          bash -n "$ROOT/scripts/m6-backup-restore-proof.sh"
+          bash -n "$ROOT/scripts/cleanup-retained-proof.sh"
+
+          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/gradlew"
+          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/docker-compose.yml"
           tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/scripts/local-proof.sh"
           tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/scripts/cleanup-retained-proof.sh"
       - uses: actions/upload-artifact@v4
