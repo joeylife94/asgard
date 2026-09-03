@@ -1,0 +1,23 @@
+name: v1.1 M10 Handoff Truth Contract
+
+on:
+  pull_request:
+    paths:
+      - 'docs/SINGLE_NODE_HANDOFF.md'
+      - 'scripts/check-single-node-handoff-truth.sh'
+      - '.github/workflows/v11-m10-handoff-truth.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-handoff-truth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bounded handoff truth contract
+        shell: bash
+        run: |
+          bash -n scripts/check-single-node-handoff-truth.sh
+          bash scripts/check-single-node-handoff-truth.sh
