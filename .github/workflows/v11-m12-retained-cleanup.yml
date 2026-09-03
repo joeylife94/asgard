@@ -1,0 +1,90 @@
+name: v1.1 M12 Retained Proof Cleanup
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/cleanup-retained-proof.sh'
+      - 'scripts/local-proof.sh'
+      - 'scripts/check-single-node-handoff-truth.sh'
+      - 'docs/SINGLE_NODE_HANDOFF.md'
+      - '.github/workflows/v11-m12-retained-cleanup.yml'
+  workflow_dispatch:
+
+jobs:
+  retained-cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Validate scripts and handoff contract
+        run: |
+          bash -n scripts/cleanup-retained-proof.sh
+          bash -n scripts/local-proof.sh
+          bash scripts/check-single-node-handoff-truth.sh
+
+      - name: Prove malformed metadata fails closed
+        run: |
+          mkdir -p m12-negative
+          cat > m12-negative/retained-session.env <<'EOF'
+          PROOF_ID=m12-negative
+          COMPOSE_PROJECT=wrong-project
+          HEIMDALL_PID=
+          BIFROST_PID=
+          OLLAMA_CONTAINER=
+          ROOT_DIR=/tmp
+          WORK_DIR=/tmp
+          EOF
+          if bash scripts/cleanup-retained-proof.sh m12-negative/retained-session.env; then
+            echo 'malformed ownership metadata unexpectedly accepted' >&2
+            exit 1
+          fi
+
+      - name: Execute retained Local-first proof
+        env:
+          ASGARD_PROOF_ID: m12-${{ github.run_id }}
+          ASGARD_PROOF_KEEP: '1'
+          ASGARD_PROOF_WORK_DIR: ${{ github.workspace }}/m12-work
+          ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/m12-evidence/local-proof-summary.json
+          ASGARD_PROOF_EVIDENCE_DIR: ${{ github.workspace }}/m12-evidence/local-proof-evidence
+        run: bash scripts/local-proof.sh
+
+      - name: Verify retained resources exist
+        run: |
+          SESSION="$GITHUB_WORKSPACE/m12-work/retained-session.env"
+          test -f "$SESSION"
+          # shellcheck disable=SC1090
+          source "$SESSION"
+          kill -0 "$HEIMDALL_PID"
+          kill -0 "$BIFROST_PID"
+          docker compose -p "$COMPOSE_PROJECT" ps --status running --services | grep -q postgres
+          if [ -n "$OLLAMA_CONTAINER" ]; then docker container inspect "$OLLAMA_CONTAINER" >/dev/null; fi
+
+      - name: Execute bounded cleanup and prove repeatability
+        run: |
+          SESSION="$GITHUB_WORKSPACE/m12-work/retained-session.env"
+          # shellcheck disable=SC1090
+          source "$SESSION"
+          bash scripts/cleanup-retained-proof.sh "$SESSION" | tee "$GITHUB_WORKSPACE/m12-evidence/cleanup-first.log"
+          test -f "${SESSION}.cleaned"
+          if kill -0 "$HEIMDALL_PID" 2>/dev/null; then echo 'Heimdall still running' >&2; exit 1; fi
+          if kill -0 "$BIFROST_PID" 2>/dev/null; then echo 'Bifrost still running' >&2; exit 1; fi
+          test -z "$(docker ps -aq --filter label=com.docker.compose.project="$COMPOSE_PROJECT")"
+          if [ -n "$OLLAMA_CONTAINER" ]; then ! docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; fi
+          bash scripts/cleanup-retained-proof.sh "$SESSION" | tee "$GITHUB_WORKSPACE/m12-evidence/cleanup-second.log"
+          grep -q 'already cleaned' "$GITHUB_WORKSPACE/m12-evidence/cleanup-second.log"
+
+      - name: Upload M12 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m12-retained-cleanup-${{ github.run_id }}
+          path: m12-evidence
+          if-no-files-found: error
+          retention-days: 14
