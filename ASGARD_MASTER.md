@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M8 SELECTED
-- **Current Batch**: M8 — Bounded Kafka Restart Recovery — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN — M8 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M9 SELECTED
+- **Current Batch**: M9 — Bounded PostgreSQL Restart Recovery — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN — M9 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -31,14 +31,16 @@
 - **Accepted M6 merge main SHA**: `cbd8a1ef74ae55b5636b81ecbf757e50adb268da`
 - **Accepted M7 exact PR head**: `c4de490bab6d1f3709cf7ce32c4d7b2212131fce`
 - **Accepted M7 merge main SHA**: `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`
+- **Accepted M8 exact PR head**: `5fb86a99a2e98f237c0d516391128ef9a86bd500`
+- **Accepted M8 merge main SHA**: `5748d33953c7b46abd945d682618a409c7b9125b`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M8 — Bounded Kafka Restart Recovery
+- **Selected Next Milestone**: M9 — Bounded PostgreSQL Restart Recovery
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS — M8 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS — M9 SELECTED**
 
 ---
 
@@ -147,6 +149,7 @@ Not verified: production readiness; enterprise-grade operational readiness; lega
 | R-014 | Bifrost restart proof is one bounded single-node replay case | no HA/Kafka-outage/recovery-time generalization |
 | R-015 | backup/restore was unverified after M5 | **CLOSED for one bounded M6 PostgreSQL backup/restore case only**; DR/PITR/RPO/RTO remain unverified |
 | R-016 | M7 diagnostic snapshot proves one bounded read-only support bundle | no alerting, autonomous remediation, generic monitoring-platform, production monitoring/SLA/SLO claim |
+| R-017 | M8 Kafka restart proof is one bounded persisted-request replay case | no multi-broker/HA/autonomous failover/recovery-time/production-durability generalization |
 
 ---
 
@@ -291,35 +294,69 @@ One identifiable persisted Asgard Job/result state was produced through the acce
 ### Milestone Acceptance
 One repository-owned read-only command produced a contract-checked, human- and machine-readable diagnostic snapshot against an actually executed accepted Local-first proof session, including non-empty correlation identifiers and successful artifact publication. **M7 PASS / ACCEPTED / FROZEN.**
 
+## M8 — Bounded Kafka Restart Recovery — ACCEPTED / FROZEN
+
+### Accepted Scope
+- one proof-owned single-node Kafka restart case using the accepted Local-first path;
+- persist one identifiable target Job and publish its request before Bifrost consumer startup;
+- actually stop the proof-owned Kafka broker and independently verify it is unavailable;
+- restart the same broker/container with the same bounded storage boundary;
+- start Bifrost after broker restart and verify the persisted request reaches SUCCEEDED with exactly one accepted persisted result identity;
+- contract-check bounded attempt/audit/result state and publish evidence.
+
+### Actually Changed
+- added `.github/workflows/v11-m8-kafka-restart.yml` only;
+- no product runtime, schema, Kafka architecture, cloud provider, HA, Kubernetes, or persistence redesign.
+
+### Actually Executed / Verified
+- Issue #45 — **CLOSED / COMPLETED**;
+- PR #46 — **SQUASH MERGED** with expected-head guard;
+- accepted exact head `5fb86a99a2e98f237c0d516391128ef9a86bd500`;
+- merge main SHA `5748d33953c7b46abd945d682618a409c7b9125b`;
+- M8 Kafka Restart Recovery run `33697888620`: **SUCCESS**;
+- actual broker stop/unavailable check, same-broker restart/readiness, Bifrost post-restart processing, M8 evidence contract, artifact upload, and cleanup all GREEN;
+- artifact `9872527893`, digest `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486`;
+- primary CI `33697887580`: **SUCCESS**;
+- CI/CD `33697888516`: Bifrost build/test and Dependency Security Check GREEN; first material RED remained `Build & Test Heimdall → Build with Gradle → :heimdall:checkstyleMain` with 41 files / 111 warnings / 2 info, matching known pre-existing R-002 and unrelated to the one-file M8 workflow diff.
+
+### Limitations / Non-claims
+- one bounded single-node Kafka broker restart and persisted-request replay case only;
+- no multi-broker Kafka, replication/cluster redesign, HA, autonomous failover, cross-node recovery, Kubernetes, recovery-time guarantee, SLA/SLO, stable performance, or production durability claim;
+- no AWS/Bedrock/OIDC/cloud AI execution claim.
+
+### Milestone Acceptance
+One identifiable persisted Local-first Job request was published before an actual proof-owned Kafka interruption, the same broker/storage boundary was restarted, and the request then completed through Bifrost to a single persisted accepted result under an independently verified exact-head workflow. **M8 PASS / ACCEPTED / FROZEN.**
+
 ---
 
-# 8. M8 — Bounded Kafka Restart Recovery — SELECTED
+# 8. M9 — Bounded PostgreSQL Restart Recovery — SELECTED
 
 ## Progression Review Decision
-M1–M7 cover reproducible local execution, controlled operator recovery, Bifrost process restart resilience, delivery handoff, persisted-state backup/restore, and low-friction operator diagnosis. The remaining reliability gap with direct use/show/delivery value is the event transport itself: M4 explicitly did **not** verify Kafka outage/restart behavior.
+M4 and M8 now cover bounded Bifrost-process and Kafka-broker restart behavior, while M6 proves offline backup/restore into a distinct proof-owned database. A remaining direct reliability/handoff gap is the primary persistence service itself: the accepted progression does not yet prove that one already persisted Local-first Job/result remains truthful and queryable after an actual restart of the proof-owned PostgreSQL container using the same data volume.
 
-A single bounded Kafka restart case can test whether one identifiable persisted Local-first Job remains truthful and can complete after the proof-owned Kafka broker is restarted, without claiming HA, clustered Kafka, autonomous failover, or recovery-time guarantees. This stays within the current single-node Local-first product direction and requires no cloud/product-direction decision.
+This is narrower than HA/DR and requires no product-direction decision. It has concrete operator value because a single-node delivery must tolerate a routine bounded database service restart without silently losing accepted state.
 
 ## Selected Scope
-- one proof-owned single-node Kafka restart case using the existing accepted Local-first path;
-- create or hold one identifiable persisted Job at a controlled point where transport interruption is material;
-- stop the proof-owned Kafka broker/container, verify the interruption is real, then restart the same bounded broker/storage boundary;
-- verify the target Job reaches a truthful supported terminal state and, when success is the accepted behavior, exactly one persisted result identity for the target Job;
-- preserve bounded audit/attempt/result semantics and collect executable evidence;
-- make only the smallest same-gap runtime/proof correction if the current behavior fails because of the milestone;
-- no broad Kafka architecture refactor.
+- one proof-owned single-node PostgreSQL restart case using the existing `postgres-data` persistence boundary;
+- create one identifiable accepted Local-first Job/result state before interruption;
+- stop the proof-owned PostgreSQL container and independently confirm database unavailability;
+- restart the same PostgreSQL service using the same volume, then prove readiness;
+- verify the pre-existing target Job identity/status/result_ref/attempt_count and referenced result remain present and consistent after restart;
+- verify supported Heimdall read/query health resumes after database recovery;
+- make only the smallest same-gap proof/runtime correction if a milestone-caused defect is demonstrated;
+- no database architecture redesign.
 
 ## Executable Acceptance
-1. Exact-head proof establishes one identifiable target Job in the accepted Local-first environment.
-2. The proof actually stops the proof-owned Kafka broker and confirms it is unavailable before restart.
-3. The same bounded broker/storage boundary is restarted; the proof does not substitute a new cloud/cluster service.
-4. The target Job reaches a truthful supported terminal state after restart; any success claim requires a persisted result identity and no duplicate accepted result for the target Job.
-5. Relevant Job attempt/audit/result state is contract-checked before/after the interruption.
-6. Relevant primary regression/security gates are independently GREEN; known broad Heimdall R-002 debt remains separately classified.
-7. No HA, clustered Kafka, autonomous failover, recovery-time/SLA/SLO, production durability, or cloud-execution claim is introduced.
+1. Exact-head execution establishes one identifiable persisted target Job/result through the accepted Local-first path.
+2. The proof actually stops the proof-owned PostgreSQL container and independently confirms the database is unavailable before restart.
+3. The same database service and same proof-owned data volume are restarted; no substitute database or restore-from-backup shortcut is used.
+4. PostgreSQL readiness returns and the exact pre-interruption Job identity/status/result_ref/attempt_count plus referenced result presence remain consistent.
+5. Supported Heimdall health/read behavior resumes against the recovered database.
+6. Relevant primary regression/security gates are independently GREEN; broad Heimdall R-002 remains separately classified unless this milestone changes that code.
+7. No HA, replication/failover, PITR, DR, RPO/RTO, SLA/SLO, production durability, Kubernetes, or cloud-execution claim is introduced.
 
 ## Stop Condition
-Stop after one bounded single-node Kafka restart case is independently executed and verified. Do not expand into multi-broker Kafka, replication-factor design, Kubernetes, cross-node failover, production DR, or performance tuning.
+Stop after one bounded same-volume PostgreSQL restart/recovery case is independently executed and verified. Do not expand into streaming replication, Patroni, managed databases, Kubernetes operators, production DR, performance tuning, or cloud-provider work.
 
 **Current: SELECTED — ISSUE NOT YET OPEN**
 
@@ -329,12 +366,13 @@ Stop after one bounded single-node Kafka restart case is independently executed 
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M7 are **PASS / ACCEPTED / FROZEN**;
-- M7 exact head `c4de490bab6d1f3709cf7ce32c4d7b2212131fce`, PR #44 merge `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7`, Issue #43 CLOSED / COMPLETED;
-- M7 run `33693038558`: SUCCESS; artifact `9870849376` / `sha256:4961998526b32c5af5cf7b39f8df9159e2cb7c13bdb71743a5116e5bec5ec30b`;
-- M7 non-claims remain alerting/autonomous remediation/distributed tracing/cloud observability/HA/production monitoring/SLA-SLO/generic platform expansion;
-- broad CI/CD RED remains the pre-existing R-002 Heimdall build debt, while primary CI, M1, M5, Real Local AI, Bifrost build/test and dependency security were independently GREEN on the accepted M7 exact head;
-- Progression Review selected exactly one next milestone: **M8 — Bounded Kafka Restart Recovery**.
+- M1–M8 are **PASS / ACCEPTED / FROZEN**;
+- M8 exact head `5fb86a99a2e98f237c0d516391128ef9a86bd500`, PR #46 merge `5748d33953c7b46abd945d682618a409c7b9125b`, Issue #45 CLOSED / COMPLETED;
+- M8 run `33697888620`: SUCCESS; artifact `9872527893` / `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486`;
+- exact-head primary CI `33697887580` SUCCESS; Bifrost build/test and Dependency Security Check GREEN;
+- broad CI/CD `33697888516` remained RED first at Heimdall `:heimdall:checkstyleMain`, demonstrably the accepted pre-existing R-002 debt rather than an M8 workflow regression;
+- M8 non-claims remain multi-broker/HA/autonomous failover/cross-node recovery/recovery-time/SLA-SLO/production durability/cloud execution;
+- Progression Review selected exactly one next milestone: **M9 — Bounded PostgreSQL Restart Recovery**.
 
 ## Exact Next Action
-**Open exactly one M8 Issue for a bounded proof-owned single-node Kafka restart/recovery case. Reuse the accepted Local-first proof path and persistence evidence; actually stop/restart Kafka and verify one identifiable target Job/result contract. Keep HA, clustered Kafka, production durability, recovery-time/SLA/SLO, cloud execution, broad Kafka redesign and generic refactors out of scope.**
+**Open exactly one M9 Issue for a bounded proof-owned same-volume PostgreSQL restart/recovery case. Reuse the accepted Local-first proof path; establish one persisted target Job/result before interruption, actually stop/restart PostgreSQL with the same data volume, and verify persisted identity/result plus supported Heimdall read health after recovery. Keep HA/replication/PITR/DR/RPO-RTO/SLA-SLO/Kubernetes/cloud work out of scope.**
