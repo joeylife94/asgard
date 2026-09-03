@@ -48,15 +48,17 @@ jobs:
           grep -Fq 'Production readiness is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
           grep -Fq 'Cloud-provider execution is not verified.' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
 
-          # Verify the artifact contains the runtime/build inputs that the
-          # bundled local proof actually resolves from its extracted root.
-          test -x "$ROOT/gradlew"
+          # The accepted local proof invokes Gradle and the operator scripts
+          # explicitly via bash, so executable mode is not part of the accepted
+          # contract. Verify the required tracked inputs are present and valid.
+          test -s "$ROOT/gradlew"
           test -s "$ROOT/docker-compose.yml"
           test -s "$ROOT/bifrost/requirements.txt"
           test -d "$ROOT/heimdall"
           test -d "$ROOT/bifrost"
-          test -x "$ROOT/scripts/local-proof.sh"
-          test -x "$ROOT/scripts/cleanup-retained-proof.sh"
+          test -s "$ROOT/scripts/local-proof.sh"
+          test -s "$ROOT/scripts/cleanup-retained-proof.sh"
+          bash -n "$ROOT/gradlew"
           bash -n "$ROOT/scripts/local-proof.sh"
           bash -n "$ROOT/scripts/operator-diagnostic-snapshot.sh"
           bash -n "$ROOT/scripts/m6-backup-restore-proof.sh"
