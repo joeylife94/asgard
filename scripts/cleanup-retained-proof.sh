@@ -13,28 +13,67 @@ if [[ -f "$CLEANED_MARKER" ]]; then
   exit 0
 fi
 
-# retained-session.env is repository-generated shell assignment data. Reject
-# anything outside the exact bounded key set before sourcing it so malformed
-# metadata cannot become an arbitrary command channel.
-allowed='^(PROOF_ID|COMPOSE_PROJECT|HEIMDALL_PID|BIFROST_PID|OLLAMA_CONTAINER|ROOT_DIR|WORK_DIR)='
+# Decode the restricted output grammar emitted by `printf %q` without eval or
+# source. Plain characters and one-character backslash escapes are supported;
+# shell-expansion forms such as $'...' are deliberately rejected.
+decode_q_value() {
+  local encoded=$1 out="" ch
+  if [[ "$encoded" == "''" ]]; then
+    printf '%s' ""
+    return 0
+  fi
+  [[ "$encoded" != *'$'* && "$encoded" != *'`'* ]] || return 1
+  while [[ -n "$encoded" ]]; do
+    ch=${encoded:0:1}
+    encoded=${encoded:1}
+    if [[ "$ch" == '\\' ]]; then
+      [[ -n "$encoded" ]] || return 1
+      ch=${encoded:0:1}
+      encoded=${encoded:1}
+      [[ "$ch" != $'\n' && "$ch" != $'\r' ]] || return 1
+    fi
+    [[ "$ch" != $'\n' && "$ch" != $'\r' ]] || return 1
+    out+="$ch"
+  done
+  printf '%s' "$out"
+}
+
+PROOF_ID=""
+COMPOSE_PROJECT=""
+HEIMDALL_PID=""
+BIFROST_PID=""
+OLLAMA_CONTAINER=""
+ROOT_DIR=""
+WORK_DIR=""
+declare -A SEEN=()
+
 while IFS= read -r line || [[ -n "$line" ]]; do
   [[ -n "$line" ]] || continue
-  [[ "$line" =~ $allowed ]] || fail "unexpected session metadata line"
-  case "$line" in
-    *'$('*|*'`'*|*';'*|*'&&'*|*'||'*|*'<'*|*'>') fail "unsafe token in session metadata" ;;
+  [[ "$line" == *=* ]] || fail "unexpected session metadata line"
+  key=${line%%=*}
+  encoded=${line#*=}
+  case "$key" in
+    PROOF_ID|COMPOSE_PROJECT|HEIMDALL_PID|BIFROST_PID|OLLAMA_CONTAINER|ROOT_DIR|WORK_DIR) ;;
+    *) fail "unexpected session metadata key: $key" ;;
+  esac
+  [[ -z "${SEEN[$key]:-}" ]] || fail "duplicate session metadata key: $key"
+  SEEN[$key]=1
+  value="$(decode_q_value "$encoded")" || fail "unsafe or unsupported encoding for session metadata key: $key"
+  case "$key" in
+    PROOF_ID) PROOF_ID=$value ;;
+    COMPOSE_PROJECT) COMPOSE_PROJECT=$value ;;
+    HEIMDALL_PID) HEIMDALL_PID=$value ;;
+    BIFROST_PID) BIFROST_PID=$value ;;
+    OLLAMA_CONTAINER) OLLAMA_CONTAINER=$value ;;
+    ROOT_DIR) ROOT_DIR=$value ;;
+    WORK_DIR) WORK_DIR=$value ;;
   esac
 done < "$SESSION_FILE"
-
-# shellcheck disable=SC1090
-source "$SESSION_FILE"
 
 : "${PROOF_ID:?missing PROOF_ID}"
 : "${COMPOSE_PROJECT:?missing COMPOSE_PROJECT}"
 : "${ROOT_DIR:?missing ROOT_DIR}"
 : "${WORK_DIR:?missing WORK_DIR}"
-HEIMDALL_PID="${HEIMDALL_PID:-}"
-BIFROST_PID="${BIFROST_PID:-}"
-OLLAMA_CONTAINER="${OLLAMA_CONTAINER:-}"
 
 [[ "$PROOF_ID" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "invalid PROOF_ID"
 [[ "$COMPOSE_PROJECT" == "asgard-proof-${PROOF_ID//[^a-zA-Z0-9_-]/-}" ]] || fail "COMPOSE_PROJECT does not match proof ownership boundary"
@@ -47,25 +86,41 @@ command -v docker >/dev/null 2>&1 || fail "missing required command: docker"
 docker info >/dev/null 2>&1 || fail "Docker daemon is not available"
 docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is required"
 
+verify_recorded_pid() {
+  local name=$1 pid=$2 expected_log=$3 cmdline cwd stdout_target
+  [[ -n "$pid" ]] || return 0
+  kill -0 "$pid" 2>/dev/null || return 1
+  [[ -r "/proc/$pid/cmdline" && -e "/proc/$pid/cwd" && -e "/proc/$pid/fd/1" ]] || fail "$name pid identity is not inspectable pid=$pid"
+  cmdline="$(tr '\0' ' ' < "/proc/$pid/cmdline")"
+  cwd="$(readlink -f "/proc/$pid/cwd")"
+  stdout_target="$(readlink -f "/proc/$pid/fd/1")"
+  [[ "$cwd" == "$(readlink -f "$ROOT_DIR")" ]] || fail "$name pid ownership mismatch: cwd pid=$pid"
+  [[ "$stdout_target" == "$(readlink -f "$expected_log")" ]] || fail "$name pid ownership mismatch: stdout pid=$pid"
+  case "$name" in
+    Heimdall) [[ "$cmdline" == *"java -jar "*"heimdall-"*".jar"* ]] || fail "$name pid ownership mismatch: command pid=$pid" ;;
+    Bifrost) [[ "$cmdline" == *"python"*" -m bifrost.main serve"* ]] || fail "$name pid ownership mismatch: command pid=$pid" ;;
+    *) fail "unknown retained process identity: $name" ;;
+  esac
+}
+
 stop_recorded_pid() {
-  local name=$1 pid=$2
+  local name=$1 pid=$2 expected_log=$3
   [[ -n "$pid" ]] || { log "$name pid not recorded; skip"; return 0; }
   if ! kill -0 "$pid" 2>/dev/null; then
     log "$name already stopped pid=$pid"
     return 0
   fi
 
-  log "$name stopping pid=$pid"
+  verify_recorded_pid "$name" "$pid" "$expected_log"
+  log "$name ownership verified; stopping pid=$pid"
   kill "$pid"
   for _ in {1..40}; do
     kill -0 "$pid" 2>/dev/null || { log "$name stopped pid=$pid"; return 0; }
     sleep 0.25
   done
 
-  # Retained proof processes are proof-owned exact PIDs. If graceful TERM does
-  # not complete within the bounded grace period, force only that recorded PID
-  # rather than widening cleanup to process-name matching.
-  log "$name did not stop after TERM; forcing recorded pid=$pid"
+  # Only the already-verified exact proof-owned PID can reach this fallback.
+  log "$name did not stop after TERM; forcing verified pid=$pid"
   kill -KILL "$pid" 2>/dev/null || true
   for _ in {1..20}; do
     kill -0 "$pid" 2>/dev/null || { log "$name force-stopped pid=$pid"; return 0; }
@@ -74,8 +129,8 @@ stop_recorded_pid() {
   fail "$name still present after bounded TERM/KILL pid=$pid"
 }
 
-stop_recorded_pid "Heimdall" "$HEIMDALL_PID"
-stop_recorded_pid "Bifrost" "$BIFROST_PID"
+stop_recorded_pid "Heimdall" "$HEIMDALL_PID" "$WORK_DIR/heimdall.log"
+stop_recorded_pid "Bifrost" "$BIFROST_PID" "$WORK_DIR/bifrost.log"
 
 if [[ -n "$OLLAMA_CONTAINER" ]]; then
   if docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; then
