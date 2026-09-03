@@ -13,6 +13,8 @@ required=(
   '.github/workflows/v11-m8-kafka-restart.yml'
   '.github/workflows/v11-m9-postgres-restart.yml'
   'ASGARD_MASTER.md'
+  'retained-session.env'
+  'docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans'
 )
 
 for token in "${required[@]}"; do
@@ -31,25 +33,32 @@ for token in "${obsolete[@]}"; do
   fi
 done
 
-# The handoff must preserve explicit non-claims for the most material boundaries.
+# Bind material boundaries to complete explicit negative assertions rather than
+# merely checking that a capability token appears somewhere in the document.
 nonclaims=(
-  'Production readiness'
-  'production SLA/SLO'
-  'PITR'
-  'RPO/RTO'
-  'Kafka multi-broker/cluster failover'
-  'PostgreSQL replication/HA'
-  'cloud-provider execution'
-  'unattended autonomous operations'
+  'Production readiness is not verified.'
+  'Production SLA/SLO is not verified.'
+  'Continuous backup and PITR are not verified.'
+  'Disaster-recovery certification and RPO/RTO are not verified.'
+  'Kafka multi-broker/cluster failover is not verified.'
+  'PostgreSQL replication/HA is not verified.'
+  'Cloud-provider execution is not verified.'
+  'Unattended autonomous operations are not verified.'
 )
-for token in "${nonclaims[@]}"; do
-  grep -Fq "$token" "$DOC" || { echo "missing required non-claim boundary: $token" >&2; exit 1; }
+for statement in "${nonclaims[@]}"; do
+  grep -Fq -- "$statement" "$DOC" || { echo "missing explicit non-claim boundary: $statement" >&2; exit 1; }
 done
 
 # Guard against obvious claim broadening in the delivery-facing document.
 forbidden=(
   'production-ready'
   'production ready'
+  'Production readiness is verified'
+  'Production SLA/SLO is verified'
+  'Kafka multi-broker/cluster failover is verified'
+  'PostgreSQL replication/HA is verified'
+  'Cloud-provider execution is verified'
+  'Unattended autonomous operations are verified'
   'high availability is verified'
   'disaster recovery is verified'
   'SLA guaranteed'
@@ -58,7 +67,7 @@ forbidden=(
   'cloud execution verified'
 )
 for token in "${forbidden[@]}"; do
-  if grep -Fiq "$token" "$DOC"; then
+  if grep -Fiq -- "$token" "$DOC"; then
     echo "forbidden overclaim wording found: $token" >&2
     exit 1
   fi
