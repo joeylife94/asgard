@@ -29,9 +29,10 @@ jobs:
           bash -n scripts/local-proof.sh
           bash scripts/check-single-node-handoff-truth.sh
 
-      - name: Prove malformed metadata fails closed
+      - name: Prove malformed metadata and unrelated PIDs fail closed
         run: |
           mkdir -p m12-negative
+
           cat > m12-negative/retained-session.env <<'EOF'
           PROOF_ID=m12-negative
           COMPOSE_PROJECT=wrong-project
@@ -45,6 +46,44 @@ jobs:
             echo 'malformed ownership metadata unexpectedly accepted' >&2
             exit 1
           fi
+
+          INJECTION_MARKER="$GITHUB_WORKSPACE/m12-negative/injection-executed"
+          cat > m12-negative/injection.env <<'EOF'
+          PROOF_ID=$'\x24\x28touch /tmp/m12-injection\x29'
+          COMPOSE_PROJECT=asgard-proof-m12-negative
+          HEIMDALL_PID=
+          BIFROST_PID=
+          OLLAMA_CONTAINER=
+          ROOT_DIR=/tmp
+          WORK_DIR=/tmp
+          EOF
+          rm -f /tmp/m12-injection "$INJECTION_MARKER"
+          if bash scripts/cleanup-retained-proof.sh m12-negative/injection.env; then
+            echo 'shell-expansion metadata unexpectedly accepted' >&2
+            exit 1
+          fi
+          test ! -e /tmp/m12-injection
+          test ! -e "$INJECTION_MARKER"
+
+          sleep 60 &
+          UNRELATED_PID=$!
+          {
+            printf 'PROOF_ID=%q\n' 'm12-unrelated'
+            printf 'COMPOSE_PROJECT=%q\n' 'asgard-proof-m12-unrelated'
+            printf 'HEIMDALL_PID=%q\n' "$UNRELATED_PID"
+            printf 'BIFROST_PID=%q\n' ''
+            printf 'OLLAMA_CONTAINER=%q\n' ''
+            printf 'ROOT_DIR=%q\n' "$GITHUB_WORKSPACE"
+            printf 'WORK_DIR=%q\n' "$GITHUB_WORKSPACE/m12-negative"
+          } > m12-negative/unrelated.env
+          if bash scripts/cleanup-retained-proof.sh m12-negative/unrelated.env; then
+            echo 'unrelated PID unexpectedly accepted as Heimdall' >&2
+            kill "$UNRELATED_PID" 2>/dev/null || true
+            exit 1
+          fi
+          kill -0 "$UNRELATED_PID"
+          kill "$UNRELATED_PID"
+          wait "$UNRELATED_PID" 2>/dev/null || true
 
       - name: Execute retained Local-first proof
         env:
@@ -71,13 +110,13 @@ jobs:
           SESSION="$GITHUB_WORKSPACE/m12-work/retained-session.env"
           # shellcheck disable=SC1090
           source "$SESSION"
-          bash scripts/cleanup-retained-proof.sh "$SESSION" | tee "$GITHUB_WORKSPACE/m12-evidence/cleanup-first.log"
+          bash scripts/cleanup-retained-proof.sh "$SESSION" 2>&1 | tee "$GITHUB_WORKSPACE/m12-evidence/cleanup-first.log"
           test -f "${SESSION}.cleaned"
           if kill -0 "$HEIMDALL_PID" 2>/dev/null; then echo 'Heimdall still running' >&2; exit 1; fi
           if kill -0 "$BIFROST_PID" 2>/dev/null; then echo 'Bifrost still running' >&2; exit 1; fi
           test -z "$(docker ps -aq --filter label=com.docker.compose.project="$COMPOSE_PROJECT")"
           if [ -n "$OLLAMA_CONTAINER" ]; then ! docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; fi
-          bash scripts/cleanup-retained-proof.sh "$SESSION" | tee "$GITHUB_WORKSPACE/m12-evidence/cleanup-second.log"
+          bash scripts/cleanup-retained-proof.sh "$SESSION" 2>&1 | tee "$GITHUB_WORKSPACE/m12-evidence/cleanup-second.log"
           grep -q 'already cleaned' "$GITHUB_WORKSPACE/m12-evidence/cleanup-second.log"
 
       - name: Upload M12 evidence
