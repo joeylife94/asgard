@@ -1,85 +1,21 @@
-name: v1.1 M1 Local Proof Runner
+name: v1.1 M7 Operator Diagnostic Snapshot
 
 on:
   pull_request:
     paths:
-      - 'scripts/local-proof.sh'
       - 'scripts/operator-diagnostic-snapshot.sh'
-      - '.github/workflows/v11-m1-local-proof.yml'
       - '.github/workflows/v11-m7-operator-diagnostic.yml'
+      - 'scripts/local-proof.sh'
       - 'heimdall/**'
       - 'bifrost/**'
       - 'docker-compose.yml'
-      - 'build.gradle'
-      - 'settings.gradle'
-      - 'gradlew'
-      - 'gradle/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  local-proof:
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Validate runner syntax
-        shell: bash
-        run: bash -n scripts/local-proof.sh
-      - name: Execute real Local-first proof
-        shell: bash
-        env:
-          ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/v11-m1-local-proof-summary.json
-          ASGARD_PROOF_EVIDENCE_DIR: ${{ github.workspace }}/local-proof-evidence
-        run: bash scripts/local-proof.sh
-      - name: Upload failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v11-m1-local-proof-failure
-          path: local-proof-evidence/
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Inspect synthetic-safe summary
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          path = Path('v11-m1-local-proof-summary.json')
-          data = json.loads(path.read_text())
-          assert data['status'] == 'PASS', data
-          assert data['provider'] == 'ollama', data
-          assert data['synthetic'] is True, data
-          assert data['cloudExecution'] is False, data
-          text = path.read_text().lower()
-          for forbidden in ('authorization:', 'bearer ', 'jwt_secret', 'password'):
-              assert forbidden not in text, forbidden
-          print(json.dumps(data, ensure_ascii=False))
-          PY
-      - name: Upload local proof summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v11-m1-local-proof-summary
-          path: v11-m1-local-proof-summary.json
-          if-no-files-found: ignore
-          retention-days: 14
-
-  m7-diagnostic-snapshot:
-    name: M7 operator diagnostic snapshot
+  diagnostic-snapshot:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -88,20 +24,18 @@ jobs:
     steps:
       - name: Checkout exact head
         uses: actions/checkout@v4
+
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - name: Set up Python 3.11
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Validate M7 runner syntax
-        shell: bash
-        run: |
-          bash -n scripts/local-proof.sh
-          bash -n scripts/operator-diagnostic-snapshot.sh
+
       - name: Execute accepted Local-first proof and retain bounded session
         env:
           ASGARD_PROOF_ID: m7-${{ github.run_id }}-${{ github.run_attempt }}
@@ -109,13 +43,16 @@ jobs:
           ASGARD_PROOF_WORK_DIR: ${{ github.workspace }}/.m7-session
           ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/.m7-session/local-proof-summary.json
         run: bash scripts/local-proof.sh
+
       - name: Capture read-only operator diagnostic snapshot
         run: bash scripts/operator-diagnostic-snapshot.sh "$WORK_DIR/retained-session.env" "$EVIDENCE_DIR"
+
       - name: Verify M7 evidence contract
         run: |
           python3 - <<'PY'
           import json, os
           from pathlib import Path
+
           path = Path(os.environ['EVIDENCE_DIR']) / 'diagnostic-snapshot.json'
           data = json.loads(path.read_text(encoding='utf-8'))
           assert data['snapshot'] == 'asgard-v1.1-m7-operator-diagnostic'
@@ -130,10 +67,27 @@ jobs:
           assert data['job']['resultRef'] is not None
           assert Path(os.environ['EVIDENCE_DIR'], 'diagnostic-snapshot.md').is_file()
           text = path.read_text(encoding='utf-8')
-          for forbidden in ('local-proof-admin-password','local-proof-jwt-secret-at-least-32-bytes-long','redis_password','asgard_password','Authorization: Bearer'):
+          for forbidden in (
+              'local-proof-admin-password',
+              'local-proof-jwt-secret-at-least-32-bytes-long',
+              'redis_password',
+              'asgard_password',
+              'Authorization: Bearer',
+          ):
               assert forbidden not in text, forbidden
-          print(json.dumps({'status': data['status'], 'proofId': data['session']['proofId'], 'composeProject': data['session']['composeProject'], 'jobId': data['job']['jobId'], 'jobStatus': data['job']['status'], 'health': data['health'], 'readOnly': data['readOnly'], 'synthetic': data['synthetic'], 'cloudExecution': data['cloudExecution']}, indent=2))
+          print(json.dumps({
+              'status': data['status'],
+              'proofId': data['session']['proofId'],
+              'composeProject': data['session']['composeProject'],
+              'jobId': data['job']['jobId'],
+              'jobStatus': data['job']['status'],
+              'health': data['health'],
+              'readOnly': data['readOnly'],
+              'synthetic': data['synthetic'],
+              'cloudExecution': data['cloudExecution'],
+          }, indent=2))
           PY
+
       - name: Upload M7 evidence
         uses: actions/upload-artifact@v4
         with:
@@ -141,12 +95,14 @@ jobs:
           path: ${{ github.workspace }}/m7-evidence/
           if-no-files-found: error
           retention-days: 14
+
       - name: Cleanup retained proof environment
         if: always()
         run: |
           set +e
           SESSION="$WORK_DIR/retained-session.env"
           if [[ -f "$SESSION" ]]; then
+            # shellcheck disable=SC1090
             source "$SESSION"
             [[ -n "${HEIMDALL_PID:-}" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
             [[ -n "${BIFROST_PID:-}" ]] && kill "$BIFROST_PID" 2>/dev/null || true
