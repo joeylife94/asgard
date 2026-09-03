@@ -1,0 +1,57 @@
+name: D2 Single-node Delivery Candidate
+
+on:
+  pull_request:
+    paths:
+      - 'delivery/single-node-candidate/**'
+      - 'scripts/check-d2-delivery-candidate.sh'
+      - 'docs/SINGLE_NODE_HANDOFF.md'
+      - 'ASGARD_MASTER.md'
+      - '.github/workflows/d2-single-node-delivery-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify delivery contract
+        run: bash scripts/check-d2-delivery-candidate.sh
+      - name: Assemble exact-head candidate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          VERSION="$(tr -d '\r\n' < delivery/single-node-candidate/VERSION)"
+          OUT="dist/$VERSION"
+          mkdir -p "$OUT/delivery/single-node-candidate" "$OUT/docs" "$OUT/scripts"
+          cp delivery/single-node-candidate/VERSION "$OUT/delivery/single-node-candidate/"
+          cp delivery/single-node-candidate/MANIFEST.md "$OUT/delivery/single-node-candidate/"
+          cp ASGARD_MASTER.md "$OUT/"
+          cp docs/SINGLE_NODE_HANDOFF.md "$OUT/docs/"
+          cp scripts/local-proof.sh "$OUT/scripts/"
+          cp scripts/operator-diagnostic-snapshot.sh "$OUT/scripts/"
+          cp scripts/m6-backup-restore-proof.sh "$OUT/scripts/"
+          cp scripts/cleanup-retained-proof.sh "$OUT/scripts/"
+          printf 'version=%s\ncommit=%s\nrepository=%s\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_REPOSITORY" > "$OUT/PROVENANCE.txt"
+          test "$(sed -n 's/^commit=//p' "$OUT/PROVENANCE.txt")" = "$GITHUB_SHA"
+          tar -C dist -czf "dist/$VERSION.tar.gz" "$VERSION"
+          printf 'artifact_name=%s\n' "$VERSION" >> "$GITHUB_ENV"
+      - name: Verify assembled bundle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -s "dist/$artifact_name/PROVENANCE.txt"
+          grep -Fxq "commit=$GITHUB_SHA" "dist/$artifact_name/PROVENANCE.txt"
+          grep -Fq 'Production readiness is not verified.' "dist/$artifact_name/delivery/single-node-candidate/MANIFEST.md"
+          grep -Fq 'Cloud-provider execution is not verified.' "dist/$artifact_name/delivery/single-node-candidate/MANIFEST.md"
+          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/scripts/local-proof.sh"
+          tar -tzf "dist/$artifact_name.tar.gz" | grep -Fq "$artifact_name/scripts/cleanup-retained-proof.sh"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.artifact_name }}
+          path: dist/${{ env.artifact_name }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
