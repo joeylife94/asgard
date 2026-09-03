@@ -4,33 +4,26 @@
 
 ## Supported boundary
 
-This handoff covers one technical operator on one Linux host using the repository's accepted local proof path. It covers PostgreSQL/Kafka/Redis/Elasticsearch dependencies, Heimdall, Bifrost, and real local Ollama inference. It does **not** claim AWS/Bedrock/OIDC/cloud execution, Kubernetes/HA/multi-node recovery, autonomous operations, production SLA/SLO, or legal/security certification.
+This handoff covers one technical operator on one Linux host using the repository's accepted Local-first proof path. It covers PostgreSQL/Kafka/Redis/Elasticsearch dependencies, Heimdall, Bifrost, and real local Ollama inference.
+
+Accepted post-v1.0 evidence additionally covers bounded operator/read/recovery cases for local reproduction, read-only Job inspection, controlled redrive, one Bifrost restart replay, one PostgreSQL backup/restore, one read-only diagnostic snapshot, one single-broker Kafka restart replay, and one same-volume PostgreSQL restart recovery.
+
+It does **not** claim AWS/Bedrock/OIDC/cloud execution, Kubernetes/HA/multi-node recovery, autonomous operations, production SLA/SLO, stable performance/cost, legal/security certification, multi-broker failover, PostgreSQL replication, PITR/DR certification, or RPO/RTO.
 
 ## Prerequisites
 
-The executable source of truth is `scripts/local-proof.sh`. Its preflight currently requires:
+The executable source of truth for the Local-first proof is `scripts/local-proof.sh`. Its accepted Linux path requires:
 
 - Linux shell with Bash;
 - Docker daemon and Docker Compose plugin;
 - Java 21;
 - Python 3.9+ with `venv` support;
 - `curl`;
-- free local ports `5432`, `6379`, `8080`, `8000`, `9091`, and `9200`.
+- free local ports required by the proof services.
 
 The proof runner builds Heimdall, creates an isolated Python environment for Bifrost, starts the required Compose infrastructure, and uses real Ollama inference. The accepted CI wrapper is `.github/workflows/v11-m1-local-proof.yml`.
 
-## Configuration ownership
-
-- Repository defaults/examples define the bounded proof configuration; do not infer production secret-management guarantees from them.
-- `ASGARD_PROOF_MODEL` selects the local Ollama model; accepted proof evidence used `smollm:135m`.
-- `ASGARD_PROOF_OUTPUT` selects the synthetic-safe summary path.
-- `ASGARD_PROOF_EVIDENCE_DIR` selects failure-evidence output.
-- `ASGARD_PROOF_WORK_DIR` may point at a caller-owned **empty** directory. The runner refuses non-empty caller-owned content.
-- `ASGARD_PROOF_KEEP=1` preserves the proof environment/work directory for inspection. Default cleanup removes proof-owned processes, containers/volumes, and temporary work.
-
 ## Start and execute one real Local AI Job
-
-From the repository root:
 
 ```bash
 bash -n scripts/local-proof.sh
@@ -39,7 +32,7 @@ bash scripts/local-proof.sh
 
 A successful run must end with the script's PASS summary and a real Local-first Job path through Heimdall → Kafka → Bifrost → Ollama → persisted final Job state. Code existence or an agent report is not a substitute for the executable result.
 
-For retained inspection during a handoff session:
+For retained inspection:
 
 ```bash
 ASGARD_PROOF_KEEP=1 \
@@ -48,66 +41,84 @@ ASGARD_PROOF_EVIDENCE_DIR="$PWD/local-proof-evidence" \
 bash scripts/local-proof.sh
 ```
 
-When `KEEP=1` is used, the runner prints the retained work directory and writes `retained-session.env` there. That file contains only bounded session metadata needed for cleanup: proof id, Compose project, process ids, optional proof-owned Ollama container, repository root, and work directory.
+When `KEEP=1` is used, the runner writes bounded session metadata for later cleanup. This retained session does not itself replace the dedicated accepted interruption/recovery workflows below.
 
-## Inspect result and health
+## Accepted bounded recovery and support evidence
 
-The proof runner performs its own readiness and final persisted Job checks. Treat its generated summary as the bounded handoff result. For failure diagnosis, inspect the configured evidence directory; on failure the runner preserves `failure-context.json` plus available Heimdall/Bifrost/Ollama/final-Job diagnostics.
+### Bifrost process restart — M4
 
-Do not convert one proof run into stable latency, throughput, cost, availability, or SLO claims.
+`.github/workflows/v11-m4-bifrost-restart.yml` proves one bounded single-node replay case in which Bifrost is interrupted during processing, confirmed down, restarted with the same consumer-group semantics, and the target persisted Job reaches `SUCCEEDED` with a result reference.
 
-## Accepted restart semantics
+This is not a general HA, autonomous retry, recovery-time, or distributed-delivery guarantee.
 
-M4 accepted one bounded single-node case: Bifrost was killed after it entered processing, confirmed down, then restarted with the same Kafka consumer-group semantics; the persisted target Job subsequently reached `SUCCEEDED` with a result reference. The executable acceptance reference is `.github/workflows/v11-m4-bifrost-restart.yml`.
+### PostgreSQL backup/restore — M6
 
-This handoff records that accepted behavior and its exact proof reference. It does **not** claim that the retained M1 handoff session is itself a supported manual M4 replay procedure: `scripts/local-proof.sh` returns only after its target Job is already complete, while the M4 acceptance harness deliberately interrupts Bifrost during an in-flight Job. Reproducing that exact interruption remains the responsibility of the M4 workflow rather than an undocumented operator reconstruction.
+`scripts/m6-backup-restore-proof.sh` and `.github/workflows/v11-m6-backup-restore.yml` prove one bounded PostgreSQL backup/restore case for accepted Asgard-owned Job/result/audit state. The proof creates a concrete `pg_dump` artifact, restores it into a distinct proof-owned database, and verifies bounded persisted state parity.
 
-This proves **that bounded replay case only**. It does not prove Kafka outage recovery, multi-node failover, HA, recovery-time objectives, or unattended autonomous retry.
+This is **not** PITR, continuous backup, disaster-recovery certification, off-site durability, HA, RPO/RTO, or a production retention/encryption policy.
+
+### Operator diagnostic snapshot — M7
+
+`scripts/operator-diagnostic-snapshot.sh` and `.github/workflows/v11-m7-operator-diagnostic.yml` prove one bounded read-only support bundle covering supported service health, persisted Job state, lifecycle metrics, proof/session correlation metadata, and sanitized bounded logs. The evidence contract fails closed on known proof-secret leakage.
+
+This is not a generic monitoring platform, alerting system, autonomous remediation layer, production monitoring certification, or SLA/SLO evidence.
+
+### Kafka broker restart — M8
+
+`.github/workflows/v11-m8-kafka-restart.yml` proves one bounded single-node persisted-request replay case. A target request is published before Bifrost startup, the proof-owned Kafka broker is actually stopped and independently confirmed unavailable, the same broker/storage boundary is restarted, and Bifrost then completes the request to a single accepted persisted result.
+
+This is not multi-broker Kafka, cluster failover, HA, cross-node recovery, autonomous failover, recovery-time, or production durability evidence.
+
+### PostgreSQL same-volume restart — M9
+
+`.github/workflows/v11-m9-postgres-restart.yml` proves one bounded same-volume PostgreSQL restart/recovery case. A real Local-first persisted Job/result is established, the proof-owned PostgreSQL service is actually stopped and confirmed unavailable, the same service and data volume are restarted, and persisted Job/result parity plus supported Heimdall read behavior are verified after recovery.
+
+This is not replication, managed-database failover, HA, PITR, DR certification, RPO/RTO, recovery-time, SLA/SLO, production durability, Kubernetes operator, or cloud execution evidence.
+
+## Diagnostic use
+
+For a retained accepted proof session, `scripts/operator-diagnostic-snapshot.sh` is the repository-owned read-only diagnostic path. Treat its bounded JSON/Markdown output as support evidence for that session only. Do not generalize one snapshot into a production observability claim.
 
 ## Persistence and cleanup
 
 - Job/result state is persisted through the accepted Heimdall/PostgreSQL path.
-- Kafka participates in request/result handoff; M4 validates one replay-after-Bifrost-kill case.
-- The default local proof cleanup uses `docker compose ... down -v`, so proof-owned Compose volumes are intentionally removed after the run.
-- **Backup/restore: NOT VERIFIED.** Do not represent proof-volume persistence or retained inspection state as a tested backup/restore procedure.
+- Kafka participates in request/result handoff.
+- M6 proves one bounded PostgreSQL backup/restore case.
+- M8 proves one bounded single-broker restart/replay case.
+- M9 proves one bounded same-volume PostgreSQL service restart/recovery case.
+- The default local proof cleanup removes proof-owned Compose volumes intentionally; retained inspection requires `ASGARD_PROOF_KEEP=1`.
 
-For a retained `ASGARD_PROOF_KEEP=1` session, use the exact work-directory path printed by the runner:
-
-```bash
-source /printed/work/dir/retained-session.env
-
-[[ -n "$HEIMDALL_PID" ]] && kill "$HEIMDALL_PID" 2>/dev/null || true
-[[ -n "$BIFROST_PID" ]] && kill "$BIFROST_PID" 2>/dev/null || true
-[[ -n "$OLLAMA_CONTAINER" ]] && docker rm -f "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
-cd "$ROOT_DIR"
-docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans
-```
-
-If the runner used an already-running local Ollama endpoint, `OLLAMA_CONTAINER` is empty and cleanup deliberately leaves that external operator-owned Ollama process untouched. The retained work directory is not deleted automatically under `KEEP=1`; remove it manually only after evidence/log inspection is complete.
+For a retained proof session, use the exact generated cleanup metadata rather than guessing process/container identities. If the runner used an already-running operator-owned Ollama endpoint, cleanup deliberately leaves that external Ollama process untouched.
 
 ## Troubleshooting
 
 | Symptom | Bounded action |
 |---|---|
 | `missing required command` | Install the named prerequisite and rerun preflight. |
-| `Docker daemon is not available` | Start/fix the local Docker daemon; do not bypass the check. |
-| `Docker Compose plugin is required` | Install/enable Compose v2 and rerun. |
-| `Java 21 required` | Select a Java 21 runtime before rerunning. |
-| `Python 3.9+ required` | Select Python 3.9 or newer with `venv` support before rerunning. |
-| `required port already in use` | Stop the conflicting local process or use a clean host/session; the accepted proof expects those ports. |
-| caller-owned work directory rejected | Supply an empty directory or omit `ASGARD_PROOF_WORK_DIR`. |
-| infrastructure/readiness failure | Inspect `local-proof-evidence/` (or configured evidence path) before changing runtime code. |
+| Docker daemon unavailable | Start/fix the local Docker daemon; do not bypass the check. |
+| Docker Compose plugin unavailable | Install/enable Compose v2 and rerun. |
+| Java/Python prerequisite failure | Select the required runtime before rerunning. |
+| required port already in use | Stop the conflicting local process or use a clean host/session. |
+| infrastructure/readiness failure | Inspect configured local-proof evidence before changing runtime code. |
 | Ollama/model failure | Check retained Ollama/pull diagnostics; do not substitute a cloud provider and call the Local-first gate PASS. |
-| Bifrost interruption/restart question | Use the accepted M4 workflow as the exact executable evidence; the retained M1 session is not represented as a manual replay harness. |
-| broad Heimdall Checkstyle RED | Known pre-existing debt unless a selected milestone makes that gate material; do not mass-fix as handoff work. |
+| Bifrost interruption/restart question | Use `.github/workflows/v11-m4-bifrost-restart.yml` as the exact bounded evidence. |
+| backup/restore question | Use `scripts/m6-backup-restore-proof.sh` / `.github/workflows/v11-m6-backup-restore.yml`; do not generalize to DR/PITR. |
+| support snapshot needed | Use `scripts/operator-diagnostic-snapshot.sh`; keep it read-only. |
+| Kafka restart question | Use `.github/workflows/v11-m8-kafka-restart.yml`; do not generalize to multi-broker/HA. |
+| PostgreSQL restart question | Use `.github/workflows/v11-m9-postgres-restart.yml`; do not generalize to replication/HA/DR. |
+| broad Heimdall Checkstyle RED | Known pre-existing R-002 unless a selected milestone makes that gate material; do not mass-fix as handoff work. |
 
 ## Exact references
 
 - Local proof runner: `scripts/local-proof.sh`
-- M1 CI wrapper: `.github/workflows/v11-m1-local-proof.yml`
-- M4 restart proof: `.github/workflows/v11-m4-bifrost-restart.yml`
+- M1 local proof: `.github/workflows/v11-m1-local-proof.yml`
+- M4 Bifrost restart: `.github/workflows/v11-m4-bifrost-restart.yml`
+- M6 backup/restore: `scripts/m6-backup-restore-proof.sh`, `.github/workflows/v11-m6-backup-restore.yml`
+- M7 diagnostic snapshot: `scripts/operator-diagnostic-snapshot.sh`, `.github/workflows/v11-m7-operator-diagnostic.yml`
+- M8 Kafka restart: `.github/workflows/v11-m8-kafka-restart.yml`
+- M9 PostgreSQL restart: `.github/workflows/v11-m9-postgres-restart.yml`
 - Authoritative progression/claim contract: `ASGARD_MASTER.md`
 
 ## Explicitly not verified by this handoff
 
-Production readiness; production SLA/SLO; stable performance/cost; backup/restore; Kubernetes/HA/multi-node recovery; cloud-provider execution; enterprise identity/RBAC; legal/security certification; unattended autonomous operations; a general-purpose manual restart/replay procedure outside the accepted M4 harness.
+Production readiness; production SLA/SLO; stable performance/cost; continuous backup; PITR; disaster-recovery certification; RPO/RTO; Kafka multi-broker/cluster failover; PostgreSQL replication/HA; Kubernetes/HA/multi-node recovery; cloud-provider execution; enterprise identity/RBAC; legal/security certification; unattended autonomous operations; generic monitoring/admin-platform capability.
