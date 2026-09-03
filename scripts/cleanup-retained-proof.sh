@@ -7,6 +7,11 @@ fail() { printf '[asgard-cleanup] FAIL: %s\n' "$*" >&2; exit 1; }
 SESSION_FILE="${1:-}"
 [[ -n "$SESSION_FILE" ]] || fail "usage: bash scripts/cleanup-retained-proof.sh /path/to/retained-session.env"
 [[ -f "$SESSION_FILE" ]] || fail "session file not found: $SESSION_FILE"
+CLEANED_MARKER="${SESSION_FILE}.cleaned"
+if [[ -f "$CLEANED_MARKER" ]]; then
+  log "PASS already cleaned session=$SESSION_FILE"
+  exit 0
+fi
 
 # retained-session.env is repository-generated shell assignment data. Reject
 # anything outside the exact bounded key set before sourcing it so malformed
@@ -76,4 +81,6 @@ fi
   docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans
 )
 
+printf 'proof=%s\ncompose_project=%s\ncleaned_at=%s\n' \
+  "$PROOF_ID" "$COMPOSE_PROJECT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$CLEANED_MARKER"
 log "PASS proof=$PROOF_ID compose_project=$COMPOSE_PROJECT work_dir_retained=$WORK_DIR"
