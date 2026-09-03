@@ -10,9 +10,9 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: Post-v1.0 Bounded Progression — M10 SELECTED
-- **Current Batch**: M10 — Single-node Handoff Truth Reconciliation — SELECTED / ISSUE NOT YET OPEN
-- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN / M9 FROZEN — M10 SELECTED**
+- **Current Phase**: Post-v1.0 Bounded Progression — M11 SELECTED
+- **Current Batch**: M11 — Change-scoped CI/CD Signal Isolation — SELECTED / ISSUE NOT YET OPEN
+- **Current Status**: **v1.0 FROZEN / M1 FROZEN / M2 FROZEN / M3 FROZEN / M4 FROZEN / M5 FROZEN / M6 FROZEN / M7 FROZEN / M8 FROZEN / M9 FROZEN / M10 FROZEN — M11 SELECTED**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -35,14 +35,16 @@
 - **Accepted M8 merge main SHA**: `5748d33953c7b46abd945d682618a409c7b9125b`
 - **Accepted M9 exact PR head**: `c68c246c2d86672451425b5bb459234cb263794d`
 - **Accepted M9 merge main SHA**: `05ed2bea167153c30a403a18a55f742149ebec7f`
+- **Accepted M10 exact PR head**: `bc06a16145897884c3c0be2bf78ee214477bc89a`
+- **Accepted M10 merge main SHA**: `8abd9b6cf4ee23a80c86a28a305c2c873c8de025`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: M10 — Single-node Handoff Truth Reconciliation
+- **Selected Next Milestone**: M11 — Change-scoped CI/CD Signal Isolation
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS / M9 PASS — M10 SELECTED**
+- **Post-v1.0 Gate**: **M1 PASS / M2 PASS / M3 PASS / M4 PASS / M5 PASS / M6 PASS / M7 PASS / M8 PASS / M9 PASS / M10 PASS — M11 SELECTED**
 
 ---
 
@@ -145,7 +147,8 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-016 | M7 diagnostic snapshot proves one bounded read-only support bundle | no alerting, autonomous remediation, generic monitoring-platform, production monitoring/SLA/SLO claim |
 | R-017 | M8 Kafka restart proof is one bounded persisted-request replay case | no multi-broker/HA/autonomous failover/recovery-time/production-durability generalization |
 | R-018 | M9 PostgreSQL restart proof is one bounded same-volume recovery case | no replication/HA/PITR/DR/RPO-RTO/recovery-time/production-durability generalization |
-| R-019 | `docs/SINGLE_NODE_HANDOFF.md` still carries pre-M6/M8/M9 non-claims | selected M10 must reconcile delivery-facing truth without broadening claims |
+| R-019 | stale single-node handoff truth after M6/M8/M9 | CLOSED by accepted M10 handoff truth reconciliation; no claim expansion |
+| R-020 | broad `infrastructure` CI/CD filter causes unrelated workflow/script changes to execute Heimdall/Bifrost application builds | selected M11 must isolate change-scoped signal without hiding R-002 when Heimdall/shared Gradle inputs actually change |
 
 ---
 
@@ -191,34 +194,36 @@ Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion,
 | M7 — Operator Diagnostic Snapshot | #43 / #44 | `c4de490bab6d1f3709cf7ce32c4d7b2212131fce` | `5ec343a52d58e61b4c2354f7b05a9cf581c4c0d7` | M7 `33693038558`; artifact `9870849376` / `sha256:4961998526b32c5af5cf7b39f8df9159e2cb7c13bdb71743a5116e5bec5ec30b` | one bounded read-only support bundle |
 | M8 — Kafka Restart Recovery | #45 / #46 | `5fb86a99a2e98f237c0d516391128ef9a86bd500` | `5748d33953c7b46abd945d682618a409c7b9125b` | M8 `33697888620`; artifact `9872527893` / `sha256:0b7827a743fc08e9e583c904c848ca622a02137d487bca4b63d1e6eaef3be486` | one single-broker persisted-request replay case; no HA/multi-broker claim |
 | M9 — PostgreSQL Restart Recovery | #47 / #48 | `c68c246c2d86672451425b5bb459234cb263794d` | `05ed2bea167153c30a403a18a55f742149ebec7f` | M9 `33702303430` SUCCESS; artifact `9874023335` / `sha256:1ce95b2a206500ab8de72d9af54bb778b1b0128e3a2e7edd0edc3d2f9537151c`; Bifrost and relevant security/quality gates independently GREEN while broad Heimdall R-002 remained separately classified | one proof-owned same-volume PostgreSQL restart/recovery case; no replication/HA/PITR/DR/RPO-RTO/SLA-SLO/production durability/cloud claim |
+| M10 — Single-node Handoff Truth Reconciliation | #49 / #50 | `bc06a16145897884c3c0be2bf78ee214477bc89a` | `8abd9b6cf4ee23a80c86a28a305c2c873c8de025` | M10 `33713410047` SUCCESS; M5 handoff regression `33713410083` SUCCESS; primary CI `33713410094` SUCCESS; Local AI golden path `33713409968` SUCCESS; broad CI/CD `33713410364` RED only at pre-existing Heimdall R-002 with Bifrost and dependency security GREEN | delivery-facing truth reconciliation only; no runtime capability or production/HA/DR/cloud claim expansion |
 
-**M1–M9 PASS / ACCEPTED / FROZEN.**
+**M1–M10 PASS / ACCEPTED / FROZEN.**
 
 ---
 
-# 8. M10 — Single-node Handoff Truth Reconciliation — SELECTED
+# 8. M11 — Change-scoped CI/CD Signal Isolation — SELECTED
 
 ## Progression Review Decision
-M1–M9 now provide accepted executable evidence for local reproduction, operator lifecycle inspection, controlled redrive, bounded Bifrost/Kafka/PostgreSQL restart behavior, PostgreSQL backup/restore, diagnostics, and single-node handoff. The current delivery-facing `docs/SINGLE_NODE_HANDOFF.md` is materially stale: it still states `Backup/restore: NOT VERIFIED`, says Kafka outage recovery is not proved, and omits accepted M7/M8/M9 evidence. That mismatch can mislead a technical operator during handoff even though the underlying evidence exists.
+M10 showed a recurring delivery-readiness problem in the broad CI/CD workflow: any change under `.github/workflows/**` or `scripts/**` is classified as `infrastructure`, and `infrastructure == true` currently forces both Heimdall and Bifrost application builds. This means a handoff/proof workflow-only change can surface the known Heimdall R-002 RED even when no Heimdall or shared Gradle input changed. The RED remains real debt, but its attachment to unrelated changes makes the broad status less useful as a change-scoped delivery signal.
 
-This is not random polishing or a claim expansion. It is a bounded delivery-readiness correction: align one operator-facing handoff document with accepted executable evidence while preserving every non-claim.
+M11 is not a Checkstyle cleanup and must not hide R-002. It is a bounded CI orchestration correction so application builds run when their own code/shared build inputs change, while infrastructure/proof workflow changes receive their relevant workflow/security checks without manufacturing an unrelated application build failure.
 
 ## Selected Scope
-- reconcile `docs/SINGLE_NODE_HANDOFF.md` to accepted M6/M7/M8/M9 evidence;
-- replace obsolete `NOT VERIFIED` wording only where a later accepted milestone actually closed the bounded gap;
-- add exact workflow/evidence references for backup/restore, diagnostics, Kafka restart, and PostgreSQL restart;
-- preserve narrow limits: no HA, DR certification, PITR, RPO/RTO, multi-broker, replication, SLA/SLO, production durability, cloud execution, or autonomous operations claim;
-- add a small repository-owned executable contract check that fails if the handoff reintroduces obsolete non-claims or drops required accepted references.
+- adjust `.github/workflows/ci-cd.yml` change routing only;
+- preserve Heimdall build execution for `heimdall/**`, root/shared Gradle inputs, or other inputs that materially affect Heimdall;
+- preserve Bifrost build execution for `bifrost/**` and inputs that materially affect Bifrost;
+- stop treating every `.github/workflows/**` or `scripts/**` change as an unconditional reason to build both applications;
+- keep dependency/security checking and truthful summary behavior;
+- do not modify Heimdall source/Checkstyle debt, product runtime, Local-first boundaries, or cloud/provider behavior.
 
 ## Executable Acceptance
-1. Exact-head handoff document references M6/M7/M8/M9 accepted workflow paths and states their bounded accepted scope accurately.
-2. `Backup/restore: NOT VERIFIED` and `Kafka outage recovery ... not proved` are removed or rewritten to their accepted bounded truth; no broader production/HA/DR claim is introduced.
-3. A repository-owned script/workflow verifies required handoff references and forbidden overclaim/obsolete strings.
-4. Relevant primary regression/security gates remain independently classified; R-002 is not silently called GREEN.
-5. v1.0 and M1–M9 frozen evidence/claim boundaries remain unchanged.
+1. A workflow/script-only PR path does not execute Heimdall/Bifrost application builds solely because `infrastructure == true`.
+2. A Heimdall/shared-Gradle path still schedules Heimdall and therefore still exposes R-002 if the broad build remains RED.
+3. A Bifrost path still schedules Bifrost tests.
+4. Relevant dependency/security signal remains present.
+5. Primary accepted proof/regression workflows remain independently GREEN where applicable.
 
 ## Stop Condition
-Stop after one bounded operator-handoff document and its executable truth contract are independently verified. Do not expand into README rewrites, generic documentation cleanup, cloud-provider work, HA/DR architecture, or product re-positioning.
+Stop after one bounded CI/CD routing correction and executable path-filter evidence. Do not perform broad Checkstyle cleanup or convert R-002 into GREEN by suppression.
 
 **Current: SELECTED — ISSUE NOT YET OPEN**
 
@@ -228,12 +233,12 @@ Stop after one bounded operator-handoff document and its executable truth contra
 
 ## Decision
 - v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M9 are **PASS / ACCEPTED / FROZEN**;
-- M9 exact head `c68c246c2d86672451425b5bb459234cb263794d`, PR #48 merge `05ed2bea167153c30a403a18a55f742149ebec7f`, Issue #47 CLOSED / COMPLETED;
-- M9 run `33702303430`: SUCCESS; artifact `9874023335` / `sha256:1ce95b2a206500ab8de72d9af54bb778b1b0128e3a2e7edd0edc3d2f9537151c`;
-- broad Heimdall R-002 remains pre-existing/non-blocking debt and is not converted into GREEN by milestone acceptance;
-- M9 non-claims remain replication/HA/PITR/DR/RPO-RTO/recovery-time/SLA-SLO/production durability/Kubernetes/cloud execution;
-- Progression Review selected exactly one next milestone: **M10 — Single-node Handoff Truth Reconciliation**.
+- M1–M10 are **PASS / ACCEPTED / FROZEN**;
+- M10 exact head `bc06a16145897884c3c0be2bf78ee214477bc89a`, PR #50 merge `8abd9b6cf4ee23a80c86a28a305c2c873c8de025`, Issue #49 CLOSED / COMPLETED;
+- M10 truth contract `33713410047`, M5 handoff regression `33713410083`, primary CI `33713410094`, and P1-B1 Local AI golden path `33713409968` all SUCCESS;
+- broad CI/CD `33713410364` remained RED only at Heimdall `Build with Gradle`; Bifrost and Dependency Security Check were GREEN, preserving R-002 as pre-existing/non-blocking debt rather than silently calling it GREEN;
+- M10 introduced no runtime capability and preserved all production/HA/DR/PITR/RPO-RTO/SLA-SLO/cloud/autonomous-operation non-claims;
+- Progression Review selected exactly one next milestone: **M11 — Change-scoped CI/CD Signal Isolation**.
 
 ## Exact Next Action
-**Open exactly one M10 Issue. Reconcile `docs/SINGLE_NODE_HANDOFF.md` with accepted M6/M7/M8/M9 evidence and add one bounded executable handoff-truth contract check. Preserve all frozen claim boundaries and do not expand into generic documentation cleanup or new infrastructure capability.**
+**Open exactly one M11 Issue. Make the smallest CI/CD path-routing correction so unrelated workflow/script changes do not force Heimdall/Bifrost builds, while direct Heimdall/shared-Gradle and Bifrost changes still execute their real gates and R-002 remains visible when actually relevant.**
