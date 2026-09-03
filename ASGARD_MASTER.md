@@ -9,10 +9,10 @@
 - **Frozen Baseline**: Asgard v1.0 — Wishket / Freelance Proof
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
-- **Post-v1.0 Product Destination**: **bounded single-node Local AI Operations Tool for a technical operator**
-- **Current Phase**: **DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**
-- **Current Batch**: none — D1 accepted / D2 progression review pending
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN — DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**
+- **Post-v1.0 Product Destination**: **Versioned Single-node Delivery Candidate**
+- **Current Phase**: **DESTINATION REACHED — VERSIONED SINGLE-NODE DELIVERY CANDIDATE / HUMAN REVIEW — NEXT DESTINATION DECISION**
+- **Current Batch**: none — D1 and D2 accepted / next destination requires human product-direction review
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2 ACCEPTED — HUMAN REVIEW — NEXT DESTINATION DECISION**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -41,14 +41,16 @@
 - **Accepted M11 merge main SHA**: `96b27d105dc0453b33a00f8d7259b789b836b29b`
 - **Accepted M12 exact PR head**: `58c57c96c9c32049e6cf4df4d2149dafbc20e96f`
 - **Accepted M12 merge main SHA**: `649207c81f1fecbfd251ba59ab55826117b722ff`
+- **Accepted D2 exact PR head**: `ed42e3d8b0b3563eac9e404a4e76a17f91726201`
+- **Accepted D2 merge main SHA**: `ffe458260ced7411b2b6f8e8268166ca688246a6`
 - **Active Implementation Issue**: none
 - **Active Implementation PR**: none
-- **Selected Next Milestone**: none — D1 destination reached; perform D2 destination review before opening work
+- **Selected Next Milestone**: none — D2 destination reached; **HUMAN REVIEW — NEXT DESTINATION DECISION**
 - **Human Review truthfulness item**: Issue #23 CLOSED / COMPLETED; PR #24 MERGED
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-03
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN — DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2 DESTINATIONS ACCEPTED — HUMAN REVIEW REQUIRED FOR FURTHER SCOPE**
 
 ---
 
@@ -184,14 +186,16 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 
 Accepted evidence now spans reproducible Local-first execution and real Ollama work, bounded read-only inspection, controlled recovery/audit, Bifrost/Kafka/PostgreSQL restart cases, delivery handoff, one bounded PostgreSQL backup/restore case, diagnostic snapshot, truthful handoff reconciliation, change-scoped CI signal isolation, and repository-owned retained-proof cleanup.
 
-## Farther Destination D2 — REVIEW PENDING
+## Product Destination D2 — ACCEPTED
 > **Versioned Single-node Delivery Candidate** — one bounded delivery package/acceptance path that a clean technical environment can use without private tribal knowledge to obtain the accepted single-node workflow: start/preflight → real Local AI job → inspect → controlled recovery/audit → diagnostics → bounded backup/restore where claimed → cleanup, with explicit version/provenance and limitations.
 
-D2 must reuse existing accepted assets first. Do not add another isolated lifecycle/restart/cleanup variant unless it is a concrete blocker to this coherent delivery candidate. A versioned CI artifact/bundle and truthful handoff contract are acceptable; packaging alone does not create production/enterprise claims.
+**DESTINATION REACHED — VERSIONED SINGLE-NODE DELIVERY CANDIDATE.**
 
-After D2, if meaningful progression requires multi-user identity/RBAC, public production deployment, cloud providers, HA/Kubernetes, SLA/SLO, or another major product-direction/security choice, stop at **HUMAN REVIEW — NEXT DESTINATION DECISION**.
+Accepted D2 evidence: Issue #55 CLOSED / COMPLETED; PR #56 accepted exact head `ed42e3d8b0b3563eac9e404a4e76a17f91726201`; merge main SHA `ffe458260ced7411b2b6f8e8268166ca688246a6`; D2 workflow `33753190077` SUCCESS; artifact `9892351460` (`asgard-single-node-d2-candidate-1`) / `sha256:2f36be7d8e9d8bb4069e297ebdfc5e579898f2cd0c23e1b0ad7f287259498962`; primary CI `33753190121` SUCCESS; CI/CD `33753190235` SUCCESS; Real Local AI Golden Path `33753190068` SUCCESS. The candidate packages a provenance-matched tracked repository snapshot plus version/provenance/limitations and reuses accepted D1 operator assets. Packaging does not establish production readiness, enterprise operational readiness, HA/DR, SLA/SLO, cloud-provider execution, multi-user identity/RBAC, or legal/security certification.
 
-Priority: coherent delivery/use evidence → only concrete blockers → no micro-loop accumulation.
+Further meaningful progression now crosses the defined product-direction boundary. Work that would introduce multi-user identity/RBAC, public production deployment, cloud providers, HA/Kubernetes, SLA/SLO, or another major security/product commitment requires **HUMAN REVIEW — NEXT DESTINATION DECISION**. Do not manufacture another lifecycle/restart/cleanup proof or packaging variant merely to continue milestone count.
+
+Priority at this boundary: preserve accepted D1/D2 evidence → wait for explicit next-destination decision → only then open one bounded lifecycle.
 
 Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion, Kubernetes/HA/autoscaling/multi-region, multi-tenancy, full RBAC/SSO, billing, autonomous operations, broad RAG, generic refactors, broad Checkstyle cleanup, or full admin-platform competition.
 
@@ -213,48 +217,8 @@ Do not automatically select AWS/Bedrock/OIDC/IAM, OpenAI/Gemini cloud expansion,
 | M10 — Single-node Handoff Truth Reconciliation | #49 / #50 | `bc06a16145897884c3c0be2bf78ee214477bc89a` | `8abd9b6cf4ee23a80c86a28a305c2c873c8de025` | M10 `33713410047` SUCCESS; M5 handoff regression `33713410083` SUCCESS; primary CI `33713410094` SUCCESS; Local AI golden path `33713409968` SUCCESS; broad CI/CD `33713410364` RED only at pre-existing Heimdall R-002 with Bifrost and dependency security GREEN | delivery-facing truth reconciliation only; no runtime capability or production/HA/DR/cloud claim expansion |
 | M11 — Change-scoped CI/CD Signal Isolation | #51 / #52 | `a6d62af5071010ebcb6ec7f7848be869a08843b9` | `96b27d105dc0453b33a00f8d7259b789b836b29b` | CI/CD `33721456071` SUCCESS; primary CI `33721456054` SUCCESS | workflow-only changes no longer force unrelated application builds; direct service/shared-input gates and R-002 visibility remain bounded by actual changed inputs |
 | M12 — Retained Proof Cleanup Command | #53 / #54 | `58c57c96c9c32049e6cf4df4d2149dafbc20e96f` | `649207c81f1fecbfd251ba59ab55826117b722ff` | M12 `33736638004` SUCCESS; artifact `9886113574` / `sha256:0313cef7765963493d890be046f23f3a7d1747af3037080a8f1e612c140b87b2`; M10 handoff truth `33736638010` SUCCESS; M5 delivery handoff `33736638012` SUCCESS; primary CI `33736638000` SUCCESS; Real Local AI Golden Path `33736638005` SUCCESS; CI/CD `33736637997` SUCCESS | proof-owned retained-session cleanup only; metadata parsed as data, PID ownership verified before signaling; no generic process manager, production operations, HA/DR/SLA-SLO/cloud claim |
+| D2 — Versioned Single-node Delivery Candidate | #55 / #56 | `ed42e3d8b0b3563eac9e404a4e76a17f91726201` | `ffe458260ced7411b2b6f8e8268166ca688246a6` | D2 `33753190077` SUCCESS; artifact `9892351460` / `sha256:2f36be7d8e9d8bb4069e297ebdfc5e579898f2cd0c23e1b0ad7f287259498962`; primary CI `33753190121` SUCCESS; CI/CD `33753190235` SUCCESS; Real Local AI Golden Path `33753190068` SUCCESS | versioned/provenance-bearing single-node delivery candidate only; no production/enterprise/HA/DR/SLA-SLO/cloud/RBAC claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN.**
-
----
-
-# 8. Destination D1 Acceptance — REACHED
-
-## Destination
-`A bounded, single-node Local AI Operations Tool that a technical operator can reproducibly run, use for real Local Ollama jobs, inspect job/result state, perform controlled recovery, audit/diagnose the system, preserve/restore bounded persistence, and cleanly hand off/tear down without requiring a cloud AI provider.`
-
-## Acceptance Mapping
-- reproducibly run / real Local Ollama jobs → frozen v1.0 UC-01/UC-02 plus M1 and latest exact-head Real Local AI Golden Path;
-- inspect job/result state → M2 bounded read-only lifecycle console;
-- controlled recovery / audit → frozen UC-04 plus M3;
-- controlled service recovery → M4 Bifrost restart, M8 Kafka restart, M9 PostgreSQL same-volume restart;
-- diagnose system → frozen observability boundary plus M7 diagnostic snapshot;
-- preserve/restore bounded persistence → M6 one bounded PostgreSQL backup/restore case;
-- handoff truth → M5 delivery handoff plus M10 truth reconciliation;
-- clean teardown → M12 repository-owned retained-proof cleanup command;
-- Local-first/no cloud requirement → frozen v1.0 routing boundary preserved throughout.
-
-## Destination Decision
-**DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL.**
-
-This is not a production-readiness claim. It does not establish enterprise security/identity, public production deployment, legal compliance certification, stable performance/cost, production SLA/SLO, HA/Kubernetes/multi-region, cloud-provider execution, generic autonomous operations, or DR/PITR/RPO-RTO beyond the specifically accepted bounded evidence.
-
-No additional restart/cleanup/test permutation is justified merely to increase milestone count.
+**M1–M12 PASS / ACCEPTED / FROZEN. D1 AND D2 DESTINATIONS ACCEPTED. HUMAN REVIEW REQUIRED BEFORE ANY NEXT PRODUCT DESTINATION.**
 
 ---
-
-# 9. Current Post-v1.0 Progression Checkpoint
-
-## Decision
-- v1.0 remains **PASS / FREEZE / HUMAN REVIEW PASSED**;
-- M1–M12 are **PASS / ACCEPTED / FROZEN**;
-- M12 exact head `58c57c96c9c32049e6cf4df4d2149dafbc20e96f`, PR #54 merge `649207c81f1fecbfd251ba59ab55826117b722ff`, Issue #53 CLOSED / COMPLETED;
-- exact-head M12 `33736638004`, M10 handoff truth `33736638010`, M5 delivery handoff `33736638012`, primary CI `33736638000`, Real Local AI Golden Path `33736638005`, and CI/CD `33736637997` are all SUCCESS;
-- M12 artifact `9886113574` / `sha256:0313cef7765963493d890be046f23f3a7d1747af3037080a8f1e612c140b87b2` records the bounded cleanup evidence;
-- review corrections are accepted: retained metadata is parsed as data rather than sourced, and recorded PIDs are ownership-checked before signaling;
-- R-021 is CLOSED only for proof-owned retained-session cleanup;
-- accepted evidence satisfies D1, so the authoritative product state is **DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL**;
-- no new micro-milestone is active.
-
-## Exact Next Action
-**Perform a D2 Destination Review before opening any new Issue. If justified, select one coherent `Versioned Single-node Delivery Candidate` milestone that reuses existing assets and proves a clean technical environment can follow a versioned/provenance-bearing acceptance path. Do not add another isolated restart/cleanup proof. If D2 cannot be bounded without a product/security decision, HOLD for human review instead.**
