@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       heimdall: ${{ steps.filter.outputs.heimdall }}
-      bifrost: ${{ steps.filter.outputs.bifrost }}
+      bifrost: ${{ steps.bifrost-filter.outputs.bifrost }}
       frontend: ${{ steps.filter.outputs.frontend }}
       infrastructure: ${{ steps.filter.outputs.infrastructure }}
     steps:
@@ -31,9 +31,6 @@ jobs:
             - 'settings.gradle'
             - 'gradle/**'
             - 'gradlew*'
-          bifrost:
-            - 'bifrost/**'
-            - '!bifrost/frontend/**'
           frontend:
             - 'bifrost/frontend/**'
           infrastructure:
@@ -42,12 +39,22 @@ jobs:
             - 'monitoring/**'
             - 'scripts/**'
 
-  # Build and test Heimdall (Spring Boot) - Only if changed
+    - name: Check for Bifrost backend changes
+      uses: dorny/paths-filter@v3
+      id: bifrost-filter
+      with:
+        predicate-quantifier: 'every'
+        filters: |
+          bifrost:
+            - 'bifrost/**'
+            - '!bifrost/frontend/**'
+
+  # Build and test Heimdall (Spring Boot) - Only if Heimdall/shared Gradle inputs changed
   build-heimdall:
     name: Build & Test Heimdall
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.heimdall == 'true' || needs.detect-changes.outputs.infrastructure == 'true'
+    if: needs.detect-changes.outputs.heimdall == 'true'
     
     steps:
     - name: Checkout code
@@ -77,7 +84,7 @@ jobs:
         path: heimdall/build/test-results/test/*.xml
         reporter: java-junit
         fail-on-error: true
-        
+      
     - name: Upload build artifacts
       if: success()
       uses: actions/upload-artifact@v4
@@ -86,12 +93,12 @@ jobs:
         path: heimdall/build/libs/*.jar
         retention-days: 7
 
-  # Build and test Bifrost (Python) - Only if changed
+  # Build and test Bifrost (Python) - Only if Bifrost inputs changed
   build-bifrost:
     name: Build & Test Bifrost
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.bifrost == 'true' || needs.detect-changes.outputs.infrastructure == 'true'
+    if: needs.detect-changes.outputs.bifrost == 'true'
     
     steps:
     - name: Checkout code
@@ -169,7 +176,7 @@ jobs:
         path: bifrost/frontend/dist/
         retention-days: 7
 
-  # Code quality analysis - Only if code changed
+  # Code quality analysis - Only if application code changed
   code-quality:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
@@ -212,10 +219,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [detect-changes, build-heimdall, build-bifrost]
     if: |
+      always() &&
       github.event_name == 'push' && 
       github.ref == 'refs/heads/main' &&
-      (needs.detect-changes.outputs.heimdall == 'true' || 
-       needs.detect-changes.outputs.bifrost == 'true')
+      (needs.detect-changes.outputs.heimdall == 'true' ||
+       needs.detect-changes.outputs.bifrost == 'true') &&
+      (needs.detect-changes.outputs.heimdall != 'true' ||
+       needs.build-heimdall.result == 'success') &&
+      (needs.detect-changes.outputs.bifrost != 'true' ||
+       needs.build-bifrost.result == 'success')
     
     steps:
     - name: Checkout code
@@ -253,12 +265,12 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  # Dependency check - Only if Gradle or dependencies changed
+  # Dependency check - Only if Heimdall/shared Gradle inputs changed
   dependency-check:
     name: Dependency Security Check
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.heimdall == 'true' || needs.detect-changes.outputs.infrastructure == 'true'
+    if: needs.detect-changes.outputs.heimdall == 'true'
     
     steps:
     - name: Checkout code
