@@ -1,0 +1,213 @@
+name: v1.1 M9 PostgreSQL Restart Recovery
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/v11-m9-postgres-restart.yml'
+      - 'scripts/local-proof.sh'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'docker-compose.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-restart-proof:
+    name: M9 persisted state survives PostgreSQL restart
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Execute accepted Local-first proof and retain session
+        shell: bash
+        env:
+          ASGARD_PROOF_ID: m9-postgres-restart
+          ASGARD_PROOF_KEEP: '1'
+          ASGARD_PROOF_WORK_DIR: ${{ github.workspace }}/m9-work
+          ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/m9-local-proof-summary.json
+          ASGARD_PROOF_EVIDENCE_DIR: ${{ github.workspace }}/m9-local-proof-evidence
+        run: |
+          set -euo pipefail
+          bash scripts/local-proof.sh
+          test -s m9-local-proof-summary.json
+          test -s m9-work/retained-session.env
+
+      - name: Capture pre-restart persisted contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          source m9-work/retained-session.env
+          JOB_ID=$(python -c "import json; print(json.load(open('m9-local-proof-summary.json'))['jobId'])")
+          LOG_ID=$(python -c "import json; print(json.load(open('m9-local-proof-summary.json'))['logId'])")
+          printf '%s' "$JOB_ID" > m9-job-id.txt
+          printf '%s' "$LOG_ID" > m9-log-id.txt
+          docker compose -p "$COMPOSE_PROJECT" exec -T postgres psql -U asgard -d heimdall -Atc \
+            "SELECT job_id::text || '|' || status || '|' || COALESCE(result_ref::text,'') || '|' || attempt_count::text FROM analysis_jobs WHERE job_id='${JOB_ID}'::uuid;" \
+            > m9-pre-restart-job-db.txt
+          docker compose -p "$COMPOSE_PROJECT" exec -T postgres psql -U asgard -d heimdall -Atc \
+            "SELECT count(*) FROM analysis_results WHERE log_id=${LOG_ID};" \
+            > m9-pre-restart-result-count.txt
+          test "$(cat m9-pre-restart-result-count.txt)" = "1"
+
+      - name: Stop PostgreSQL and prove database unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          source m9-work/retained-session.env
+          docker compose -p "$COMPOSE_PROJECT" stop postgres
+          printf 'event=postgres-stop\n' > m9-postgres-restart-event.txt
+          if docker compose -p "$COMPOSE_PROJECT" exec -T postgres pg_isready -U asgard >/dev/null 2>&1; then
+            echo 'PostgreSQL unexpectedly remained reachable after stop' >&2
+            exit 1
+          fi
+          if docker ps --format '{{.Names}}' | grep -qx "${COMPOSE_PROJECT}-postgres-1"; then
+            echo 'PostgreSQL container still running after stop' >&2
+            exit 1
+          fi
+          printf 'unavailableConfirmed=true\n' >> m9-postgres-restart-event.txt
+
+      - name: Restart same PostgreSQL service and prove ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          source m9-work/retained-session.env
+          docker compose -p "$COMPOSE_PROJECT" start postgres
+          for attempt in {1..45}; do
+            docker compose -p "$COMPOSE_PROJECT" exec -T postgres pg_isready -U asgard >/dev/null 2>&1 && break
+            test "$attempt" -lt 45 || { docker compose -p "$COMPOSE_PROJECT" logs postgres; exit 1; }
+            sleep 2
+          done
+          printf 'event=postgres-start\nreadyConfirmed=true\n' >> m9-postgres-restart-event.txt
+
+      - name: Verify persisted state and Heimdall recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          source m9-work/retained-session.env
+          JOB_ID=$(cat m9-job-id.txt)
+          LOG_ID=$(cat m9-log-id.txt)
+          docker compose -p "$COMPOSE_PROJECT" exec -T postgres psql -U asgard -d heimdall -Atc \
+            "SELECT job_id::text || '|' || status || '|' || COALESCE(result_ref::text,'') || '|' || attempt_count::text FROM analysis_jobs WHERE job_id='${JOB_ID}'::uuid;" \
+            > m9-post-restart-job-db.txt
+          docker compose -p "$COMPOSE_PROJECT" exec -T postgres psql -U asgard -d heimdall -Atc \
+            "SELECT count(*) FROM analysis_results WHERE log_id=${LOG_ID};" \
+            > m9-post-restart-result-count.txt
+          cmp -s m9-pre-restart-job-db.txt m9-post-restart-job-db.txt
+          test "$(cat m9-post-restart-result-count.txt)" = "1"
+
+          for attempt in {1..45}; do
+            curl --fail --silent http://127.0.0.1:8080/actuator/health > m9-heimdall-health-after.json && break
+            test "$attempt" -lt 45 || { cat m9-work/heimdall.log; exit 1; }
+            sleep 2
+          done
+          curl --fail --silent --show-error -H 'Content-Type: application/json' \
+            -d '{"username":"admin","password":"local-proof-admin-password"}' \
+            http://127.0.0.1:8080/api/v1/auth/login > m9-login-after.json
+          TOKEN=$(python -c "import json; print(json.load(open('m9-login-after.json'))['token'])")
+          curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" \
+            "http://127.0.0.1:8080/api/v1/analysis/jobs/$JOB_ID" > m9-job-after.json
+
+          python - <<'PY'
+          import json
+          pre = open('m9-pre-restart-job-db.txt').read().strip().split('|')
+          post = open('m9-post-restart-job-db.txt').read().strip().split('|')
+          api = json.load(open('m9-job-after.json'))
+          event = open('m9-postgres-restart-event.txt').read()
+          assert len(pre) == 4 and len(post) == 4, (pre, post)
+          assert pre == post, (pre, post)
+          assert post[1] == 'SUCCEEDED', post
+          assert post[2], post
+          assert int(open('m9-pre-restart-result-count.txt').read().strip()) == 1
+          assert int(open('m9-post-restart-result-count.txt').read().strip()) == 1
+          assert api['status'] == 'SUCCEEDED', api
+          assert str(api.get('resultRef')) == post[2], (api, post)
+          assert 'unavailableConfirmed=true' in event and 'readyConfirmed=true' in event, event
+          evidence = {
+            'status':'PASS',
+            'jobId':post[0],
+            'finalStatus':post[1],
+            'resultRef':post[2],
+            'attemptCount':int(post[3]),
+            'resultCountBefore':1,
+            'resultCountAfter':1,
+            'postgresUnavailableConfirmed':True,
+            'sameVolumeRestartReadyConfirmed':True,
+            'heimdallReadAfterRestart':'PASS',
+            'synthetic':True,
+            'cloudExecution':False,
+            'limitations':[
+              'single-node same-volume PostgreSQL stop/start proof only',
+              'no HA/replication/PITR/DR/RPO-RTO claim',
+              'no recovery-time/SLA/SLO or production durability claim'
+            ]
+          }
+          json.dump(evidence, open('m9-evidence.json','w'), indent=2)
+          PY
+
+      - name: Verify M9 evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          e=json.load(open('m9-evidence.json'))
+          assert e['status']=='PASS'
+          assert e['finalStatus']=='SUCCEEDED'
+          assert e['resultRef']
+          assert e['resultCountBefore']==1 and e['resultCountAfter']==1
+          assert e['postgresUnavailableConfirmed'] is True
+          assert e['sameVolumeRestartReadyConfirmed'] is True
+          assert e['heimdallReadAfterRestart']=='PASS'
+          assert e['synthetic'] is True and e['cloudExecution'] is False
+          PY
+          ! grep -R -E 'AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|Bearer [A-Za-z0-9._-]{20,}' \
+            m9-evidence.json m9-postgres-restart-event.txt m9-pre-restart-job-db.txt m9-post-restart-job-db.txt 2>/dev/null
+
+      - name: Upload M9 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v11-m9-postgres-restart-evidence
+          if-no-files-found: warn
+          path: |
+            m9-evidence.json
+            m9-local-proof-summary.json
+            m9-pre-restart-job-db.txt
+            m9-post-restart-job-db.txt
+            m9-pre-restart-result-count.txt
+            m9-post-restart-result-count.txt
+            m9-postgres-restart-event.txt
+            m9-heimdall-health-after.json
+            m9-job-after.json
+            m9-work/heimdall.log
+            m9-work/bifrost.log
+
+      - name: Cleanup retained proof environment
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -f m9-work/retained-session.env ]; then
+            source m9-work/retained-session.env
+            test -n "${BIFROST_PID:-}" && kill "$BIFROST_PID" 2>/dev/null || true
+            test -n "${HEIMDALL_PID:-}" && kill "$HEIMDALL_PID" 2>/dev/null || true
+            test -n "${OLLAMA_CONTAINER:-}" && docker rm -f "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
+            docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
+          fi
