@@ -5,6 +5,8 @@ DOC="${1:-docs/SINGLE_NODE_HANDOFF.md}"
 [[ -f "$DOC" ]] || { echo "missing handoff doc: $DOC" >&2; exit 1; }
 
 required=(
+  'scripts/pilot.sh'
+  '.github/workflows/d3-01-persistent-pilot.yml'
   '.github/workflows/v11-m4-bifrost-restart.yml'
   'scripts/m6-backup-restore-proof.sh'
   '.github/workflows/v11-m6-backup-restore.yml'
@@ -13,8 +15,15 @@ required=(
   '.github/workflows/v11-m8-kafka-restart.yml'
   '.github/workflows/v11-m9-postgres-restart.yml'
   'scripts/cleanup-retained-proof.sh'
+  'delivery/single-node-candidate/MANIFEST.md'
   'ASGARD_MASTER.md'
   'retained-session.env'
+  'bash scripts/pilot.sh validate'
+  'bash scripts/pilot.sh start'
+  'bash scripts/pilot.sh status'
+  'bash scripts/pilot.sh stop'
+  'bash scripts/pilot.sh purge'
+  'persistence-preserving'
 )
 
 for token in "${required[@]}"; do
@@ -43,6 +52,9 @@ nonclaims=(
   'PostgreSQL replication/HA is not verified.'
   'Cloud-provider execution is not verified.'
   'Unattended autonomous operations are not verified.'
+  'Systemd/automatic boot is not verified.'
+  'Version upgrade/rollback is not verified.'
+  'Public production deployment is not verified.'
 )
 for statement in "${nonclaims[@]}"; do
   grep -Fq -- "$statement" "$DOC" || { echo "missing explicit non-claim boundary: $statement" >&2; exit 1; }
