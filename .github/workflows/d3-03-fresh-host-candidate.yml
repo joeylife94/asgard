@@ -1,0 +1,139 @@
+name: D3-03 Fresh-host Versioned Pilot Candidate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d3-03-fresh-host-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Resolve exact acceptance SHA
+        id: exact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EXACT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+          echo "sha=$EXACT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Assemble and extract exact-head candidate
+        id: candidate
+        shell: bash
+        env:
+          EXACT_SHA: ${{ steps.exact.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          VERSION="$(tr -d '\r\n' < delivery/single-node-candidate/VERSION)"
+          STAGE="$RUNNER_TEMP/asgard-d3-03-stage/$VERSION"
+          ARCHIVE="$RUNNER_TEMP/$VERSION.tar.gz"
+          EXTRACT_BASE="$RUNNER_TEMP/asgard-d3-03-fresh"
+          ROOT="$EXTRACT_BASE/$VERSION"
+
+          rm -rf "$STAGE" "$EXTRACT_BASE" "$ARCHIVE"
+          mkdir -p "$STAGE" "$EXTRACT_BASE"
+          git archive "$EXACT_SHA" | tar -x -C "$STAGE"
+          printf 'version=%s\ncommit=%s\nrepository=%s\n' "$VERSION" "$EXACT_SHA" "$GITHUB_REPOSITORY" > "$STAGE/PROVENANCE.txt"
+          tar -C "$(dirname "$STAGE")" -czf "$ARCHIVE" "$VERSION"
+          tar -xzf "$ARCHIVE" -C "$EXTRACT_BASE"
+
+          test "$ROOT" != "$GITHUB_WORKSPACE"
+          test -s "$ROOT/PROVENANCE.txt"
+          grep -Fxq "commit=$EXACT_SHA" "$ROOT/PROVENANCE.txt"
+          test "$(cat "$ROOT/delivery/single-node-candidate/VERSION")" = "$VERSION"
+          test -s "$ROOT/scripts/pilot.sh"
+          test -s "$ROOT/docker-compose.yml"
+          test -s "$ROOT/gradlew"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "root=$ROOT" >> "$GITHUB_OUTPUT"
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+
+      - name: Execute packaged persistent pilot acceptance
+        shell: bash
+        env:
+          EXACT_SHA: ${{ steps.exact.outputs.sha }}
+          VERSION: ${{ steps.candidate.outputs.version }}
+          CANDIDATE_ROOT: ${{ steps.candidate.outputs.root }}
+        run: |
+          set -Eeuo pipefail
+          SOURCE_ROOT="$GITHUB_WORKSPACE"
+          cd "$CANDIDATE_ROOT"
+          test "$PWD" != "$SOURCE_ROOT"
+          grep -Fxq "commit=$EXACT_SHA" PROVENANCE.txt
+          test "$(cat delivery/single-node-candidate/VERSION)" = "$VERSION"
+
+          trap 'cd "$CANDIDATE_ROOT" && bash scripts/pilot.sh purge >/dev/null 2>&1 || true' EXIT
+
+          bash scripts/pilot.sh validate
+          bash scripts/pilot.sh start
+          bash scripts/pilot.sh status
+          bash scripts/pilot.sh job
+
+          JOB_ID_BEFORE="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["jobId"])')"
+          LOG_ID_BEFORE="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["logId"])')"
+
+          bash scripts/pilot.sh restart
+          bash scripts/pilot.sh status
+          bash scripts/pilot.sh inspect
+
+          JOB_ID_AFTER="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["jobId"])')"
+          LOG_ID_AFTER="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["logId"])')"
+          test "$JOB_ID_BEFORE" = "$JOB_ID_AFTER"
+          test "$LOG_ID_BEFORE" = "$LOG_ID_AFTER"
+
+          POSTGRES_VOLUME="asgard-pilot_postgres-data"
+          docker volume inspect "$POSTGRES_VOLUME" >/dev/null
+
+          bash scripts/pilot.sh stop
+          test -f .asgard/pilot/last-job.json
+          docker volume inspect "$POSTGRES_VOLUME" >/dev/null
+
+          bash scripts/pilot.sh start
+          bash scripts/pilot.sh inspect
+          bash scripts/pilot.sh stop
+
+          mkdir -p "$SOURCE_ROOT/d3-03-evidence"
+          cp .asgard/pilot/last-job.json "$SOURCE_ROOT/d3-03-evidence/last-job.json"
+          cp PROVENANCE.txt "$SOURCE_ROOT/d3-03-evidence/PROVENANCE.txt"
+          cp delivery/single-node-candidate/VERSION "$SOURCE_ROOT/d3-03-evidence/VERSION"
+
+          bash scripts/pilot.sh purge
+          test ! -e .asgard/pilot
+          ! docker volume inspect "$POSTGRES_VOLUME" >/dev/null 2>&1
+          ! docker volume inspect asgard-pilot-ollama-data >/dev/null 2>&1
+          ! docker container inspect asgard-pilot-ollama >/dev/null 2>&1
+
+          cat > "$SOURCE_ROOT/d3-03-evidence/acceptance.txt" <<EOF
+          Changed: fresh-host execution acceptance for the exact-head versioned candidate; no new pilot lifecycle implementation
+          Actually Executed: exact-head archive assembly -> clean-workspace extraction -> validate -> start -> status -> real Local Ollama job -> bounded app restart -> persisted inspect -> stop -> restart -> persisted inspect -> stop -> explicit purge
+          Verified: candidate VERSION/provenance; commands executed from extracted candidate rather than source checkout; Local-first job; Job/result persistence across accepted restart and persistence-preserving stop/start; explicit final purge
+          Not Verified: production readiness; public deployment; HA/multi-node; cloud-provider execution; RBAC/SSO; SLA/SLO; DR/PITR/RPO/RTO; systemd/automatic boot; unattended operations; version upgrade/rollback
+          Exact Head: $EXACT_SHA
+          Candidate Version: $VERSION
+          Job ID: $JOB_ID_BEFORE
+          Log ID: $LOG_ID_BEFORE
+          EOF
+
+      - name: Upload D3-03 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-03-fresh-host-candidate-${{ steps.exact.outputs.sha }}
+          path: d3-03-evidence/
+          if-no-files-found: warn
