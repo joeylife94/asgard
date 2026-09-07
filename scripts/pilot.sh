@@ -286,9 +286,23 @@ stop() {
 
 purge() {
   stop
-  docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
-  docker rm -f -v "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
-  docker volume rm "$OLLAMA_VOLUME" >/dev/null 2>&1 || true
+  docker info >/dev/null 2>&1 || fail "Docker daemon unavailable during purge; retained $STATE_DIR for retry"
+  docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || fail "Compose purge failed; retained $STATE_DIR for retry"
+  if docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; then
+    docker rm -f -v "$OLLAMA_CONTAINER" >/dev/null || fail "Ollama container purge failed; retained $STATE_DIR for retry"
+  fi
+  if docker volume inspect "$OLLAMA_VOLUME" >/dev/null 2>&1; then
+    docker volume rm "$OLLAMA_VOLUME" >/dev/null || fail "Ollama volume purge failed; retained $STATE_DIR for retry"
+  fi
+  if docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; then
+    fail "Ollama container still exists after purge; retained $STATE_DIR for retry"
+  fi
+  if docker volume inspect "$OLLAMA_VOLUME" >/dev/null 2>&1; then
+    fail "Ollama volume still exists after purge; retained $STATE_DIR for retry"
+  fi
+  if docker volume ls --filter "label=com.docker.compose.project=$COMPOSE_PROJECT" -q | grep -q .; then
+    fail "Compose project volumes still exist after purge; retained $STATE_DIR for retry"
+  fi
   rm -rf "$STATE_DIR"
   log "DESTRUCTIVE PURGE complete"
 }
