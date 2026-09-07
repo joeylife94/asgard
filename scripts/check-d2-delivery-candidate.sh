@@ -9,6 +9,7 @@ required=(
   delivery/single-node-candidate/MANIFEST.md
   ASGARD_MASTER.md
   docs/SINGLE_NODE_HANDOFF.md
+  scripts/pilot.sh
   scripts/local-proof.sh
   scripts/operator-diagnostic-snapshot.sh
   scripts/m6-backup-restore-proof.sh
@@ -24,23 +25,37 @@ version="$(tr -d '\r\n' < delivery/single-node-candidate/VERSION)"
 manifest=delivery/single-node-candidate/MANIFEST.md
 handoff=docs/SINGLE_NODE_HANDOFF.md
 for token in \
+  'scripts/pilot.sh' \
+  'bash scripts/pilot.sh validate' \
+  'bash scripts/pilot.sh start' \
+  'bash scripts/pilot.sh stop' \
+  'bash scripts/pilot.sh purge' \
   'scripts/local-proof.sh' \
   'scripts/operator-diagnostic-snapshot.sh' \
   'scripts/m6-backup-restore-proof.sh' \
   'scripts/cleanup-retained-proof.sh' \
   'Production readiness is not verified.' \
   'Cloud-provider execution is not verified.' \
-  'Enterprise identity/RBAC is not verified.'; do
+  'Enterprise identity/RBAC is not verified.' \
+  'Version upgrade/rollback is not verified.'; do
   grep -Fq "$token" "$manifest" || { echo "manifest missing contract: $token" >&2; exit 1; }
 done
 
 grep -Fq 'DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL' ASGARD_MASTER.md || { echo 'D1 acceptance missing from MASTER' >&2; exit 1; }
-grep -Fq 'scripts/local-proof.sh' "$handoff"
-grep -Fq 'scripts/cleanup-retained-proof.sh' "$handoff"
+grep -Fq 'D3-01 — ACCEPTED' ASGARD_MASTER.md || { echo 'D3-01 acceptance missing from MASTER' >&2; exit 1; }
+for token in \
+  'scripts/pilot.sh' \
+  'persistence-preserving' \
+  'scripts/m6-backup-restore-proof.sh' \
+  'scripts/operator-diagnostic-snapshot.sh' \
+  'Production readiness is not verified.'; do
+  grep -Fq "$token" "$handoff" || { echo "handoff missing persistent pilot contract: $token" >&2; exit 1; }
+done
 
+bash -n scripts/pilot.sh
 bash -n scripts/local-proof.sh
 bash -n scripts/operator-diagnostic-snapshot.sh
 bash -n scripts/m6-backup-restore-proof.sh
 bash -n scripts/cleanup-retained-proof.sh
 
-echo "D2 delivery candidate contract PASS: $version"
+echo "D2/D3 delivery candidate contract PASS: $version"
