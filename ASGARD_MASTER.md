@@ -12,10 +12,10 @@
 - **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate**
 - **Current Product Destination**: **D3 — Bounded Single-node Pilot Deployment**
 - **Current Phase**: **D3 ACTIVE — BOUNDED SINGLE-NODE PILOT DEPLOYMENT**
-- **Current Batch**: **D3-01 — establish persistent single-node pilot lifecycle**
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2 ACCEPTED / FROZEN — D3-01 ACTIVE**
+- **Current Batch**: **D3-02 SELECTED — reconcile versioned delivery handoff to the persistent pilot lifecycle**
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2 ACCEPTED / FROZEN / D3-01 ACCEPTED — D3-02 SELECTED**
 - **Repo**: `joeylife94/asgard`
-- **Branch**: `main` (implementation lifecycle on bounded PR branch)
+- **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
 - **Accepted buyer-facing proof/docs main SHA**: `359b26e573e5da04b2d0ec406a56be7ecb508dbd`
 - **Accepted M1 exact PR head**: `0db87a1a1feb54bf677533d88516d72f3bda73ec`
@@ -44,14 +44,16 @@
 - **Accepted M12 merge main SHA**: `649207c81f1fecbfd251ba59ab55826117b722ff`
 - **Accepted D2 exact PR head**: `ed42e3d8b0b3563eac9e404a4e76a17f91726201`
 - **Accepted D2 merge main SHA**: `ffe458260ced7411b2b6f8e8268166ca688246a6`
-- **Active Implementation Issue**: **#57 — D3-01: establish persistent single-node pilot lifecycle**
-- **Active Implementation PR**: pending branch PR creation
-- **Selected Next Milestone**: **D3-01 — persistent single-node pilot lifecycle**
+- **Accepted D3-01 exact PR head**: `3b6608746846ac0e792737a2eb5155546b02f57a`
+- **Accepted D3-01 merge main SHA**: `34c43ab036d6b173021504ba93501d45fb69f46a`
+- **Active Implementation Issue**: none — D3-01 closed; D3-02 issue not yet opened
+- **Active Implementation PR**: none
+- **Selected Next Milestone**: **D3-02 — reconcile versioned delivery handoff to the persistent pilot lifecycle**
 - **Human Review Decision**: **2026-09-07 — D3 Bounded Single-node Pilot Deployment explicitly approved**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-07
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2 DESTINATIONS ACCEPTED / FROZEN; D3-01 ACTIVE**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2 DESTINATIONS ACCEPTED / FROZEN; D3-01 PASS / ACCEPTED; D3-02 SELECTED**
 
 ---
 
@@ -157,7 +159,8 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-019 | stale single-node handoff truth after M6/M8/M9 | CLOSED by accepted M10 handoff truth reconciliation; no claim expansion |
 | R-020 | broad `infrastructure` CI/CD filter caused unrelated workflow/script changes to execute Heimdall/Bifrost application builds | CLOSED by accepted M11 change-scoped signal isolation; R-002 remains visible when Heimdall/shared Gradle inputs actually change |
 | R-021 | retained proof cleanup logic is duplicated in handoff/workflow snippets and requires manual session metadata handling | CLOSED by accepted M12 repository-owned retained cleanup command; executable evidence is bounded to proof-owned retained sessions and does not establish generic host/process-management safety |
-| R-022 | D2 is an executable delivery candidate but does not itself establish a persistent operator-owned host lifecycle | ACTIVE through D3-01; bounded persistent lifecycle only, without production/systemd/HA/SLA claim expansion |
+| R-022 | D2 is an executable delivery candidate but does not itself establish a persistent operator-owned host lifecycle | CLOSED by accepted D3-01 persistent single-node pilot lifecycle; no production/systemd/HA/SLA claim expansion |
+| R-023 | D2 delivery manifest/handoff still presents the ephemeral retained-proof path as its primary operator path and does not yet make the accepted persistent `pilot.sh` lifecycle the coherent D3 handoff | ACTIVE through D3-02; update delivery/handoff truth only, without adding lifecycle permutations or claim expansion |
 
 ---
 
@@ -195,29 +198,32 @@ Accepted evidence spans reproducible Local-first execution and real Ollama work,
 
 Accepted D2 evidence: Issue #55 CLOSED / COMPLETED; PR #56 accepted exact head `ed42e3d8b0b3563eac9e404a4e76a17f91726201`; merge main SHA `ffe458260ced7411b2b6f8e8268166ca688246a6`; D2 workflow `33753190077` SUCCESS; artifact `9892351460` (`asgard-single-node-d2-candidate-1`) / `sha256:2f36be7d8e9d8bb4069e297ebdfc5e579898f2cd0c23e1b0ad7f287259498962`; primary CI `33753190121` SUCCESS; CI/CD `33753190235` SUCCESS; Real Local AI Golden Path `33753190068` SUCCESS. The candidate packages a provenance-matched tracked repository snapshot plus version/provenance/limitations and reuses accepted D1 operator assets. Packaging does not establish production readiness, enterprise operational readiness, HA/DR, SLA/SLO, cloud-provider execution, multi-user identity/RBAC, or legal/security certification.
 
-## Product Destination D3 — SELECTED / ACTIVE
+## Product Destination D3 — ACTIVE
 > **Bounded Single-node Pilot Deployment** — move the accepted D2 versioned delivery candidate into a bounded persistent single-host Local-first pilot that one technical operator can deliberately start, inspect, restart, stop, diagnose, preserve, and hand off.
 
 Human Review decision recorded by Issue #57 on 2026-09-07. D3 does **not** mean production-ready or enterprise-ready.
 
-### Active bounded milestone — D3-01
+### D3-01 — ACCEPTED
 
-**Objective:** establish the smallest repository-owned persistent single-node pilot lifecycle on one supported Linux host by reusing current Docker/Compose, Heimdall, Bifrost, Ollama, and accepted Local-first Job assets.
+D3-01 established the repository-owned persistent single-node pilot lifecycle on one supported Linux host. Accepted exact head `3b6608746846ac0e792737a2eb5155546b02f57a`; merge main SHA `34c43ab036d6b173021504ba93501d45fb69f46a`; D3-01 workflow `34100493788` SUCCESS; artifact `10010420737` (`d3-01-persistent-pilot-3b6608746846ac0e792737a2eb5155546b02f57a`) / `sha256:66b40834fb8f4bafac986e748d4669851bb923a5ef0e66f9488f355bdfd77b28`; primary CI `34100493574` SUCCESS; CI/CD `34100493877` SUCCESS; D2 regression `34100494364` SUCCESS; Real Local AI Golden Path `34100493668` SUCCESS. The accepted surface validates prerequisites/config, starts and inspects a persistent pilot, runs a real Local Ollama-backed job, executes one bounded application restart, preserves inspectable Job/result state across restart, preserves pilot-owned persisted data on normal stop, and keeps destructive purge explicit and separate.
 
-Required acceptance:
-- explicit Linux/Java 21/Python/Docker/Compose/config validation;
-- bounded pilot start with stable pilot-owned state rather than ephemeral proof cleanup semantics;
-- clear status/health inspection;
-- one real Local Ollama-backed Heimdall → Kafka → Bifrost → Ollama → persistence Analysis Job;
-- one bounded application restart actually executed;
-- the same persisted Job/result remains inspectable across the accepted restart boundary;
-- normal stop preserves pilot-owned persisted data;
-- destructive purge is explicit and separate;
-- exact-head executable evidence records Changed / Actually Executed / Verified / Not Verified / limitations.
+Not verified by D3-01: production readiness; public deployment; HA/multi-node/multi-region; cloud-provider execution; enterprise identity/RBAC/SSO; SLA/SLO or stable performance/cost; unattended autonomous operations; DR/PITR/RPO/RTO; security/legal certification; systemd/automatic boot; version upgrade/rollback.
 
-Explicitly deferred from D3-01 and not authorized by D3: public production deployment; Kubernetes/HA/multi-node/multi-region; AWS/Bedrock/OIDC/OpenAI/Gemini cloud execution; enterprise identity/RBAC/SSO/multi-tenancy/billing; SLA/SLO or stable performance/cost; unattended autonomous operations; DR/PITR/RPO/RTO; security/legal certification; broad refactors/Checkstyle cleanup; version upgrade/rollback; systemd/automatic boot unless later executable evidence proves it is required.
+### Selected bounded milestone — D3-02
 
-After D3-01 acceptance, perform a Destination Review and select only the smallest demonstrated remaining blocker to a clean-host versioned persistent pilot with explicit configuration/lifecycle/evidence/backup-restore/version handling and truthful handoff.
+**Objective:** reconcile the accepted versioned delivery candidate and single-node handoff so a clean technical operator is directed to the persistent D3 pilot lifecycle rather than the older ephemeral retained-proof path, while preserving D2 provenance/versioning and existing bounded diagnostic/backup-restore/non-claim boundaries.
+
+Why this is the next demonstrated blocker: the current D2 `delivery/single-node-candidate/MANIFEST.md` still names `scripts/local-proof.sh` plus retained-proof cleanup as the coherent operator path. D3-01 introduced accepted `scripts/pilot.sh`, but the versioned delivery/handoff surface does not yet expose that accepted persistent lifecycle. This is a handoff-truth gap, not a request for another restart/lifecycle proof.
+
+Required acceptance for D3-02:
+- versioned delivery manifest and operator handoff identify `scripts/pilot.sh` as the bounded persistent pilot lifecycle and state its supported commands/config boundaries truthfully;
+- D2 version/provenance packaging remains intact and includes the pilot command surface;
+- existing diagnostic and bounded PostgreSQL backup/restore assets are referenced without upgrading DR/PITR/RPO/RTO claims;
+- normal stop versus explicit destructive purge semantics are unambiguous;
+- an executable truth/packaging check proves the exact candidate contains and documents the persistent pilot surface;
+- no production/enterprise/HA/cloud/RBAC/SLA-SLO/systemd/version-upgrade claim expansion.
+
+After D3-02 acceptance, perform another D3 Destination Review. A fresh-host end-to-end D3 acceptance or bounded version-handling milestone is allowed only if it remains a demonstrated destination-level blocker; do not add another lifecycle/restart permutation.
 
 ---
 
@@ -238,7 +244,8 @@ After D3-01 acceptance, perform a Destination Review and select only the smalles
 | M11 — Change-scoped CI/CD Signal Isolation | #51 / #52 | `a6d62af5071010ebcb6ec7f7848be869a08843b9` | `96b27d105dc0453b33a00f8d7259b789b836b29b` | CI/CD `33721456071` SUCCESS; primary CI `33721456054` SUCCESS | workflow-only changes no longer force unrelated application builds; direct service/shared-input gates and R-002 visibility remain bounded by actual changed inputs |
 | M12 — Retained Proof Cleanup Command | #53 / #54 | `58c57c96c9c32049e6cf4df4d2149dafbc20e96f` | `649207c81f1fecbfd251ba59ab55826117b722ff` | M12 `33736638004` SUCCESS; artifact `9886113574` / `sha256:0313cef7765963493d890be046f23f3a7d1747af3037080a8f1e612c140b87b2`; M10 handoff truth `33736638010` SUCCESS; M5 delivery handoff `33736638012` SUCCESS; primary CI `33736638000` SUCCESS; Real Local AI Golden Path `33736638005` SUCCESS; CI/CD `33736637997` SUCCESS | proof-owned retained-session cleanup only; metadata parsed as data, PID ownership verified before signaling; no generic process manager, production operations, HA/DR/SLA-SLO/cloud claim |
 | D2 — Versioned Single-node Delivery Candidate | #55 / #56 | `ed42e3d8b0b3563eac9e404a4e76a17f91726201` | `ffe458260ced7411b2b6f8e8268166ca688246a6` | D2 `33753190077` SUCCESS; artifact `9892351460` / `sha256:2f36be7d8e9d8bb4069e297ebdfc5e579898f2cd0c23e1b0ad7f287259498962`; primary CI `33753190121` SUCCESS; CI/CD `33753190235` SUCCESS; Real Local AI Golden Path `33753190068` SUCCESS | versioned/provenance-bearing single-node delivery candidate only; no production/enterprise/HA/DR/SLA-SLO/cloud/RBAC claim expansion |
+| D3-01 — Persistent Single-node Pilot Lifecycle | #57 / #58 | `3b6608746846ac0e792737a2eb5155546b02f57a` | `34c43ab036d6b173021504ba93501d45fb69f46a` | D3-01 `34100493788` SUCCESS; artifact `10010420737` / `sha256:66b40834fb8f4bafac986e748d4669851bb923a5ef0e66f9488f355bdfd77b28`; primary CI `34100493574` SUCCESS; CI/CD `34100493877` SUCCESS; D2 `34100494364` SUCCESS; Real Local AI Golden Path `34100493668` SUCCESS | one bounded persistent single-host Local-first pilot lifecycle; normal stop preserves pilot state; purge explicit; no production/systemd/HA/DR/SLA-SLO/cloud/RBAC claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1 AND D2 DESTINATIONS ACCEPTED / FROZEN. D3-01 IS THE ONLY ACTIVE IMPLEMENTATION MILESTONE.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1 AND D2 DESTINATIONS ACCEPTED / FROZEN. D3-01 PASS / ACCEPTED. D3-02 IS SELECTED AS THE NEXT BOUNDED DESTINATION BLOCKER.**
 
 ---
