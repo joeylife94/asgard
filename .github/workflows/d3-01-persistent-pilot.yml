@@ -1,0 +1,121 @@
+name: D3-01 Persistent Single-node Pilot
+
+on:
+  pull_request:
+    paths:
+      - 'ASGARD_MASTER.md'
+      - 'scripts/pilot.sh'
+      - '.github/workflows/d3-01-persistent-pilot.yml'
+      - 'docker-compose.yml'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build.gradle'
+      - 'settings.gradle'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d3-01-persistent-pilot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Resolve exact acceptance SHA
+        id: exact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EXACT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+          echo "sha=$EXACT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify command syntax and MASTER direction
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/pilot.sh
+          grep -Fq 'D3 — Bounded Single-node Pilot Deployment' ASGARD_MASTER.md
+          grep -Fq 'D3-01' ASGARD_MASTER.md
+          grep -Fq 'D1+D2 ACCEPTED / FROZEN' ASGARD_MASTER.md
+          grep -Fq 'production readiness' ASGARD_MASTER.md
+
+      - name: Execute persistent pilot acceptance
+        shell: bash
+        env:
+          EXACT_SHA: ${{ steps.exact.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          trap 'bash scripts/pilot.sh purge >/dev/null 2>&1 || true' EXIT
+
+          test "$(git rev-parse HEAD)" = "$EXACT_SHA"
+          bash scripts/pilot.sh validate
+          bash scripts/pilot.sh start
+          bash scripts/pilot.sh status
+          bash scripts/pilot.sh job
+
+          JOB_ID_BEFORE="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["jobId"])')"
+          LOG_ID_BEFORE="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["logId"])')"
+
+          bash scripts/pilot.sh restart
+          bash scripts/pilot.sh status
+          bash scripts/pilot.sh inspect
+
+          JOB_ID_AFTER="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["jobId"])')"
+          LOG_ID_AFTER="$(python3 -c 'import json; print(json.load(open(".asgard/pilot/last-job.json"))["logId"])')"
+          test "$JOB_ID_BEFORE" = "$JOB_ID_AFTER"
+          test "$LOG_ID_BEFORE" = "$LOG_ID_AFTER"
+
+          POSTGRES_VOLUME="asgard-pilot_postgres-data"
+          docker volume inspect "$POSTGRES_VOLUME" >/dev/null
+
+          bash scripts/pilot.sh stop
+          test -f .asgard/pilot/last-job.json
+          docker volume inspect "$POSTGRES_VOLUME" >/dev/null
+
+          # stop must preserve pilot data. Starting again must reuse the same state.
+          bash scripts/pilot.sh start
+          bash scripts/pilot.sh inspect
+          bash scripts/pilot.sh stop
+
+          mkdir -p d3-01-evidence
+          cp .asgard/pilot/last-job.json d3-01-evidence/last-job.json
+
+          # Purge is an explicit, separate destructive operation. Verify successful
+          # purge removes pilot-owned state/resources instead of silently retaining them.
+          bash scripts/pilot.sh purge
+          test ! -e .asgard/pilot
+          ! docker volume inspect "$POSTGRES_VOLUME" >/dev/null 2>&1
+          ! docker volume inspect asgard-pilot-ollama-data >/dev/null 2>&1
+          ! docker container inspect asgard-pilot-ollama >/dev/null 2>&1
+
+          cat > d3-01-evidence/acceptance.txt <<EOF
+          Changed: repository-owned persistent pilot lifecycle and exact-head acceptance workflow
+          Actually Executed: validate -> start -> status -> real Local Ollama job -> bounded app restart -> persisted inspect -> stop -> restart -> persisted inspect -> stop -> explicit destructive purge
+          Verified: Linux prerequisites; Local-first job; application restart; Job/result persistence across restart; stop preserves PostgreSQL volume and state; explicit purge removes pilot-owned persisted resources/state only after successful removal
+          Not Verified: production readiness; HA/multi-node; cloud-provider execution; RBAC/SSO; SLA/SLO; DR/PITR/RPO/RTO; automatic boot/systemd; unattended operations
+          Exact Head: $EXACT_SHA
+          Job ID: $JOB_ID_BEFORE
+          Log ID: $LOG_ID_BEFORE
+          EOF
+
+      - name: Upload D3-01 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-01-persistent-pilot-${{ steps.exact.outputs.sha }}
+          path: d3-01-evidence/
+          if-no-files-found: warn
