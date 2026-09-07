@@ -9,11 +9,11 @@
 - **Frozen Baseline**: Asgard v1.0 — Wishket / Freelance Proof
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
-- **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate**
-- **Current Product Destination**: **D3 — Bounded Single-node Pilot Deployment**
-- **Current Phase**: **D3 ACTIVE — BOUNDED SINGLE-NODE PILOT DEPLOYMENT**
-- **Current Batch**: **D3-03 SELECTED — execute the versioned candidate as a fresh-host persistent pilot**
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2 ACCEPTED / FROZEN / D3-01+D3-02 ACCEPTED — D3-03 SELECTED**
+- **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment**
+- **Current Product Destination**: **D3 — Bounded Single-node Pilot Deployment — ACCEPTED / FROZEN**
+- **Current Phase**: **HUMAN REVIEW — NEXT DESTINATION DECISION**
+- **Current Batch**: none — D3 destination reached
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3 ACCEPTED / FROZEN — HUMAN REVIEW**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -48,14 +48,16 @@
 - **Accepted D3-01 merge main SHA**: `34c43ab036d6b173021504ba93501d45fb69f46a`
 - **Accepted D3-02 exact PR head**: `72a7c4f127f3744fbd573a17415d391fb2126f32`
 - **Accepted D3-02 merge main SHA**: `96cc52f54d879e7c209103986d271d75e76b3638`
-- **Active Implementation Issue**: **#61 — D3-03: execute versioned candidate as a fresh-host persistent pilot**
-- **Active Implementation PR**: none — implementation not yet opened
-- **Selected Next Milestone**: **D3-03 — fresh-host execution of the versioned persistent pilot candidate**
+- **Accepted D3-03 exact PR head**: `0072a1f1c483745dc214edb50a8ba24988845f4d`
+- **Accepted D3-03 merge main SHA**: `6495ff848a0bb4945bc76c87ac4775630aa83fff`
+- **Active Implementation Issue**: none
+- **Active Implementation PR**: none
+- **Selected Next Milestone**: none — Human Review required for next destination
 - **Human Review Decision**: **2026-09-07 — D3 Bounded Single-node Pilot Deployment explicitly approved**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-07
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2 DESTINATIONS ACCEPTED / FROZEN; D3-01+D3-02 PASS / ACCEPTED; D3-03 SELECTED**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3 DESTINATIONS ACCEPTED / FROZEN; HUMAN REVIEW — NEXT DESTINATION DECISION**
 
 ---
 
@@ -82,7 +84,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2 accepted slices remain frozen. D3 moves the accepted versioned single-node candidate into a bounded persistent single-host Local-first pilot without upgrading production or enterprise claims.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3 accepted slices remain frozen. D3 establishes a bounded persistent single-host Local-first pilot without upgrading production or enterprise claims.
 
 ---
 
@@ -163,7 +165,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-021 | retained proof cleanup logic is duplicated in handoff/workflow snippets and requires manual session metadata handling | CLOSED by accepted M12 repository-owned retained cleanup command; executable evidence is bounded to proof-owned retained sessions and does not establish generic host/process-management safety |
 | R-022 | D2 is an executable delivery candidate but does not itself establish a persistent operator-owned host lifecycle | CLOSED by accepted D3-01 persistent single-node pilot lifecycle; no production/systemd/HA/SLA claim expansion |
 | R-023 | D2 delivery manifest/handoff still presents the ephemeral retained-proof path as its primary operator path and does not yet make the accepted persistent `pilot.sh` lifecycle the coherent D3 handoff | CLOSED by accepted D3-02 delivery/handoff reconciliation; no lifecycle or claim expansion |
-| R-024 | versioned candidate packaging has not yet been executed end-to-end as the persistent pilot from an extracted clean workspace | ACTIVE through D3-03; prove packaged-candidate execution by reusing `scripts/pilot.sh`, not by adding another lifecycle implementation |
+| R-024 | versioned candidate packaging had not been executed end-to-end as the persistent pilot from an extracted clean workspace | CLOSED by accepted D3-03 fresh-host packaged-candidate execution; no production/HA/cloud/systemd/version-upgrade claim expansion |
 
 ---
 
@@ -201,10 +203,12 @@ Accepted evidence spans reproducible Local-first execution and real Ollama work,
 
 Accepted D2 evidence: Issue #55 CLOSED / COMPLETED; PR #56 accepted exact head `ed42e3d8b0b3563eac9e404a4e76a17f91726201`; merge main SHA `ffe458260ced7411b2b6f8e8268166ca688246a6`; D2 workflow `33753190077` SUCCESS; artifact `9892351460` (`asgard-single-node-d2-candidate-1`) / `sha256:2f36be7d8e9d8bb4069e297ebdfc5e579898f2cd0c23e1b0ad7f287259498962`; primary CI `33753190121` SUCCESS; CI/CD `33753190235` SUCCESS; Real Local AI Golden Path `33753190068` SUCCESS. The candidate packages a provenance-matched tracked repository snapshot plus version/provenance/limitations and reuses accepted D1 operator assets. Packaging does not establish production readiness, enterprise operational readiness, HA/DR, SLA/SLO, cloud-provider execution, multi-user identity/RBAC, or legal/security certification.
 
-## Product Destination D3 — ACTIVE
+## Product Destination D3 — ACCEPTED / FROZEN
 > **Bounded Single-node Pilot Deployment** — move the accepted D2 versioned delivery candidate into a bounded persistent single-host Local-first pilot that one technical operator can deliberately start, inspect, restart, stop, diagnose, preserve, and hand off.
 
-Human Review decision recorded by Issue #57 on 2026-09-07. D3 does **not** mean production-ready or enterprise-ready.
+**DESTINATION REACHED — BOUNDED SINGLE-NODE PILOT DEPLOYMENT.**
+
+Human Review decision recorded by Issue #57 on 2026-09-07. D3 does **not** mean production-ready or enterprise-ready. The destination is accepted from the accumulated D3-01/D3-02/D3-03 evidence plus preserved D1/D2 backup/restore, diagnostics, provenance/versioning, and handoff assets. No additional restart/lifecycle permutation is justified by the accepted destination contract.
 
 ### D3-01 — ACCEPTED
 
@@ -216,26 +220,17 @@ Not verified by D3-01: production readiness; public deployment; HA/multi-node/mu
 
 D3-02 reconciled the accepted versioned delivery manifest and single-node handoff to the persistent `scripts/pilot.sh` lifecycle while preserving D2 provenance/versioning, diagnostic and bounded backup/restore references, normal stop versus explicit purge semantics, and all prior non-claims. Accepted exact head `72a7c4f127f3744fbd573a17415d391fb2126f32`; merge main SHA `96cc52f54d879e7c209103986d271d75e76b3638`. Exact-head evidence: M5 Delivery Handoff `34104148441` SUCCESS; primary CI `34104148451` SUCCESS; Real Local AI Golden Path `34104148401` SUCCESS; M12 Retained Proof Cleanup `34104148456` SUCCESS; M10 Handoff Truth Contract `34104148403` SUCCESS; D2 Delivery Candidate `34104148479` SUCCESS; CI/CD `34104148459` SUCCESS. D2 artifact `10011667846` (`asgard-single-node-d2-candidate-1`) / `sha256:cece3a81d3145cbb309d3c3b331462a4385664f3dc1992b8703d1b5b66d9ac5c`.
 
-D3-02 does not itself prove that the generated versioned archive can be extracted into a clean workspace and operated as the persistent pilot; that coherent packaged-candidate execution is the remaining demonstrated D3 blocker.
+### D3-03 — ACCEPTED
 
-### Selected bounded milestone — D3-03
+D3-03 closed the remaining coherent packaged-candidate execution gap by assembling the exact-head versioned candidate, extracting it into a separate clean Linux workspace, and operating the existing `scripts/pilot.sh` surface from that extracted candidate rather than the source checkout. Accepted exact head `0072a1f1c483745dc214edb50a8ba24988845f4d`; merge main SHA `6495ff848a0bb4945bc76c87ac4775630aa83fff`; D3-03 workflow `34109634309` SUCCESS; artifact `10013968081` (`d3-03-fresh-host-candidate-0072a1f1c483745dc214edb50a8ba24988845f4d`) / `sha256:fa1277295bff62a4e60a3e16e5a70ecfb7f074c7bd4507c2f6da0cfec9e93219`; D2 Delivery Candidate `34109634196` SUCCESS; primary CI `34109634104` SUCCESS; CI/CD `34109634232` SUCCESS.
 
-**Objective:** execute the exact-head versioned candidate from an extracted clean Linux workspace and prove that the packaged candidate, using the already accepted `scripts/pilot.sh`, can validate, start, run one real Local Ollama-backed Analysis Job, inspect state, execute the accepted bounded restart, preserve inspectable Job/result state, stop persistence-preserving, restart/reinspect, and explicitly purge at final cleanup.
+Actually executed at exact head: archive assembly with VERSION/provenance → clean-workspace extraction → prerequisite/config validation → persistent pilot start/status → one real Local Ollama-backed Analysis Job through the accepted Heimdall/Kafka/Bifrost/Ollama/persistence path → bounded application restart → persisted Job/result inspection → persistence-preserving stop → subsequent start/reinspection → stop → explicit destructive purge. This establishes the bounded D3 fresh-host pilot invariant only; it does not verify production readiness, public deployment, HA/multi-node, cloud-provider execution, RBAC/SSO, SLA/SLO, DR/PITR/RPO/RTO, unattended operations, systemd/automatic boot, or version upgrade/rollback.
 
-Why this is the next demonstrated blocker: D3-02 proves package composition, provenance, syntax, and truthful handoff, but the delivery workflow does not actually operate the persistent pilot from the extracted candidate. D3 requires the versioned candidate to become a coherent bounded pilot on a supported Linux host, not merely contain the right files.
+### Destination Review after D3-03
 
-Required acceptance for D3-03:
-- exact-head candidate is assembled with version/provenance and extracted into a clean workspace separate from the source checkout;
-- pilot commands execute from the extracted candidate rather than the source tree;
-- prerequisite/config validation succeeds on the supported Linux environment;
-- one real Local Ollama-backed Analysis Job completes through Heimdall → Kafka → Bifrost → Ollama → persistence;
-- one bounded restart is actually executed and existing Job/result state remains inspectable;
-- normal stop preserves pilot-owned persisted data and subsequent start/reinspection succeeds;
-- destructive purge remains explicit and is used only for final cleanup;
-- candidate version/provenance and executable evidence are captured;
-- no production/enterprise/HA/cloud/RBAC/SLA-SLO/systemd/version-upgrade claim expansion.
+D3 is satisfied by accepted accumulated evidence: D3-01 owns the persistent lifecycle and actual Local-first job/restart/persistence invariant; D3-02 connects versioned delivery/handoff, diagnostics and the already accepted bounded backup/restore reference to that lifecycle; D3-03 proves the versioned exact-head candidate can be extracted into a clean supported Linux workspace and operated end-to-end as that persistent pilot. The remaining meaningful expansions are product-direction/security decisions rather than demonstrated D3 blockers.
 
-After D3-03 acceptance, perform another D3 Destination Review. Do not add another lifecycle/restart permutation. If the accepted evidence already satisfies the bounded single-node pilot destination, record D3 reached; otherwise select only a distinct demonstrated destination-level blocker.
+**HUMAN REVIEW — NEXT DESTINATION DECISION.** Do not automatically open work for public production deployment, Kubernetes/HA/multi-node, cloud providers, enterprise identity/RBAC/SSO, SLA/SLO, unattended operations, DR/PITR/RPO/RTO expansion, systemd ownership, version upgrade/rollback, or other scope not explicitly selected by the user.
 
 ---
 
@@ -258,5 +253,6 @@ After D3-03 acceptance, perform another D3 Destination Review. Do not add anothe
 | D2 — Versioned Single-node Delivery Candidate | #55 / #56 | `ed42e3d8b0b3563eac9e404a4e76a17f91726201` | `ffe458260ced7411b2b6f8e8268166ca688246a6` | D2 `33753190077` SUCCESS; artifact `9892351460` / `sha256:2f36be7d8e9d8bb4069e297ebdfc5e579898f2cd0c23e1b0ad7f287259498962`; primary CI `33753190121` SUCCESS; CI/CD `33753190235` SUCCESS; Real Local AI Golden Path `33753190068` SUCCESS | versioned/provenance-bearing single-node delivery candidate only; no production/enterprise/HA/DR/SLA-SLO/cloud/RBAC claim expansion |
 | D3-01 — Persistent Single-node Pilot Lifecycle | #57 / #58 | `3b6608746846ac0e792737a2eb5155546b02f57a` | `34c43ab036d6b173021504ba93501d45fb69f46a` | D3-01 `34100493788` SUCCESS; artifact `10010420737` / `sha256:66b40834fb8f4bafac986e748d4669851bb923a5ef0e66f9488f355bdfd77b28`; primary CI `34100493574` SUCCESS; CI/CD `34100493877` SUCCESS; D2 `34100494364` SUCCESS; Real Local AI Golden Path `34100493668` SUCCESS | one bounded persistent single-host Local-first pilot lifecycle; normal stop preserves pilot state; purge explicit; no production/systemd/HA/DR/SLA-SLO/cloud/RBAC claim expansion |
 | D3-02 — Persistent Pilot Delivery/Handoff Reconciliation | #59 / #60 | `72a7c4f127f3744fbd573a17415d391fb2126f32` | `96cc52f54d879e7c209103986d271d75e76b3638` | M5 handoff `34104148441` SUCCESS; primary CI `34104148451` SUCCESS; Real Local AI `34104148401` SUCCESS; M12 cleanup `34104148456` SUCCESS; M10 handoff truth `34104148403` SUCCESS; D2 `34104148479` SUCCESS; artifact `10011667846` / `sha256:cece3a81d3145cbb309d3c3b331462a4385664f3dc1992b8703d1b5b66d9ac5c`; CI/CD `34104148459` SUCCESS | delivery-facing persistent pilot truth/package coherence only; no new lifecycle behavior or production/HA/DR/SLA-SLO/cloud/RBAC/systemd/version-upgrade claim expansion |
+| D3-03 — Fresh-host Versioned Pilot Candidate | #61 / #62 | `0072a1f1c483745dc214edb50a8ba24988845f4d` | `6495ff848a0bb4945bc76c87ac4775630aa83fff` | D3-03 `34109634309` SUCCESS; artifact `10013968081` / `sha256:fa1277295bff62a4e60a3e16e5a70ecfb7f074c7bd4507c2f6da0cfec9e93219`; D2 `34109634196` SUCCESS; primary CI `34109634104` SUCCESS; CI/CD `34109634232` SUCCESS | exact-head versioned candidate operated from extracted clean Linux workspace using existing persistent pilot lifecycle; no production/HA/cloud/RBAC/SLA-SLO/systemd/version-upgrade claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1 AND D2 DESTINATIONS ACCEPTED / FROZEN. D3-01 AND D3-02 PASS / ACCEPTED. D3-03 IS SELECTED AS THE NEXT BOUNDED DESTINATION BLOCKER.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, AND D3 DESTINATIONS ACCEPTED / FROZEN. HUMAN REVIEW — NEXT DESTINATION DECISION.**
