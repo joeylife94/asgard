@@ -7,7 +7,7 @@ on:
       - 'scripts/pilot.sh'
       - 'ASGARD_MASTER.md'
       - '.github/workflows/d4-01-release-independent-pilot.yml'
-      - 'VERSION'
+      - 'delivery/single-node-candidate/VERSION'
       - 'docker-compose.yml'
       - 'heimdall/**'
       - 'bifrost/**'
@@ -76,7 +76,7 @@ jobs:
           ALT="$RUNNER_TEMP/release-b"
           mkdir -p "$ALT"
           git archive HEAD | tar -x -C "$ALT"
-          printf 'GITHUB_SHA=%s\n' "$(git rev-parse HEAD)" > "$ALT/PROVENANCE.txt"
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" > "$ALT/PROVENANCE.txt"
           set +e
           ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$ALT/scripts/pilot-release.sh" status >"$RUNNER_TEMP/conflict-live.out" 2>&1
           rc=$?
