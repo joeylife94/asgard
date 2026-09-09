@@ -43,14 +43,14 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Verify command syntax and MASTER direction
+      - name: Verify command syntax and accepted D3 baseline
         shell: bash
         run: |
           set -Eeuo pipefail
           bash -n scripts/pilot.sh
           grep -Fq 'D3 — Bounded Single-node Pilot Deployment' ASGARD_MASTER.md
           grep -Fq 'D3-01' ASGARD_MASTER.md
-          grep -Fq 'D1+D2 ACCEPTED / FROZEN' ASGARD_MASTER.md
+          grep -Fq 'D1+D2+D3 ACCEPTED / FROZEN' ASGARD_MASTER.md
           grep -Fq 'production readiness' ASGARD_MASTER.md
 
       - name: Execute persistent pilot acceptance
