@@ -20,7 +20,11 @@ for path in "${required[@]}"; do
 done
 
 version="$(tr -d '\r\n' < delivery/single-node-candidate/VERSION)"
-[[ "$version" =~ ^asgard-single-node-d2-candidate-[0-9]+$ ]] || { echo "invalid candidate version: $version" >&2; exit 1; }
+case "$version" in
+  asgard-single-node-d2-candidate-[0-9]*|asgard-single-node-d4-compatible-[0-9]*) ;;
+  *) echo "invalid candidate version: $version" >&2; exit 1 ;;
+esac
+[[ "$version" =~ ^asgard-single-node-(d2-candidate|d4-compatible)-[0-9]+$ ]] || { echo "invalid candidate version: $version" >&2; exit 1; }
 
 manifest=delivery/single-node-candidate/MANIFEST.md
 handoff=docs/SINGLE_NODE_HANDOFF.md
