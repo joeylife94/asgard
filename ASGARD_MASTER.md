@@ -10,10 +10,10 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment**
-- **Current Product Destination**: **D3 — Bounded Single-node Pilot Deployment — ACCEPTED / FROZEN**
-- **Current Phase**: **HUMAN REVIEW — NEXT DESTINATION DECISION**
-- **Current Batch**: none — D3 destination reached
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3 ACCEPTED / FROZEN — HUMAN REVIEW**
+- **Current Product Destination**: **D4 — Bounded Versioned Upgrade / Rollback Pilot — ACTIVE**
+- **Current Phase**: **D4-01 — RELEASE-INDEPENDENT PILOT OWNERSHIP — ACTIVE**
+- **Current Batch**: **D4-01 / Issue #63**
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3 ACCEPTED / FROZEN / D4 ACTIVE**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -50,14 +50,14 @@
 - **Accepted D3-02 merge main SHA**: `96cc52f54d879e7c209103986d271d75e76b3638`
 - **Accepted D3-03 exact PR head**: `0072a1f1c483745dc214edb50a8ba24988845f4d`
 - **Accepted D3-03 merge main SHA**: `6495ff848a0bb4945bc76c87ac4775630aa83fff`
-- **Active Implementation Issue**: none
-- **Active Implementation PR**: none
-- **Selected Next Milestone**: none — Human Review required for next destination
-- **Human Review Decision**: **2026-09-07 — D3 Bounded Single-node Pilot Deployment explicitly approved**
+- **Active Implementation Issue**: #63 — D4-01: decouple persistent pilot ownership from release directory
+- **Active Implementation PR**: pending
+- **Selected Next Milestone**: D4-01 — release-independent pilot ownership
+- **Human Review Decision**: **2026-09-09 — D4 Bounded Versioned Upgrade / Rollback Pilot selected; D5 Operator-owned Configuration Pilot and D6 Bounded Maintenance & Recovery Pilot pre-authorized after destination-level acceptance**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-09-07
+- **Updated**: 2026-09-09
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3 DESTINATIONS ACCEPTED / FROZEN; HUMAN REVIEW — NEXT DESTINATION DECISION**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3 DESTINATIONS ACCEPTED / FROZEN; D4 ACTIVE / D4-01 ISSUE #63**
 
 ---
 
@@ -84,7 +84,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3 accepted slices remain frozen. D3 establishes a bounded persistent single-host Local-first pilot without upgrading production or enterprise claims.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3 accepted slices remain frozen. D4 is the current bounded Local-first destination and may add only compatible version-transition ownership/evidence without upgrading production, enterprise, cloud, HA, SLA/SLO, schema-migration, systemd, or unattended-operation claims.
 
 ---
 
@@ -117,7 +117,7 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 - production SLA/SLO
 - legal GDPR or security certification
 
-Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0, D1, D2, or D3 requirement or accepted claim.** The v1.0 boundary is permanently preserved as a frozen verified baseline.
+Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0, D1, D2, D3, or D4 requirement or accepted claim.** The v1.0 boundary is permanently preserved as a frozen verified baseline.
 
 ---
 
@@ -166,6 +166,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-022 | D2 is an executable delivery candidate but does not itself establish a persistent operator-owned host lifecycle | CLOSED by accepted D3-01 persistent single-node pilot lifecycle; no production/systemd/HA/SLA claim expansion |
 | R-023 | D2 delivery manifest/handoff still presents the ephemeral retained-proof path as its primary operator path and does not yet make the accepted persistent `pilot.sh` lifecycle the coherent D3 handoff | CLOSED by accepted D3-02 delivery/handoff reconciliation; no lifecycle or claim expansion |
 | R-024 | versioned candidate packaging had not been executed end-to-end as the persistent pilot from an extracted clean workspace | CLOSED by accepted D3-03 fresh-host packaged-candidate execution; no production/HA/cloud/systemd/version-upgrade claim expansion |
+| R-025 | D3 persistent pilot state/ownership defaults remain coupled to one extracted release root, making compatible version transition ownership ambiguous | ACTIVE — D4-01 / Issue #63; close only with exact-head release-independent pilot-home/provenance/conflict evidence |
 
 ---
 
@@ -228,9 +229,18 @@ Actually executed at exact head: archive assembly with VERSION/provenance → cl
 
 ### Destination Review after D3-03
 
-D3 is satisfied by accepted accumulated evidence: D3-01 owns the persistent lifecycle and actual Local-first job/restart/persistence invariant; D3-02 connects versioned delivery/handoff, diagnostics and the already accepted bounded backup/restore reference to that lifecycle; D3-03 proves the versioned exact-head candidate can be extracted into a clean supported Linux workspace and operated end-to-end as that persistent pilot. The remaining meaningful expansions are product-direction/security decisions rather than demonstrated D3 blockers.
+D3 is satisfied by accepted accumulated evidence: D3-01 owns the persistent lifecycle and actual Local-first job/restart/persistence invariant; D3-02 connects versioned delivery/handoff, diagnostics and the already accepted bounded backup/restore reference to that lifecycle; D3-03 proves the versioned exact-head candidate can be extracted into a clean supported Linux workspace and operated end-to-end as that persistent pilot. The 2026-09-09 Human Review explicitly selected D4 and pre-authorized D5/D6 after their respective destination-level acceptance gates.
 
-**HUMAN REVIEW — NEXT DESTINATION DECISION.** Do not automatically open work for public production deployment, Kubernetes/HA/multi-node, cloud providers, enterprise identity/RBAC/SSO, SLA/SLO, unattended operations, DR/PITR/RPO/RTO expansion, systemd ownership, version upgrade/rollback, or other scope not explicitly selected by the user.
+## Product Destination D4 — ACTIVE
+> **Bounded Versioned Upgrade / Rollback Pilot** — compatible versioned candidates may take explicit ownership of the same pilot-owned persistence/state boundary, preserve prior Job/result inspection, truthfully update release provenance, and perform bounded rollback only if required by destination-level evidence. No schema-migration or production rollback guarantee is implied.
+
+### D4-01 — ACTIVE — Issue #63
+
+Objective: decouple persistent pilot ownership/state from one extracted release root while preserving the accepted D3 Local-first lifecycle. The bounded implementation must expose an explicit pilot-home/state boundary, record active release VERSION/commit/root provenance, keep `stop` persistence-preserving and `purge` explicit/destructive, and fail closed on stale/conflicting ownership before any unrelated process can be signalled or pilot-owned persisted data destroyed.
+
+Acceptance requires exact-head executable evidence for the accepted D3 lifecycle through the release-independent ownership surface, an independently addressed pilot home, inspectable active provenance, conflicting/stale release fail-closed behavior, and relevant D2/D3 regression gates. D4-01 alone does **not** establish general upgrade/rollback, schema migration, production/public deployment, HA/multi-node, cloud-provider execution, enterprise identity/RBAC/SSO, SLA/SLO, DR/PITR/RPO/RTO, systemd/automatic boot, unattended operations, or security/compliance certification.
+
+After D4-01 acceptance, perform D4 Destination Review. The likely next blocker is one actual same-schema/backward-compatible A→B candidate transition over the same pilot-owned state. Do not add a rollback milestone unless destination-level evidence shows it is necessary to substantiate D4.
 
 ---
 
@@ -255,4 +265,4 @@ D3 is satisfied by accepted accumulated evidence: D3-01 owns the persistent life
 | D3-02 — Persistent Pilot Delivery/Handoff Reconciliation | #59 / #60 | `72a7c4f127f3744fbd573a17415d391fb2126f32` | `96cc52f54d879e7c209103986d271d75e76b3638` | M5 handoff `34104148441` SUCCESS; primary CI `34104148451` SUCCESS; Real Local AI `34104148401` SUCCESS; M12 cleanup `34104148456` SUCCESS; M10 handoff truth `34104148403` SUCCESS; D2 `34104148479` SUCCESS; artifact `10011667846` / `sha256:cece3a81d3145cbb309d3c3b331462a4385664f3dc1992b8703d1b5b66d9ac5c`; CI/CD `34104148459` SUCCESS | delivery-facing persistent pilot truth/package coherence only; no new lifecycle behavior or production/HA/DR/SLA-SLO/cloud/RBAC/systemd/version-upgrade claim expansion |
 | D3-03 — Fresh-host Versioned Pilot Candidate | #61 / #62 | `0072a1f1c483745dc214edb50a8ba24988845f4d` | `6495ff848a0bb4945bc76c87ac4775630aa83fff` | D3-03 `34109634309` SUCCESS; artifact `10013968081` / `sha256:fa1277295bff62a4e60a3e16e5a70ecfb7f074c7bd4507c2f6da0cfec9e93219`; D2 `34109634196` SUCCESS; primary CI `34109634104` SUCCESS; CI/CD `34109634232` SUCCESS | exact-head versioned candidate operated from extracted clean Linux workspace using existing persistent pilot lifecycle; no production/HA/cloud/RBAC/SLA-SLO/systemd/version-upgrade claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, AND D3 DESTINATIONS ACCEPTED / FROZEN. HUMAN REVIEW — NEXT DESTINATION DECISION.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, AND D3 DESTINATIONS ACCEPTED / FROZEN. D4 ACTIVE — D4-01 / ISSUE #63.**
