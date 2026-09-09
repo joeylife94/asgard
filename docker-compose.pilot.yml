@@ -1,0 +1,17 @@
+services:
+  redis:
+    command: redis-server --appendonly yes --requirepass ${ASGARD_PILOT_REDIS_PASSWORD:-redis_password}
+    environment:
+      REDIS_PASSWORD: ${ASGARD_PILOT_REDIS_PASSWORD:-redis_password}
+
+  postgres:
+    environment:
+      POSTGRES_USER: ${ASGARD_PILOT_DB_USER:-asgard}
+      POSTGRES_PASSWORD: ${ASGARD_PILOT_DB_PASSWORD:-asgard_password}
+      POSTGRES_DB: ${ASGARD_PILOT_DB_NAME:-heimdall}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ASGARD_PILOT_DB_USER:-asgard}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

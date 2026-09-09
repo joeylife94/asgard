@@ -39,10 +39,10 @@ jobs:
           set -euo pipefail
           EXPECTED='${{ github.event.pull_request.head.sha || github.sha }}'
           test "$(git rev-parse HEAD)" = "$EXPECTED"
-          grep -F '**Current Product Destination**: **D4 — Bounded Versioned Upgrade / Rollback Pilot' ASGARD_MASTER.md
+          grep -F '**Accepted Product Destinations**:' ASGARD_MASTER.md | grep -F 'D4 — Bounded Versioned Upgrade / Rollback Pilot'
           grep -F '**Accepted D4-01 exact PR head**: `e1087697014a2ce0416349998eb3e65216a45cb7`' ASGARD_MASTER.md
           grep -F '**Accepted D4-01 merge main SHA**: `209b7522cfbfb8668029dca6a2c84b744ef5f98a`' ASGARD_MASTER.md
-          grep -F 'D1+D2+D3 ACCEPTED / FROZEN' ASGARD_MASTER.md
+          grep -F 'D1+D2+D3+D4 ACCEPTED / FROZEN' ASGARD_MASTER.md
 
       - name: Verify shell syntax
         shell: bash
@@ -121,5 +121,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: d4-01-regression-${{ github.event.pull_request.head.sha || github.sha }}
+          name: d4-01-release-independent-pilot-${{ github.event.pull_request.head.sha || github.sha }}
           path: evidence-d4-01/

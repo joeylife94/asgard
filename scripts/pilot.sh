@@ -11,6 +11,13 @@ COMPOSE_PROJECT="${ASGARD_PILOT_COMPOSE_PROJECT:-asgard-pilot}"
 OLLAMA_CONTAINER="${ASGARD_PILOT_OLLAMA_CONTAINER:-asgard-pilot-ollama}"
 OLLAMA_VOLUME="${ASGARD_PILOT_OLLAMA_VOLUME:-asgard-pilot-ollama-data}"
 MODEL="${ASGARD_PILOT_MODEL:-smollm:135m}"
+DB_USER="${ASGARD_PILOT_DB_USER:-asgard}"
+DB_PASSWORD="${ASGARD_PILOT_DB_PASSWORD:-asgard_password}"
+DB_NAME="${ASGARD_PILOT_DB_NAME:-heimdall}"
+REDIS_PASSWORD_VALUE="${ASGARD_PILOT_REDIS_PASSWORD:-redis_password}"
+JWT_SECRET_VALUE="${ASGARD_PILOT_JWT_SECRET:-asgard-pilot-jwt-secret-at-least-32-bytes-long}"
+ADMIN_USERNAME="${ASGARD_PILOT_ADMIN_USERNAME:-admin}"
+ADMIN_PASSWORD="${ASGARD_PILOT_ADMIN_PASSWORD:-asgard-pilot-admin-password}"
 HEIMDALL_PID_FILE="$STATE_DIR/heimdall.pid"
 BIFROST_PID_FILE="$STATE_DIR/bifrost.pid"
 LAST_JOB_FILE="$STATE_DIR/last-job.json"
@@ -18,6 +25,7 @@ LAST_JOB_FILE="$STATE_DIR/last-job.json"
 log() { printf '[asgard-pilot] %s\n' "$*"; }
 fail() { printf '[asgard-pilot] FAIL: %s\n' "$*" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || fail "missing required command: $1"; }
+compose() { docker compose -f docker-compose.yml -f docker-compose.pilot.yml -p "$COMPOSE_PROJECT" "$@"; }
 
 wait_http() {
   local name=$1 url=$2 attempts=${3:-60}
@@ -86,6 +94,7 @@ import sys
 assert sys.version_info >= (3, 9), sys.version
 PY
   [[ -f docker-compose.yml ]] || fail "docker-compose.yml missing"
+  [[ -f docker-compose.pilot.yml ]] || fail "docker-compose.pilot.yml missing"
   [[ -f gradlew ]] || fail "gradlew missing"
   [[ -f bifrost/requirements.txt ]] || fail "Bifrost requirements missing"
   log "validation PASS host=Linux java=21 compose_project=$COMPOSE_PROJECT model=$MODEL"
@@ -103,14 +112,14 @@ ensure_build() {
 }
 
 ensure_infra() {
-  docker compose -p "$COMPOSE_PROJECT" up -d postgres zookeeper kafka redis elasticsearch
+  compose up -d postgres zookeeper kafka redis elasticsearch
   for i in {1..30}; do
-    docker compose -p "$COMPOSE_PROJECT" exec -T postgres pg_isready -U asgard >/dev/null 2>&1 && break
+    compose exec -T postgres pg_isready -U "$DB_USER" >/dev/null 2>&1 && break
     [[ "$i" == "30" ]] && fail "PostgreSQL readiness failed"
     sleep 2
   done
   for i in {1..45}; do
-    docker compose -p "$COMPOSE_PROJECT" exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1 && break
+    compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1 && break
     [[ "$i" == "45" ]] && fail "Kafka readiness failed"
     sleep 2
   done
@@ -131,19 +140,26 @@ ensure_ollama() {
 }
 
 export_runtime_env() {
+  local db_password_uri
+  db_password_uri="$(DB_PASSWORD="$DB_PASSWORD" python3 - <<'PY'
+import os
+from urllib.parse import quote
+print(quote(os.environ['DB_PASSWORD'], safe=''))
+PY
+)"
   export SPRING_PROFILES_ACTIVE=dev
-  export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/heimdall
-  export SPRING_DATASOURCE_USERNAME=asgard
-  export SPRING_DATASOURCE_PASSWORD=asgard_password
+  export SPRING_DATASOURCE_URL="jdbc:postgresql://127.0.0.1:5432/$DB_NAME"
+  export SPRING_DATASOURCE_USERNAME="$DB_USER"
+  export SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD"
   export SPRING_KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
-  export JWT_SECRET=asgard-pilot-jwt-secret-at-least-32-bytes-long
-  export HEIMDALL_SECURITY_ADMIN_USERNAME=admin
-  export HEIMDALL_SECURITY_ADMIN_PASSWORD=asgard-pilot-admin-password
+  export JWT_SECRET="$JWT_SECRET_VALUE"
+  export HEIMDALL_SECURITY_ADMIN_USERNAME="$ADMIN_USERNAME"
+  export HEIMDALL_SECURITY_ADMIN_PASSWORD="$ADMIN_PASSWORD"
   export HEIMDALL_SECURITY_ADMIN_ROLES=ADMIN,USER
   export HEIMDALL_ANALYSIS_AUTO_REQUEST=false
-  export REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD=redis_password GRPC_PORT=9091
+  export REDIS_HOST=127.0.0.1 REDIS_PORT=6379 REDIS_PASSWORD="$REDIS_PASSWORD_VALUE" GRPC_PORT=9091
   export KAFKA_ENABLED=true HEIMDALL_ENABLED=true KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
-  export HEIMDALL_DATABASE_URL=postgresql://asgard:asgard_password@127.0.0.1:5432/heimdall
+  export HEIMDALL_DATABASE_URL="postgresql://$DB_USER:$db_password_uri@127.0.0.1:5432/$DB_NAME"
   export BIFROST_OLLAMA_URL=http://127.0.0.1:11434 BIFROST_OLLAMA_MODEL="$MODEL" BIFROST_OLLAMA_ALLOW_FALLBACK=false BIFROST_OLLAMA_NUM_PREDICT=256
 }
 
@@ -185,8 +201,8 @@ status_quiet() {
   pid_is_owned "$bp" bifrost || return 1
   curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1 || return 1
   curl --fail --silent http://127.0.0.1:8000/health >/dev/null 2>&1 || return 1
-  docker compose -p "$COMPOSE_PROJECT" exec -T postgres pg_isready -U asgard >/dev/null 2>&1 || return 1
-  docker compose -p "$COMPOSE_PROJECT" exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1 || return 1
+  compose exec -T postgres pg_isready -U "$DB_USER" >/dev/null 2>&1 || return 1
+  compose exec -T kafka kafka-broker-api-versions --bootstrap-server kafka:29092 >/dev/null 2>&1 || return 1
   curl --fail --silent http://127.0.0.1:11434/api/tags >/dev/null 2>&1 || return 1
 }
 
@@ -200,9 +216,14 @@ status() {
 }
 
 login_token() {
-  local login_json
+  local login_json login_payload
+  login_payload="$(ADMIN_USERNAME="$ADMIN_USERNAME" ADMIN_PASSWORD="$ADMIN_PASSWORD" python3 - <<'PY'
+import json, os
+print(json.dumps({"username": os.environ["ADMIN_USERNAME"], "password": os.environ["ADMIN_PASSWORD"]}))
+PY
+)"
   login_json="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
-    -d '{"username":"admin","password":"asgard-pilot-admin-password"}' \
+    -d "$login_payload" \
     http://127.0.0.1:8080/api/v1/auth/login)"
   python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])' <<<"$login_json"
 }
@@ -279,7 +300,7 @@ restart_apps() {
 stop() {
   stop_pid "$HEIMDALL_PID_FILE" heimdall
   stop_pid "$BIFROST_PID_FILE" bifrost
-  docker compose -p "$COMPOSE_PROJECT" stop >/dev/null 2>&1 || true
+  compose stop >/dev/null 2>&1 || true
   docker stop "$OLLAMA_CONTAINER" >/dev/null 2>&1 || true
   log "pilot stopped; persisted Compose/Ollama volumes and $STATE_DIR retained"
 }
@@ -287,7 +308,7 @@ stop() {
 purge() {
   stop
   docker info >/dev/null 2>&1 || fail "Docker daemon unavailable during purge; retained $STATE_DIR for retry"
-  docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans >/dev/null 2>&1 || fail "Compose purge failed; retained $STATE_DIR for retry"
+  compose down -v --remove-orphans >/dev/null 2>&1 || fail "Compose purge failed; retained $STATE_DIR for retry"
   if docker container inspect "$OLLAMA_CONTAINER" >/dev/null 2>&1; then
     docker rm -f -v "$OLLAMA_CONTAINER" >/dev/null || fail "Ollama container purge failed; retained $STATE_DIR for retry"
   fi
@@ -320,7 +341,8 @@ case "$ACTION" in
     cat <<'EOF'
 Usage: bash scripts/pilot.sh <validate|start|status|job|inspect|restart|stop|purge>
 
-D3-01 bounded single-node Linux pilot lifecycle.
+D3-01 bounded single-node Linux pilot lifecycle, retained as the low-level compatibility surface.
+- D5 operator-owned configuration is applied by scripts/pilot-configured.sh.
 - stop preserves pilot-owned persisted data by default.
 - purge is destructive and explicit.
 - no production, HA, cloud-provider, SLA/SLO, RBAC, DR/PITR, or unattended-operation claim.
