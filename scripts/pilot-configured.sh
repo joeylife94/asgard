@@ -13,7 +13,8 @@ mkdir -p "$PILOT_HOME_RAW"
 PILOT_HOME="$(cd "$PILOT_HOME_RAW" && pwd -P)"
 CONFIG_FILE_RAW="${ASGARD_PILOT_CONFIG:-$PILOT_HOME/config/pilot.env}"
 [[ -f "$CONFIG_FILE_RAW" ]] || fail "operator-owned pilot config missing: $CONFIG_FILE_RAW"
-CONFIG_FILE="$(cd "$(dirname "$CONFIG_FILE_RAW")" && pwd -P)/$(basename "$CONFIG_FILE_RAW")"
+CONFIG_FILE="$(readlink -f -- "$CONFIG_FILE_RAW")"
+[[ -n "$CONFIG_FILE" ]] || fail "unable to resolve operator-owned pilot config: $CONFIG_FILE_RAW"
 case "$CONFIG_FILE" in
   "$PILOT_HOME"/*) ;;
   *) fail "operator-owned pilot config must be inside ASGARD_PILOT_HOME" ;;
@@ -27,19 +28,6 @@ allowed_key() {
 }
 
 load_config() {
-  local line key value line_no=0
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    line_no=$((line_no + 1))
-    [[ -z "$line" || "$line" == \#* ]] && continue
-    [[ "$line" == *=* ]] || fail "malformed config line $line_no"
-    key="${line%%=*}"
-    value="${line#*=}"
-    allowed_key "$key" || fail "unsupported config key at line $line_no: $key"
-    [[ -n "$value" ]] || fail "empty required config value for $key"
-    printf -v "$key" '%s' "$value"
-    export "$key"
-  done < "$CONFIG_FILE"
-
   local required=(
     ASGARD_PILOT_COMPOSE_PROJECT
     ASGARD_PILOT_MODEL
@@ -52,13 +40,33 @@ load_config() {
     ASGARD_PILOT_ADMIN_PASSWORD
   )
   local key
+
+  # The operator-owned file is the sole authority for supported pilot config.
+  # Do not allow inherited environment values to satisfy missing file keys.
+  for key in "${required[@]}"; do
+    unset "$key"
+  done
+
+  local line value line_no=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line_no=$((line_no + 1))
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    [[ "$line" == *=* ]] || fail "malformed config line $line_no"
+    key="${line%%=*}"
+    value="${line#*=}"
+    allowed_key "$key" || fail "unsupported config key at line $line_no: $key"
+    [[ -n "$value" ]] || fail "empty required config value for $key"
+    printf -v "$key" '%s' "$value"
+    export "$key"
+  done < "$CONFIG_FILE"
+
   for key in "${required[@]}"; do
     [[ -n "${!key:-}" ]] || fail "missing required config key: $key"
   done
 
   [[ "$ASGARD_PILOT_COMPOSE_PROJECT" =~ ^[a-z0-9][a-z0-9_-]{2,48}$ ]] || fail "invalid ASGARD_PILOT_COMPOSE_PROJECT"
   [[ "$ASGARD_PILOT_MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || fail "invalid ASGARD_PILOT_MODEL"
-  [[ "$ASGARD_PILOT_DB_USER" =~ ^[A-Za-z0-9_]+$ ]] || fail "invalid ASGARD_PILOT_DB_USER"
+  [[ "$ASGARD_PILOT_DB_USER" == "asgard" ]] || fail "ASGARD_PILOT_DB_USER must be asgard for the bounded pilot bootstrap contract"
   [[ "$ASGARD_PILOT_DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || fail "invalid ASGARD_PILOT_DB_NAME"
   [[ "$ASGARD_PILOT_DB_PASSWORD" =~ ^[A-Za-z0-9._~-]{12,128}$ ]] || fail "invalid ASGARD_PILOT_DB_PASSWORD"
   [[ "$ASGARD_PILOT_REDIS_PASSWORD" =~ ^[A-Za-z0-9._~-]{12,128}$ ]] || fail "invalid ASGARD_PILOT_REDIS_PASSWORD"
