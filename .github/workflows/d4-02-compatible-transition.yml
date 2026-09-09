@@ -1,0 +1,156 @@
+name: D4-02 Compatible A-to-B Release Transition
+
+on:
+  pull_request:
+    paths:
+      - 'ASGARD_MASTER.md'
+      - 'delivery/single-node-candidate/VERSION'
+      - 'scripts/pilot-release.sh'
+      - 'scripts/pilot.sh'
+      - '.github/workflows/d4-02-compatible-transition.yml'
+      - 'docker-compose.yml'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+  workflow_dispatch:
+
+jobs:
+  d4-02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      A_SHA: 209b7522cfbfb8668029dca6a2c84b744ef5f98a
+      ASGARD_PILOT_HOME: ${{ runner.temp }}/asgard-d4-shared-pilot-home
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify exact head, MASTER selection, and same-schema compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          B_SHA='${{ github.event.pull_request.head.sha || github.sha }}'
+          test "$(git rev-parse HEAD)" = "$B_SHA"
+          git cat-file -e "$A_SHA^{commit}"
+          grep -F '**Current Product Destination**: **D4 — Bounded Versioned Upgrade / Rollback Pilot' ASGARD_MASTER.md
+          grep -F '**Current Phase**: **D4-02 — COMPATIBLE A→B RELEASE TRANSITION — ACTIVE**' ASGARD_MASTER.md
+          grep -F '**Active Implementation Issue**: #65' ASGARD_MASTER.md
+          grep -F '**Accepted D4-01 merge main SHA**: `209b7522cfbfb8668029dca6a2c84b744ef5f98a`' ASGARD_MASTER.md
+          test "$(git show "$A_SHA:delivery/single-node-candidate/VERSION")" = 'asgard-single-node-d2-candidate-1'
+          test "$(cat delivery/single-node-candidate/VERSION)" = 'asgard-single-node-d4-compatible-2'
+          test "$(git show "$A_SHA:delivery/single-node-candidate/VERSION")" != "$(cat delivery/single-node-candidate/VERSION)"
+          # D4-02 is deliberately same-schema/backward-compatible: no application/schema inputs differ from accepted D4-01.
+          git diff --quiet "$A_SHA" "$B_SHA" -- heimdall bifrost docker-compose.yml build.gradle settings.gradle gradle gradlew
+
+      - name: Verify shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/pilot-release.sh
+          bash -n scripts/pilot.sh
+
+      - name: Materialize compatible candidates A and B
+        shell: bash
+        run: |
+          set -euo pipefail
+          A_ROOT="$RUNNER_TEMP/release-a"
+          B_ROOT="$RUNNER_TEMP/release-b"
+          mkdir -p "$A_ROOT" "$B_ROOT"
+          git archive "$A_SHA" | tar -x -C "$A_ROOT"
+          git archive HEAD | tar -x -C "$B_ROOT"
+          printf 'commit=%s\n' "$A_SHA" > "$A_ROOT/PROVENANCE.txt"
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" > "$B_ROOT/PROVENANCE.txt"
+          printf 'A_ROOT=%s\nB_ROOT=%s\n' "$A_ROOT" "$B_ROOT" >> "$GITHUB_ENV"
+
+      - name: Execute coherent A-to-B transition on shared pilot state
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" purge >/dev/null 2>&1 || \
+            ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" purge >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          # Candidate A: accepted D4-01 release owns the explicit shared pilot home and creates real persisted work.
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" validate
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" release | tee "$RUNNER_TEMP/release-a.txt"
+          grep -F 'version=asgard-single-node-d2-candidate-1' "$RUNNER_TEMP/release-a.txt"
+          grep -F "commit=$A_SHA" "$RUNNER_TEMP/release-a.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" start
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" status
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" job | tee "$RUNNER_TEMP/job-a.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" inspect | tee "$RUNNER_TEMP/inspect-a.txt"
+          cp "$ASGARD_PILOT_HOME/state/last-job.json" "$RUNNER_TEMP/last-job-a.json"
+
+          # Live conflicting B ownership must still fail closed.
+          set +e
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" claim >"$RUNNER_TEMP/b-live-conflict.txt" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep -F 'cannot claim pilot home while recorded application process is live' "$RUNNER_TEMP/b-live-conflict.txt"
+          cmp "$RUNNER_TEMP/last-job-a.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+
+          # Controlled transition: A relinquishes application ownership without destroying persistent volumes/state.
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-release.sh" stop
+          test -s "$ASGARD_PILOT_HOME/state/last-job.json"
+
+          # Candidate B explicitly claims the same pilot home after A is stopped.
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" claim
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" release | tee "$RUNNER_TEMP/release-b.txt"
+          grep -F 'version=asgard-single-node-d4-compatible-2' "$RUNNER_TEMP/release-b.txt"
+          grep -F "commit=$(git rev-parse HEAD)" "$RUNNER_TEMP/release-b.txt"
+          test "$(sed -n 's/^commit=//p' "$RUNNER_TEMP/release-a.txt")" != "$(sed -n 's/^commit=//p' "$RUNNER_TEMP/release-b.txt")"
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" start
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" status
+
+          # Before creating B work, prove A's persisted Job/result remains inspectable under B ownership.
+          cmp "$RUNNER_TEMP/last-job-a.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" inspect | tee "$RUNNER_TEMP/inspect-a-under-b.txt"
+
+          # Then prove B can execute and persist new real Local Ollama work.
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" job | tee "$RUNNER_TEMP/job-b.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" inspect | tee "$RUNNER_TEMP/inspect-b.txt"
+          cp "$ASGARD_PILOT_HOME/state/last-job.json" "$RUNNER_TEMP/last-job-b.json"
+          ! cmp -s "$RUNNER_TEMP/last-job-a.json" "$RUNNER_TEMP/last-job-b.json"
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" stop
+          test -s "$ASGARD_PILOT_HOME/state/last-job.json"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-release.sh" purge
+          test ! -e "$ASGARD_PILOT_HOME/active-release.env"
+          trap - EXIT
+
+      - name: Record bounded D4-02 evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          {
+            printf 'exact_head=%s\n' "$(git rev-parse HEAD)"
+            printf 'candidate_a=%s\n' "$A_SHA"
+            printf 'candidate_b=%s\n' "$(git rev-parse HEAD)"
+            printf 'scope=one same-schema compatible A-to-B transition over one explicit shared pilot home\n'
+            printf 'not_verified=general rollback, schema migration, production/public deployment, HA/multi-node, cloud execution, RBAC/SSO, SLA/SLO, DR/PITR/RPO/RTO, systemd/unattended operation, compliance\n'
+          } > evidence/d4-02.txt
+          for f in release-a.txt release-b.txt job-a.txt inspect-a.txt inspect-a-under-b.txt job-b.txt inspect-b.txt b-live-conflict.txt last-job-a.json last-job-b.json; do
+            cp "$RUNNER_TEMP/$f" evidence/ 2>/dev/null || true
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d4-02-compatible-transition-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/
