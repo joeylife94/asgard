@@ -51,18 +51,20 @@ jobs:
           grep -Fq 'bash scripts/pilot.sh start' "$ROOT/delivery/single-node-candidate/MANIFEST.md"
           grep -Fq 'persistence-preserving' "$ROOT/docs/SINGLE_NODE_HANDOFF.md"
 
-          # Executable mode is not part of the accepted contract; repository
-          # scripts are invoked explicitly via bash. Verify tracked inputs exist
-          # and have valid shell syntax instead.
           test -s "$ROOT/gradlew"
           test -s "$ROOT/docker-compose.yml"
-          test -s "$ROOT/bifrost/requirements.txt"
+          test -s "$ROOT/docker-compose.pilot.yml"
+          test -s "$ROOT/delivery/single-node-candidate/PILOT_CONFIG.example"
           test -d "$ROOT/heimdall"
           test -d "$ROOT/bifrost"
+          test -s "$ROOT/scripts/pilot-configured.sh"
+          test -s "$ROOT/scripts/pilot-release.sh"
           test -s "$ROOT/scripts/pilot.sh"
           test -s "$ROOT/scripts/local-proof.sh"
           test -s "$ROOT/scripts/cleanup-retained-proof.sh"
           bash -n "$ROOT/gradlew"
+          bash -n "$ROOT/scripts/pilot-configured.sh"
+          bash -n "$ROOT/scripts/pilot-release.sh"
           bash -n "$ROOT/scripts/pilot.sh"
           bash -n "$ROOT/scripts/local-proof.sh"
           bash -n "$ROOT/scripts/operator-diagnostic-snapshot.sh"
@@ -72,6 +74,10 @@ jobs:
           tar -tzf "$ARCHIVE" > "$LISTING"
           grep -Fxq "$artifact_name/gradlew" "$LISTING"
           grep -Fxq "$artifact_name/docker-compose.yml" "$LISTING"
+          grep -Fxq "$artifact_name/docker-compose.pilot.yml" "$LISTING"
+          grep -Fxq "$artifact_name/delivery/single-node-candidate/PILOT_CONFIG.example" "$LISTING"
+          grep -Fxq "$artifact_name/scripts/pilot-configured.sh" "$LISTING"
+          grep -Fxq "$artifact_name/scripts/pilot-release.sh" "$LISTING"
           grep -Fxq "$artifact_name/scripts/pilot.sh" "$LISTING"
           grep -Fxq "$artifact_name/scripts/local-proof.sh" "$LISTING"
           grep -Fxq "$artifact_name/scripts/cleanup-retained-proof.sh" "$LISTING"
@@ -192,3 +198,169 @@ jobs:
         with:
           name: d4-02-compatible-transition-${{ github.event.pull_request.head.sha }}
           path: evidence-d4-02/
+
+  d5-01-config:
+    if: github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'D5-01:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      A_SHA: fa6bd2c6c34815618ca227d4ce0fd9f9f999a7f2
+      DB_SECRET: D5DbPass_2026_safe
+      REDIS_SECRET: D5RedisPass_2026_safe
+      JWT_SECRET_VALUE: D5JwtSecret_2026_operator_owned_32chars
+      ADMIN_SECRET: D5AdminPass_2026_safe
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set pilot paths
+        shell: bash
+        run: |
+          printf 'ASGARD_PILOT_HOME=%s\n' "$RUNNER_TEMP/asgard-d5-pilot-home" >> "$GITHUB_ENV"
+          printf 'BAD_PILOT_HOME=%s\n' "$RUNNER_TEMP/asgard-d5-bad-pilot-home" >> "$GITHUB_ENV"
+      - name: Verify exact head, D5 selection, and compatible config-capable A
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          B_SHA='${{ github.event.pull_request.head.sha }}'
+          test "$(git rev-parse HEAD)" = "$B_SHA"
+          git cat-file -e "$A_SHA^{commit}"
+          grep -F '**Current Product Destination**: **D5 — Operator-owned Configuration Pilot — ACTIVE**' ASGARD_MASTER.md
+          grep -F '**Current Phase**: **D5-01 — OPERATOR-OWNED PILOT CONFIGURATION CONTRACT — ACTIVE**' ASGARD_MASTER.md
+          grep -F '**Active Implementation Issue**: #67' ASGARD_MASTER.md
+          test "$(git show "$A_SHA:delivery/single-node-candidate/VERSION")" = 'asgard-single-node-d4-compatible-2'
+          test "$(cat delivery/single-node-candidate/VERSION)" = 'asgard-single-node-d5-config-1'
+          git cat-file -e "$A_SHA:scripts/pilot-configured.sh"
+          git cat-file -e "$A_SHA:docker-compose.pilot.yml"
+          git diff --quiet "$A_SHA" "$B_SHA" -- heimdall bifrost docker-compose.yml scripts/init-db.sql build.gradle settings.gradle gradle gradlew
+      - name: Verify configured pilot shell syntax
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/pilot-configured.sh
+          bash -n scripts/pilot-release.sh
+          bash -n scripts/pilot.sh
+      - name: Prove malformed configuration fails closed before application start
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$BAD_PILOT_HOME/config"
+          cat > "$BAD_PILOT_HOME/config/pilot.env" <<EOF
+          ASGARD_PILOT_COMPOSE_PROJECT=asgard-d5-bad
+          ASGARD_PILOT_MODEL=smollm:135m
+          ASGARD_PILOT_DB_USER=asgard
+          ASGARD_PILOT_DB_PASSWORD=$DB_SECRET
+          ASGARD_PILOT_DB_NAME=heimdall
+          ASGARD_PILOT_REDIS_PASSWORD=$REDIS_SECRET
+          ASGARD_PILOT_ADMIN_USERNAME=operator
+          ASGARD_PILOT_ADMIN_PASSWORD=$ADMIN_SECRET
+          EOF
+          set +e
+          ASGARD_PILOT_HOME="$BAD_PILOT_HOME" bash scripts/pilot-configured.sh start > "$RUNNER_TEMP/bad-config.txt" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep -F 'missing required config key: ASGARD_PILOT_JWT_SECRET' "$RUNNER_TEMP/bad-config.txt"
+          test ! -e "$BAD_PILOT_HOME/state/heimdall.pid"
+          test ! -e "$BAD_PILOT_HOME/state/bifrost.pid"
+          test -s "$BAD_PILOT_HOME/config/pilot.env"
+      - name: Materialize compatible config-capable candidates A and B
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          A_ROOT="$RUNNER_TEMP/d5-release-a"
+          B_ROOT="$RUNNER_TEMP/d5-release-b"
+          mkdir -p "$A_ROOT" "$B_ROOT" "$ASGARD_PILOT_HOME/config"
+          git archive "$A_SHA" | tar -x -C "$A_ROOT"
+          git archive HEAD | tar -x -C "$B_ROOT"
+          printf 'commit=%s\n' "$A_SHA" > "$A_ROOT/PROVENANCE.txt"
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" > "$B_ROOT/PROVENANCE.txt"
+          cat > "$ASGARD_PILOT_HOME/config/pilot.env" <<EOF
+          ASGARD_PILOT_COMPOSE_PROJECT=asgard-d5-config
+          ASGARD_PILOT_MODEL=smollm:135m
+          ASGARD_PILOT_DB_USER=asgard
+          ASGARD_PILOT_DB_PASSWORD=$DB_SECRET
+          ASGARD_PILOT_DB_NAME=heimdall
+          ASGARD_PILOT_REDIS_PASSWORD=$REDIS_SECRET
+          ASGARD_PILOT_JWT_SECRET=$JWT_SECRET_VALUE
+          ASGARD_PILOT_ADMIN_USERNAME=operator
+          ASGARD_PILOT_ADMIN_PASSWORD=$ADMIN_SECRET
+          EOF
+          chmod 600 "$ASGARD_PILOT_HOME/config/pilot.env"
+          sha256sum "$ASGARD_PILOT_HOME/config/pilot.env" | awk '{print $1}' > "$RUNNER_TEMP/config.sha256"
+          printf 'A_ROOT=%s\nB_ROOT=%s\n' "$A_ROOT" "$B_ROOT" >> "$GITHUB_ENV"
+      - name: Execute configured Local-first pilot and compatible release transition
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cleanup() {
+            ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" purge >/dev/null 2>&1 || \
+            ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" purge >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" config-check | tee "$RUNNER_TEMP/config-check-a.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" validate
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" release | tee "$RUNNER_TEMP/d5-release-a.txt"
+          grep -F 'version=asgard-single-node-d4-compatible-2' "$RUNNER_TEMP/d5-release-a.txt"
+          grep -F "commit=$A_SHA" "$RUNNER_TEMP/d5-release-a.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" start
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" status
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" job | tee "$RUNNER_TEMP/d5-job-a.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" inspect | tee "$RUNNER_TEMP/d5-inspect-a.txt"
+          cp "$ASGARD_PILOT_HOME/state/last-job.json" "$RUNNER_TEMP/d5-last-job-a.json"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" restart
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" status
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" inspect | tee "$RUNNER_TEMP/d5-inspect-a-after-restart.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$A_ROOT/scripts/pilot-configured.sh" stop
+          test -s "$ASGARD_PILOT_HOME/state/last-job.json"
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" claim
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" config-check | tee "$RUNNER_TEMP/config-check-b.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" release | tee "$RUNNER_TEMP/d5-release-b.txt"
+          grep -F 'version=asgard-single-node-d5-config-1' "$RUNNER_TEMP/d5-release-b.txt"
+          grep -F "commit=$(git rev-parse HEAD)" "$RUNNER_TEMP/d5-release-b.txt"
+          test "$(sha256sum "$ASGARD_PILOT_HOME/config/pilot.env" | awk '{print $1}')" = "$(cat "$RUNNER_TEMP/config.sha256")"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" start
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" status
+          cmp "$RUNNER_TEMP/d5-last-job-a.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" inspect | tee "$RUNNER_TEMP/d5-inspect-a-under-b.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" job | tee "$RUNNER_TEMP/d5-job-b.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" inspect | tee "$RUNNER_TEMP/d5-inspect-b.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" stop
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$B_ROOT/scripts/pilot-configured.sh" purge
+          test -s "$ASGARD_PILOT_HOME/config/pilot.env"
+          test ! -e "$ASGARD_PILOT_HOME/state"
+          trap - EXIT
+      - name: Verify bounded evidence does not leak configured sensitive values
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence-d5-01
+          for f in bad-config.txt config-check-a.txt config-check-b.txt d5-release-a.txt d5-release-b.txt d5-job-a.txt d5-inspect-a.txt d5-inspect-a-after-restart.txt d5-inspect-a-under-b.txt d5-job-b.txt d5-inspect-b.txt d5-last-job-a.json; do
+            cp "$RUNNER_TEMP/$f" evidence-d5-01/ 2>/dev/null || true
+          done
+          {
+            printf 'exact_head=%s\n' "$(git rev-parse HEAD)"
+            printf 'candidate_a=%s\n' "$A_SHA"
+            printf 'candidate_b=%s\n' "$(git rev-parse HEAD)"
+            printf 'config_location=operator-owned pilot home/config/pilot.env\n'
+            printf 'scope=one configured Local-first pilot plus restart and one compatible configured release transition\n'
+            printf 'not_verified=Vault/secret manager, enterprise credential lifecycle, SSO/RBAC, multi-tenancy, production secrets policy, systemd/unattended operation, HA/multi-node, cloud execution, SLA/SLO, DR/PITR/RPO/RTO, compliance\n'
+          } > evidence-d5-01/d5-01.txt
+          for secret in "$DB_SECRET" "$REDIS_SECRET" "$JWT_SECRET_VALUE" "$ADMIN_SECRET"; do
+            if grep -R -F "$secret" evidence-d5-01; then
+              echo 'configured sensitive value leaked into bounded evidence' >&2
+              exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d5-01-operator-config-${{ github.event.pull_request.head.sha }}
+          path: evidence-d5-01/
