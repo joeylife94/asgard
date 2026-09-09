@@ -1,0 +1,12 @@
+# Copy this file to $ASGARD_PILOT_HOME/config/pilot.env and replace every placeholder.
+# The supported D5 path parses this file as data; it is never sourced as shell code.
+
+ASGARD_PILOT_COMPOSE_PROJECT=asgard-pilot-local
+ASGARD_PILOT_MODEL=smollm:135m
+ASGARD_PILOT_DB_USER=asgard
+ASGARD_PILOT_DB_PASSWORD=<operator-supplied-safe-password>
+ASGARD_PILOT_DB_NAME=heimdall
+ASGARD_PILOT_REDIS_PASSWORD=<operator-supplied-safe-password>
+ASGARD_PILOT_JWT_SECRET=<operator-supplied-secret-at-least-32-characters>
+ASGARD_PILOT_ADMIN_USERNAME=operator
+ASGARD_PILOT_ADMIN_PASSWORD=<operator-supplied-password-at-least-12-characters>
