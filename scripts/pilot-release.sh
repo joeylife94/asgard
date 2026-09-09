@@ -9,19 +9,23 @@ mkdir -p "$PILOT_HOME_RAW"
 PILOT_HOME="$(cd "$PILOT_HOME_RAW" && pwd -P)"
 STATE_DIR="$PILOT_HOME/state"
 OWNER_FILE="$PILOT_HOME/active-release.env"
+VERSION_FILE="$ROOT_DIR/delivery/single-node-candidate/VERSION"
 
 log() { printf '[asgard-pilot-release] %s\n' "$*"; }
 fail() { printf '[asgard-pilot-release] FAIL: %s\n' "$*" >&2; exit 1; }
 
 release_version() {
-  [[ -f "$ROOT_DIR/VERSION" ]] || fail "VERSION missing from release"
-  tr -d '\r\n' < "$ROOT_DIR/VERSION"
+  [[ -f "$VERSION_FILE" ]] || fail "delivery candidate VERSION missing from release"
+  local value
+  value="$(tr -d '\r\n' < "$VERSION_FILE")"
+  [[ -n "$value" ]] || fail "delivery candidate VERSION is empty"
+  printf '%s' "$value"
 }
 
 release_commit() {
   if [[ -f "$ROOT_DIR/PROVENANCE.txt" ]]; then
     local value
-    value="$(awk -F= '$1=="GITHUB_SHA" {print $2; exit}' "$ROOT_DIR/PROVENANCE.txt")"
+    value="$(awk -F= '$1=="commit" {print $2; exit}' "$ROOT_DIR/PROVENANCE.txt")"
     [[ "$value" =~ ^[0-9a-f]{40}$ ]] && { printf '%s' "$value"; return 0; }
   fi
   if git -C "$ROOT_DIR" rev-parse --verify HEAD >/dev/null 2>&1; then
@@ -81,11 +85,14 @@ assert_owner_or_unclaimed() {
 
 write_owner() {
   mkdir -p "$PILOT_HOME" "$STATE_DIR"
-  local tmp="$OWNER_FILE.tmp.$$"
+  local tmp="$OWNER_FILE.tmp.$$" version commit root
+  version="$(release_version)"
+  commit="$(release_commit)"
+  root="$(current_root)"
   {
-    printf 'VERSION=%s\n' "$(release_version)"
-    printf 'COMMIT=%s\n' "$(release_commit)"
-    printf 'ROOT=%s\n' "$(current_root)"
+    printf 'VERSION=%s\n' "$version"
+    printf 'COMMIT=%s\n' "$commit"
+    printf 'ROOT=%s\n' "$root"
   } > "$tmp"
   mv "$tmp" "$OWNER_FILE"
 }
