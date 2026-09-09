@@ -1,0 +1,119 @@
+name: D4-01 Release-independent Pilot Ownership
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/pilot-release.sh'
+      - 'scripts/pilot.sh'
+      - 'ASGARD_MASTER.md'
+      - '.github/workflows/d4-01-release-independent-pilot.yml'
+      - 'VERSION'
+      - 'docker-compose.yml'
+      - 'heimdall/**'
+      - 'bifrost/**'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+  workflow_dispatch:
+
+jobs:
+  d4-01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact head and D4 MASTER selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED='${{ github.event.pull_request.head.sha || github.sha }}'
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          grep -F '**Current Product Destination**: **D4 — Bounded Versioned Upgrade / Rollback Pilot' ASGARD_MASTER.md
+          grep -F '**Active Implementation Issue**: #63' ASGARD_MASTER.md
+          grep -F 'D1+D2+D3 ACCEPTED / FROZEN' ASGARD_MASTER.md
+
+      - name: Verify shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/pilot-release.sh
+          bash -n scripts/pilot.sh
+
+      - name: Execute release-independent persistent pilot lifecycle
+        shell: bash
+        env:
+          ASGARD_PILOT_HOME: ${{ runner.temp }}/asgard-d4-pilot-home
+        run: |
+          set -euo pipefail
+          trap 'ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-release.sh purge >/dev/null 2>&1 || true' EXIT
+
+          bash scripts/pilot-release.sh validate
+          bash scripts/pilot-release.sh release | tee "$RUNNER_TEMP/release-before.txt"
+          grep -F "commit=$(git rev-parse HEAD)" "$RUNNER_TEMP/release-before.txt"
+          grep -F "pilot_home=$ASGARD_PILOT_HOME" "$RUNNER_TEMP/release-before.txt"
+
+          bash scripts/pilot-release.sh start
+          bash scripts/pilot-release.sh status
+          bash scripts/pilot-release.sh job | tee "$RUNNER_TEMP/job.txt"
+          bash scripts/pilot-release.sh inspect
+          test -s "$ASGARD_PILOT_HOME/state/last-job.json"
+          cp "$ASGARD_PILOT_HOME/state/last-job.json" "$RUNNER_TEMP/last-job-before.json"
+
+          bash scripts/pilot-release.sh restart
+          bash scripts/pilot-release.sh inspect
+
+          # A second extraction/root must fail closed while A owns the shared pilot home.
+          ALT="$RUNNER_TEMP/release-b"
+          mkdir -p "$ALT"
+          git archive HEAD | tar -x -C "$ALT"
+          set +e
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$ALT/scripts/pilot-release.sh" status >"$RUNNER_TEMP/conflict-live.out" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep -F 'owned by another/stale release' "$RUNNER_TEMP/conflict-live.out"
+          bash scripts/pilot-release.sh status
+          cmp "$RUNNER_TEMP/last-job-before.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+
+          bash scripts/pilot-release.sh stop
+          test -s "$ASGARD_PILOT_HOME/state/last-job.json"
+
+          # Stale/mismatched ownership also fails closed after stop; explicit claim is the future transition boundary.
+          set +e
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash "$ALT/scripts/pilot-release.sh" start >"$RUNNER_TEMP/conflict-stopped.out" 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep -F 'owned by another/stale release' "$RUNNER_TEMP/conflict-stopped.out"
+          cmp "$RUNNER_TEMP/last-job-before.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+
+          bash scripts/pilot-release.sh start
+          bash scripts/pilot-release.sh inspect
+          bash scripts/pilot-release.sh stop
+          bash scripts/pilot-release.sh purge
+          test ! -e "$ASGARD_PILOT_HOME/active-release.env"
+          trap - EXIT
+
+      - name: Record bounded evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          printf 'exact_head=%s\n' "$(git rev-parse HEAD)" > evidence/d4-01.txt
+          printf 'scope=release-independent pilot ownership only\n' >> evidence/d4-01.txt
+          printf 'not_verified=general upgrade/rollback, schema migration, production, HA, cloud, systemd, unattended operations, SLA/SLO, RBAC, DR/PITR, compliance\n' >> evidence/d4-01.txt
+          cp "$RUNNER_TEMP/release-before.txt" evidence/ 2>/dev/null || true
+          cp "$RUNNER_TEMP/job.txt" evidence/ 2>/dev/null || true
+          cp "$RUNNER_TEMP/conflict-live.out" evidence/ 2>/dev/null || true
+          cp "$RUNNER_TEMP/conflict-stopped.out" evidence/ 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d4-01-release-independent-pilot-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/
