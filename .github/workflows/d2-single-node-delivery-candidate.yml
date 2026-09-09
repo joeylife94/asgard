@@ -32,7 +32,6 @@ jobs:
           # remain one coherent handoff artifact.
           git archive "$GITHUB_SHA" | tar -x -C "$OUT"
           printf 'version=%s\ncommit=%s\nrepository=%s\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_REPOSITORY" > "$OUT/PROVENANCE.txt"
-
           test "$(sed -n 's/^commit=//p' "$OUT/PROVENANCE.txt")" = "$GITHUB_SHA"
           tar -C dist -czf "dist/$VERSION.tar.gz" "$VERSION"
           printf 'artifact_name=%s\n' "$VERSION" >> "$GITHUB_ENV"
@@ -89,7 +88,6 @@ jobs:
     timeout-minutes: 55
     env:
       A_SHA: 209b7522cfbfb8668029dca6a2c84b744ef5f98a
-      ASGARD_PILOT_HOME: ${{ runner.temp }}/asgard-d4-shared-pilot-home
     steps:
       - uses: actions/checkout@v4
         with:
@@ -100,6 +98,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Set pilot home
+        shell: bash
+        run: printf 'ASGARD_PILOT_HOME=%s\n' "$RUNNER_TEMP/asgard-d4-shared-pilot-home" >> "$GITHUB_ENV"
       - name: Verify exact head, D4-02 selection, and same-schema compatibility
         shell: bash
         run: |
