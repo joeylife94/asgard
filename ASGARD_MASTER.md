@@ -9,11 +9,11 @@
 - **Frozen Baseline**: Asgard v1.0 — Wishket / Freelance Proof
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
-- **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot**
-- **Current Product Destination**: **D5 — Operator-owned Configuration Pilot — ACTIVE**
-- **Current Phase**: **D5-01 — OPERATOR-OWNED PILOT CONFIGURATION CONTRACT — ACTIVE**
-- **Current Batch**: **D5-01 / Issue #67 / PR NOT OPEN YET**
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4 ACCEPTED / FROZEN / D5 ACTIVE**
+- **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot / D5 — Operator-owned Configuration Pilot**
+- **Current Product Destination**: **D5 — Operator-owned Configuration Pilot — ACCEPTED / FROZEN**
+- **Current Phase**: **D5 DESTINATION CLOSURE — ACCEPTED / FROZEN**
+- **Current Batch**: **D5 closure reconciliation / Issue #69**
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5 ACCEPTED / FROZEN**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -54,14 +54,16 @@
 - **Accepted D4-01 merge main SHA**: `209b7522cfbfb8668029dca6a2c84b744ef5f98a`
 - **Accepted D4-02 exact PR head**: `e37bc747dec278679a62b34374b26253c5864d81`
 - **Accepted D4-02 merge main SHA**: `42f6786023564dce3920fa12d14b820f5ba2ae2c`
-- **Active Implementation Issue**: #67 — D5-01: establish operator-owned pilot configuration contract
-- **Active Implementation PR**: none yet
-- **Selected Next Milestone**: D5-01 — operator-owned pilot configuration contract
+- **Accepted D5-01 exact PR head**: `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b`
+- **Accepted D5-01 merge main SHA**: `c28058a10be3d3b004d415f7c9a253f8ce781279`
+- **Active Implementation Issue**: #69 — D5 closure: reconcile MASTER before D6 selection
+- **Active Implementation PR**: pending for Issue #69
+- **Selected Next Milestone**: none until Issue #69 reconciliation is accepted; D6 is pre-authorized after this closure lifecycle completes
 - **Human Review Decision**: **2026-09-09 — D4 Bounded Versioned Upgrade / Rollback Pilot selected; D5 Operator-owned Configuration Pilot and D6 Bounded Maintenance & Recovery Pilot pre-authorized after destination-level acceptance**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-10
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4 DESTINATIONS ACCEPTED / FROZEN; D5 ACTIVE / D5-01 ISSUE #67**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5 DESTINATIONS ACCEPTED / FROZEN; D6 selection held until Issue #69 reconciliation merges**
 
 ---
 
@@ -88,7 +90,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4 accepted slices remain frozen. D5 is the current bounded Local-first destination and may separate operator-owned pilot configuration and sensitive runtime inputs from release-owned defaults without upgrading production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, or compliance claims.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5 accepted slices remain frozen. D6 is pre-authorized only after the D5 closure reconciliation lifecycle completes. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
 
 ---
 
@@ -121,7 +123,7 @@ Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 A
 - production SLA/SLO
 - legal GDPR or security certification
 
-Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0, D1, D2, D3, D4, or D5 requirement or accepted claim.** The v1.0 boundary is permanently preserved as a frozen verified baseline.
+Historical cloud code may remain in the repository. **Its existence does not make cloud execution a v1.0, D1, D2, D3, D4, D5, or D6 requirement or accepted claim.** The v1.0 boundary is permanently preserved as a frozen verified baseline.
 
 ---
 
@@ -172,7 +174,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-024 | versioned candidate packaging had not been executed end-to-end as the persistent pilot from an extracted clean workspace | CLOSED by accepted D3-03 fresh-host packaged-candidate execution; no production/HA/cloud/systemd/version-upgrade claim expansion |
 | R-025 | D3 persistent pilot state/ownership defaults remain coupled to one extracted release root, making compatible version transition ownership ambiguous | CLOSED by accepted D4-01 release-independent pilot-home/provenance/conflict evidence; no general upgrade/rollback claim expansion |
 | R-026 | no executable evidence yet demonstrates a compatible same-schema candidate A→B transition over the same explicit pilot-owned persistent state while preserving the A Job/result, accepting new B Local-first work, and truthfully changing release provenance | CLOSED by accepted D4-02 exact-head compatible A→B transition; no schema-migration or production rollback guarantee |
-| R-027 | supported pilot execution still mixes operator-selectable configuration/sensitive runtime inputs with release-owned defaults and committed pilot credentials | ACTIVE — D5-01 / Issue #67 |
+| R-027 | supported pilot execution still mixes operator-selectable configuration/sensitive runtime inputs with release-owned defaults and committed pilot credentials | CLOSED by accepted D5-01 operator-owned configuration evidence; no production secrets policy, secret-manager, enterprise identity, or unattended-operation claim expansion |
 
 ---
 
@@ -258,14 +260,22 @@ Actually executed at exact head: verify exact head/D4-02 selection/same-schema c
 
 The D4 destination is satisfied by D4-01 release-independent ownership plus D4-02 exact-head compatible A→B transition evidence. A separate B→A rollback permutation is not required to substantiate the bounded product-level destination because the accepted claim is explicitly same-schema compatible transition capability and rollback was conditional only if destination-level evidence required it. Opening another rollback/restart permutation without a concrete destination blocker would violate the anti-micro-loop rule. D5 is therefore automatically selected under the 2026-09-09 pre-authorized envelope.
 
-## Product Destination D5 — ACTIVE
+## Product Destination D5 — ACCEPTED / FROZEN
 > **Operator-owned Configuration Pilot** — separate the supported persistent Local-first pilot configuration and sensitive runtime inputs from release code/default test credentials while preserving the accepted D4 pilot-home ownership and compatible release-transition path.
 
-### D5-01 — ACTIVE — Issue #67
+**DESTINATION REACHED — OPERATOR-OWNED CONFIGURATION PILOT.**
 
-Objective: establish the smallest explicit operator-owned pilot configuration contract using the accepted `scripts/pilot-release.sh`, `scripts/pilot.sh`, pilot-home boundary, and current Docker/Compose/runtime assets.
+### D5-01 — ACCEPTED / FROZEN
 
-Acceptance requires exact-head executable evidence that a clean supported Linux runner can materialize operator-owned configuration outside the release extraction root; start the Local-first pilot from that configuration; execute one real Local Ollama Analysis Job; fail closed on missing/malformed required configuration before application start without destroying pilot-owned state; avoid leaking configured sensitive values into bounded evidence/diagnostic outputs; preserve the same operator-owned configuration semantics across normal restart and one D4-compatible release transition; and keep relevant D4/D3/D2 regression/provenance gates GREEN. No Vault/cloud secret manager, Keycloak/OIDC/SSO, enterprise credential lifecycle, multi-tenancy, production secrets policy, systemd/unattended operation, HA/multi-node, cloud execution, SLA/SLO, DR/PITR/RPO/RTO, or compliance claim is authorized.
+Issue #67 is CLOSED / COMPLETED; accepted exact PR head `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b`; merge main SHA `c28058a10be3d3b004d415f7c9a253f8ce781279`. Exact-head gates were GREEN: D2 Single-node Delivery Candidate `34380126610`, D4 Pilot Progression `34380126658`, D3-01 `34380126617`, D3-03 `34380126644`, Real Local AI Golden Path `34380126623`, primary CI `34380126602`, and CI/CD `34380126604`.
+
+Accepted behavior: explicit operator-owned pilot configuration under the pilot-home boundary; allow-listed data parsing rather than shell sourcing; required configuration validation and fail-closed handling before application start; bounded PostgreSQL user/bootstrap compatibility; canonical config-path enforcement preventing pilot-home symlink escape; configured sensitive values excluded from the bounded evidence path; persistent Local-first operation using the configured values; preservation of the same operator-owned configuration contract across normal restart and one compatible D4-style release transition. `stop` remains persistence-preserving and `purge` remains explicit/destructive.
+
+D5-01 does **not** establish Vault/cloud secret-manager integration, Keycloak/OIDC/SSO, enterprise credential lifecycle, multi-tenancy, production secrets policy, production/public deployment, HA/multi-node, cloud-provider execution, SLA/SLO, DR/PITR/RPO/RTO, systemd/automatic boot, unattended operations, or compliance certification.
+
+### Destination Review after D5-01
+
+D5 is satisfied by the coherent D5-01 executable evidence: operator-owned configuration is separated from release defaults on the supported pilot path, malformed/incomplete ownership fails closed, bounded evidence avoids configured-secret disclosure, and the same configuration authority survives restart and a D4-compatible release transition. Another configuration parser, credential permutation, or failure-format milestone would not materially advance the destination and would violate the anti-micro-loop rule. D6 is pre-authorized by the 2026-09-09 Human Review envelope, but D6 selection remains sequenced after this Issue #69 MASTER reconciliation is accepted and merged.
 
 ---
 
@@ -291,5 +301,6 @@ Acceptance requires exact-head executable evidence that a clean supported Linux 
 | D3-03 — Fresh-host Versioned Pilot Candidate | #61 / #62 | `0072a1f1c483745dc214edb50a8ba24988845f4d` | `6495ff848a0bb4945bc76c87ac4775630aa83fff` | D3-03 `34109634309` SUCCESS; artifact `10013968081` / `sha256:fa1277295bff62a4e60a3e16e5a70ecfb7f074c7bd4507c2f6da0cfec9e93219`; D2 `34109634196` SUCCESS; primary CI `34109634104` SUCCESS; CI/CD `34109634232` SUCCESS | exact-head versioned candidate operated from extracted clean Linux workspace using existing persistent pilot lifecycle; no production/HA/cloud/RBAC/SLA-SLO/systemd/version-upgrade claim expansion |
 | D4-01 — Release-independent Pilot Ownership | #63 / #64 | `e1087697014a2ce0416349998eb3e65216a45cb7` | `209b7522cfbfb8668029dca6a2c84b744ef5f98a` | D4-01 `34321968621` SUCCESS; D3-01 `34321968732` SUCCESS; D3-03 `34321968648` SUCCESS; D2 `34321968717` SUCCESS; Real Local AI `34321968568` SUCCESS; primary CI `34321968641` SUCCESS; CI/CD `34321968529` SUCCESS | release-independent pilot-home/provenance/conflict ownership only; no general upgrade/rollback/schema migration/production/HA/cloud/RBAC/SLA-SLO/systemd/DR/compliance claim expansion |
 | D4-02 — Compatible A→B Release Transition | #65 / #66 | `e37bc747dec278679a62b34374b26253c5864d81` | `42f6786023564dce3920fa12d14b820f5ba2ae2c` | D2 `34361725408` SUCCESS including `d4-02-transition`; D4 progression `34361725406` SUCCESS; D3-01 `34361725430` SUCCESS; D3-03 `34361725431` SUCCESS; Real Local AI `34361725396` SUCCESS; primary CI `34361725478` SUCCESS; CI/CD `34361725465` SUCCESS | one coherent same-schema compatible A→B transition over shared pilot-owned state; no cross-schema migration/production rollback/HA/DR/cloud/RBAC/SLA-SLO/systemd/compliance claim expansion |
+| D5-01 — Operator-owned Pilot Configuration | #67 / #68 | `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b` | `c28058a10be3d3b004d415f7c9a253f8ce781279` | D2 `34380126610` SUCCESS including `d5-01-config`; D4 progression `34380126658` SUCCESS; D3-01 `34380126617` SUCCESS; D3-03 `34380126644` SUCCESS; Real Local AI `34380126623` SUCCESS; primary CI `34380126602` SUCCESS; CI/CD `34380126604` SUCCESS | bounded operator-owned pilot configuration and configured compatible-release transition only; no secret manager/enterprise identity/production secrets/systemd/unattended/HA/DR/cloud/SLA-SLO/compliance claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, AND D4 DESTINATIONS ACCEPTED / FROZEN. D5 ACTIVE — D5-01 ISSUE #67.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, AND D5 DESTINATIONS ACCEPTED / FROZEN. D6 IS PRE-AUTHORIZED BUT NOT SELECTED UNTIL ISSUE #69 RECONCILIATION MERGES.**
