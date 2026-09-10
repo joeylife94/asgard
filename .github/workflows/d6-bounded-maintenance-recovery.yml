@@ -1,0 +1,168 @@
+name: D6 Bounded Maintenance Recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/pilot-maintenance.sh'
+      - 'scripts/pilot-configured.sh'
+      - 'scripts/pilot-release.sh'
+      - 'scripts/pilot.sh'
+      - 'docker-compose.yml'
+      - 'docker-compose.pilot.yml'
+      - 'ASGARD_MASTER.md'
+      - '.github/workflows/d6-bounded-maintenance-recovery.yml'
+  workflow_dispatch:
+
+jobs:
+  d6-01-maintenance-recovery:
+    if: github.event_name != 'pull_request' || startsWith(github.event.pull_request.title, 'D6-01:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify exact head and shell syntax
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ '${{ github.event_name }}' == 'pull_request' ]]; then
+            test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha }}'
+          fi
+          bash -n scripts/pilot-maintenance.sh
+          bash -n scripts/pilot-configured.sh
+          bash -n scripts/pilot-release.sh
+          bash -n scripts/pilot.sh
+
+      - name: Materialize operator-owned D5 configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PILOT_HOME="$RUNNER_TEMP/asgard-d6-pilot-home"
+          mkdir -p "$PILOT_HOME/config"
+          DB_VALUE="$(openssl rand -hex 16)"
+          REDIS_VALUE="$(openssl rand -hex 16)"
+          JWT_VALUE="$(openssl rand -hex 24)"
+          ADMIN_VALUE="$(openssl rand -hex 16)"
+          cat > "$PILOT_HOME/config/pilot.env" <<EOF
+          ASGARD_PILOT_COMPOSE_PROJECT=asgard-d6-maintenance
+          ASGARD_PILOT_MODEL=smollm:135m
+          ASGARD_PILOT_DB_USER=asgard
+          ASGARD_PILOT_DB_PASSWORD=$DB_VALUE
+          ASGARD_PILOT_DB_NAME=heimdall
+          ASGARD_PILOT_REDIS_PASSWORD=$REDIS_VALUE
+          ASGARD_PILOT_JWT_SECRET=$JWT_VALUE
+          ASGARD_PILOT_ADMIN_USERNAME=operator
+          ASGARD_PILOT_ADMIN_PASSWORD=$ADMIN_VALUE
+          EOF
+          chmod 600 "$PILOT_HOME/config/pilot.env"
+          printf 'ASGARD_PILOT_HOME=%s\n' "$PILOT_HOME" >> "$GITHUB_ENV"
+          printf 'D6_DB_VALUE=%s\n' "$DB_VALUE" >> "$GITHUB_ENV"
+          printf 'D6_REDIS_VALUE=%s\n' "$REDIS_VALUE" >> "$GITHUB_ENV"
+          printf 'D6_JWT_VALUE=%s\n' "$JWT_VALUE" >> "$GITHUB_ENV"
+          printf 'D6_ADMIN_VALUE=%s\n' "$ADMIN_VALUE" >> "$GITHUB_ENV"
+
+      - name: Execute configured persistent pilot and seed real Local Ollama state
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cleanup() {
+            ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh purge >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh config-check | tee "$RUNNER_TEMP/d6-config-check.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh validate
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh start
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh status
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh job | tee "$RUNNER_TEMP/d6-job.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh inspect | tee "$RUNNER_TEMP/d6-inspect-before.txt"
+          cp "$ASGARD_PILOT_HOME/state/last-job.json" "$RUNNER_TEMP/d6-last-job-before.json"
+          trap - EXIT
+
+      - name: Execute bounded manual backup and fail-closed restore boundaries
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh backup | tee "$RUNNER_TEMP/d6-backup.txt"
+          BACKUP_DIR="$(cat "$ASGARD_PILOT_HOME/maintenance/latest-backup")"
+          test -s "$BACKUP_DIR/heimdall.dump"
+          test -s "$BACKUP_DIR/manifest.json"
+
+          cp "$ASGARD_PILOT_HOME/active-release.env" "$RUNNER_TEMP/d6-owner.env"
+          awk 'BEGIN{FS=OFS="="} $1=="COMMIT"{$2="0000000000000000000000000000000000000000"} {print}' \
+            "$RUNNER_TEMP/d6-owner.env" > "$ASGARD_PILOT_HOME/active-release.env"
+          if ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh restore-verify "$BACKUP_DIR" >"$RUNNER_TEMP/d6-stale-owner.txt" 2>&1; then
+            echo 'stale release unexpectedly performed restore verification' >&2
+            exit 1
+          fi
+          mv "$RUNNER_TEMP/d6-owner.env" "$ASGARD_PILOT_HOME/active-release.env"
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh start
+          if ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh restore-verify "$BACKUP_DIR" >"$RUNNER_TEMP/d6-live-pilot.txt" 2>&1; then
+            echo 'restore verification unexpectedly ran while application processes were live' >&2
+            exit 1
+          fi
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh status
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh stop
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh restore-verify "$BACKUP_DIR" | tee "$RUNNER_TEMP/d6-restore.txt"
+          test -s "$BACKUP_DIR/restore-evidence.json"
+          printf 'BACKUP_DIR=%s\n' "$BACKUP_DIR" >> "$GITHUB_ENV"
+
+      - name: Prove source pilot persistence remains intact after maintenance cycle
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cleanup() {
+            ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh purge >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh start
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh status
+          cmp "$RUNNER_TEMP/d6-last-job-before.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh inspect | tee "$RUNNER_TEMP/d6-inspect-after.txt"
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh stop
+          trap - EXIT
+
+      - name: Record bounded evidence and verify configured sensitive values are absent
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence-d6-01
+          for f in d6-config-check.txt d6-job.txt d6-inspect-before.txt d6-last-job-before.json d6-backup.txt d6-stale-owner.txt d6-live-pilot.txt d6-restore.txt d6-inspect-after.txt; do
+            cp "$RUNNER_TEMP/$f" evidence-d6-01/ 2>/dev/null || true
+          done
+          if [[ -n "${BACKUP_DIR:-}" && -d "$BACKUP_DIR" ]]; then
+            cp "$BACKUP_DIR/manifest.json" evidence-d6-01/ 2>/dev/null || true
+            cp "$BACKUP_DIR/restore-evidence.json" evidence-d6-01/ 2>/dev/null || true
+            sha256sum "$BACKUP_DIR/heimdall.dump" > evidence-d6-01/heimdall.dump.sha256 2>/dev/null || true
+          fi
+          {
+            printf 'exact_head=%s\n' "$(git rev-parse HEAD)"
+            printf 'scope=one manual single-node persistent-pilot PostgreSQL backup and explicit clean-target restore verification\n'
+            printf 'source_overwrite=false\n'
+            printf 'fail_closed=stale release ownership and live application restore attempts rejected\n'
+            printf 'not_verified=continuous/scheduled backup, PITR, RPO/RTO, replication, HA/DR certification, cloud/off-site backup, production retention/encryption policy, systemd/unattended recovery, production readiness\n'
+          } > evidence-d6-01/d6-01.txt
+          for value in "$D6_DB_VALUE" "$D6_REDIS_VALUE" "$D6_JWT_VALUE" "$D6_ADMIN_VALUE"; do
+            if grep -R -F "$value" evidence-d6-01; then
+              echo 'configured sensitive value leaked into D6 bounded evidence' >&2
+              exit 1
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d6-01-bounded-maintenance-recovery-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence-d6-01/
