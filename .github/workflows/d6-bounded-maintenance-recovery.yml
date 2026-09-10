@@ -88,7 +88,7 @@ jobs:
           cp "$ASGARD_PILOT_HOME/state/last-job.json" "$RUNNER_TEMP/d6-last-job-before.json"
           trap - EXIT
 
-      - name: Execute bounded manual backup and explicit clean-target restore verification
+      - name: Execute bounded manual backup and fail-closed restore boundaries
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -96,6 +96,24 @@ jobs:
           BACKUP_DIR="$(cat "$ASGARD_PILOT_HOME/maintenance/latest-backup")"
           test -s "$BACKUP_DIR/heimdall.dump"
           test -s "$BACKUP_DIR/manifest.json"
+
+          cp "$ASGARD_PILOT_HOME/active-release.env" "$RUNNER_TEMP/d6-owner.env"
+          awk 'BEGIN{FS=OFS="="} $1=="COMMIT"{$2="0000000000000000000000000000000000000000"} {print}' \
+            "$RUNNER_TEMP/d6-owner.env" > "$ASGARD_PILOT_HOME/active-release.env"
+          if ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh restore-verify "$BACKUP_DIR" >"$RUNNER_TEMP/d6-stale-owner.txt" 2>&1; then
+            echo 'stale release unexpectedly performed restore verification' >&2
+            exit 1
+          fi
+          mv "$RUNNER_TEMP/d6-owner.env" "$ASGARD_PILOT_HOME/active-release.env"
+
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh start
+          if ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh restore-verify "$BACKUP_DIR" >"$RUNNER_TEMP/d6-live-pilot.txt" 2>&1; then
+            echo 'restore verification unexpectedly ran while application processes were live' >&2
+            exit 1
+          fi
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh status
+          ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-configured.sh stop
+
           ASGARD_PILOT_HOME="$ASGARD_PILOT_HOME" bash scripts/pilot-maintenance.sh restore-verify "$BACKUP_DIR" | tee "$RUNNER_TEMP/d6-restore.txt"
           test -s "$BACKUP_DIR/restore-evidence.json"
           printf 'BACKUP_DIR=%s\n' "$BACKUP_DIR" >> "$GITHUB_ENV"
@@ -121,7 +139,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p evidence-d6-01
-          for f in d6-config-check.txt d6-job.txt d6-inspect-before.txt d6-last-job-before.json d6-backup.txt d6-restore.txt d6-inspect-after.txt; do
+          for f in d6-config-check.txt d6-job.txt d6-inspect-before.txt d6-last-job-before.json d6-backup.txt d6-stale-owner.txt d6-live-pilot.txt d6-restore.txt d6-inspect-after.txt; do
             cp "$RUNNER_TEMP/$f" evidence-d6-01/ 2>/dev/null || true
           done
           if [[ -n "${BACKUP_DIR:-}" && -d "$BACKUP_DIR" ]]; then
@@ -133,6 +151,7 @@ jobs:
             printf 'exact_head=%s\n' "$(git rev-parse HEAD)"
             printf 'scope=one manual single-node persistent-pilot PostgreSQL backup and explicit clean-target restore verification\n'
             printf 'source_overwrite=false\n'
+            printf 'fail_closed=stale release ownership and live application restore attempts rejected\n'
             printf 'not_verified=continuous/scheduled backup, PITR, RPO/RTO, replication, HA/DR certification, cloud/off-site backup, production retention/encryption policy, systemd/unattended recovery, production readiness\n'
           } > evidence-d6-01/d6-01.txt
           for value in "$D6_DB_VALUE" "$D6_REDIS_VALUE" "$D6_JWT_VALUE" "$D6_ADMIN_VALUE"; do
