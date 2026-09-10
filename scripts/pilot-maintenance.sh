@@ -40,6 +40,7 @@ OWNER_FILE="$PILOT_HOME/active-release.env"
 MAINTENANCE_DIR="$PILOT_HOME/maintenance"
 BACKUPS_DIR="$MAINTENANCE_DIR/backups"
 LATEST_FILE="$MAINTENANCE_DIR/latest-backup"
+VERSION_FILE="$ROOT_DIR/delivery/single-node-candidate/VERSION"
 
 [[ "$DB_USER" == "asgard" ]] || fail "bounded pilot maintenance requires the accepted asgard database user"
 [[ "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || fail "invalid configured database name"
@@ -52,6 +53,10 @@ postgres_container() {
     --format '{{.ID}}' | head -n 1)"
   [[ -n "$id" ]] || fail "pilot-owned PostgreSQL container not found for configured compose project"
   printf '%s' "$id"
+}
+
+postgres_running() {
+  [[ "$(docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null || true)" == "true" ]]
 }
 
 start_postgres_only() {
@@ -88,12 +93,52 @@ read_owner_value() {
   awk -F= -v wanted="$key" '$1==wanted {sub(/^[^=]*=/, ""); print; exit}' "$OWNER_FILE"
 }
 
+release_version() {
+  [[ -f "$VERSION_FILE" ]] || fail "delivery candidate VERSION missing from release"
+  local value
+  value="$(tr -d '\r\n' < "$VERSION_FILE")"
+  [[ -n "$value" ]] || fail "delivery candidate VERSION is empty"
+  printf '%s' "$value"
+}
+
+release_commit() {
+  if [[ -f "$ROOT_DIR/PROVENANCE.txt" ]]; then
+    local value
+    value="$(awk -F= '$1=="commit" {print $2; exit}' "$ROOT_DIR/PROVENANCE.txt")"
+    [[ "$value" =~ ^[0-9a-f]{40}$ ]] && { printf '%s' "$value"; return 0; }
+  fi
+  if git -C "$ROOT_DIR" rev-parse --verify HEAD >/dev/null 2>&1; then
+    git -C "$ROOT_DIR" rev-parse HEAD
+    return 0
+  fi
+  fail "release commit provenance unavailable"
+}
+
+assert_current_release_owner() {
+  [[ -f "$OWNER_FILE" ]] || fail "pilot home has no active release ownership metadata"
+  [[ "$(read_owner_value VERSION)" == "$(release_version)" ]] || fail "pilot home is owned by another/stale release; refusing maintenance"
+  [[ "$(read_owner_value COMMIT)" == "$(release_commit)" ]] || fail "pilot home is owned by another/stale release; refusing maintenance"
+  [[ "$(read_owner_value ROOT)" == "$(cd "$ROOT_DIR" && pwd -P)" ]] || fail "pilot home is owned by another/stale release; refusing maintenance"
+}
+
+assert_pilot_applications_stopped() {
+  local file pid
+  for file in "$STATE_DIR/heimdall.pid" "$STATE_DIR/bifrost.pid"; do
+    [[ -f "$file" ]] || continue
+    pid="$(cat "$file" 2>/dev/null || true)"
+    if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+      fail "restore verification requires the persistence-preserving pilot stop path first"
+    fi
+  done
+}
+
 validate_job_id() {
   [[ "$1" =~ ^[0-9a-fA-F-]{36}$ ]] || fail "last-job contains invalid job id"
 }
 
-backup() {
+backup() (
   [[ -f "$LAST_JOB_FILE" ]] || fail "no persisted pilot Job is available for backup verification"
+  assert_current_release_owner
 
   local job_id log_id
   job_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["jobId"])' "$LAST_JOB_FILE")"
@@ -104,10 +149,10 @@ backup() {
   ASGARD_PILOT_HOME="$PILOT_HOME" ASGARD_PILOT_CONFIG="$CONFIG_FILE" \
     bash "$ROOT_DIR/scripts/pilot-configured.sh" stop >/dev/null
 
-  local pg id backup_id backup_dir backup_file manifest
+  local pg backup_id backup_dir backup_file manifest
   pg="$(postgres_container)"
+  trap 'stop_postgres_only "$pg"' EXIT
   start_postgres_only "$pg"
-  trap 'stop_postgres_only "$pg"' RETURN
 
   local original_job original_result_count original_audit_count
   original_job="$(sql_source "$pg" "SELECT status || '|' || COALESCE(result_ref::text,'') || '|' || attempt_count::text FROM analysis_jobs WHERE job_id='${job_id}'::uuid;")"
@@ -176,11 +221,14 @@ PY
   printf '%s\n' "$backup_dir" > "$LATEST_FILE"
   chmod 600 "$manifest" "$LATEST_FILE"
   stop_postgres_only "$pg"
-  trap - RETURN
+  trap - EXIT
   log "backup PASS path=$backup_dir digest=$backup_sha256 bytes=$backup_bytes"
-}
+)
 
-restore_verify() {
+restore_verify() (
+  assert_current_release_owner
+  assert_pilot_applications_stopped
+
   local requested="${2:-}"
   if [[ -z "$requested" ]]; then
     [[ -f "$LATEST_FILE" ]] || fail "no latest bounded backup pointer exists"
@@ -220,13 +268,25 @@ PY
   actual_sha="$(sha256sum "$backup_file" | awk '{print $1}')"
   [[ "$actual_sha" == "$expected_sha" ]] || fail "backup digest mismatch"
 
-  local pg restore_suffix restore_db evidence
+  local pg restore_suffix restore_db evidence pg_was_running=false
   pg="$(postgres_container)"
-  start_postgres_only "$pg"
-  trap 'stop_postgres_only "$pg"' RETURN
+  postgres_running "$pg" && pg_was_running=true
   restore_suffix="$(printf '%s' "$backup_dir" | sha256sum | cut -c1-12)"
   restore_db="d6_restore_${restore_suffix}"
   [[ "$restore_db" != "$DB_NAME" ]] || fail "recovery target must not be the live source database"
+
+  cleanup_restore() {
+    local rc=$?
+    if postgres_running "$pg"; then
+      docker exec "$pg" dropdb -U "$DB_USER" --if-exists "$restore_db" >/dev/null 2>&1 || true
+      if [[ "$pg_was_running" != true ]]; then
+        stop_postgres_only "$pg"
+      fi
+    fi
+    return "$rc"
+  }
+  trap cleanup_restore EXIT
+  start_postgres_only "$pg"
 
   docker exec "$pg" dropdb -U "$DB_USER" --if-exists "$restore_db" >/dev/null
   docker exec "$pg" createdb -U "$DB_USER" "$restore_db"
@@ -273,12 +333,13 @@ with open(os.environ["EVIDENCE"], "w", encoding="utf-8") as f:
     json.dump(payload, f, indent=2)
 PY
 
-  # Recovery target is proof-owned and intentionally ephemeral; the live source remains untouched.
   docker exec "$pg" dropdb -U "$DB_USER" --if-exists "$restore_db" >/dev/null
-  stop_postgres_only "$pg"
-  trap - RETURN
+  if [[ "$pg_was_running" != true ]]; then
+    stop_postgres_only "$pg"
+  fi
+  trap - EXIT
   log "restore verification PASS backup=$backup_dir target=$restore_db source_untouched=true"
-}
+)
 
 case "$ACTION" in
   backup) backup ;;
@@ -291,8 +352,10 @@ Usage:
 
 D6-01 bounded manual maintenance/recovery surface.
 - Reuses the D5 operator-owned pilot configuration and D4 release provenance.
-- backup first invokes the accepted persistence-preserving pilot stop, then snapshots PostgreSQL.
-- restore-verify restores only into a generated clean proof-owned database, verifies Job/result/audit invariants, then removes that recovery target.
+- Both maintenance actions fail closed unless the pilot home is owned by the invoking release.
+- backup invokes the accepted persistence-preserving pilot stop before snapshot access.
+- restore-verify requires application processes to be stopped, restores only into a generated clean proof-owned database, verifies Job/result/audit invariants, then removes that recovery target.
+- failure cleanup removes proof-owned recovery state and restores the prior PostgreSQL running/stopped state where applicable.
 - backup artifacts, digest, provenance, and verification evidence remain under the operator-owned pilot home.
 - no scheduled backup, PITR, RPO/RTO, replication, HA/DR certification, cloud/off-site backup, production retention/encryption policy, systemd, or unattended recovery claim.
 EOF
