@@ -9,11 +9,11 @@
 - **Frozen Baseline**: Asgard v1.0 — Wishket / Freelance Proof
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
-- **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot / D5 — Operator-owned Configuration Pilot**
-- **Current Product Destination**: **D6 — Bounded Maintenance & Recovery Pilot — ACTIVE**
-- **Current Phase**: **D6-01 — Bounded persistent-pilot maintenance and recovery**
-- **Current Batch**: **D6-01 / Issue #71 / PR #72**
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5 ACCEPTED / FROZEN / D6 ACTIVE**
+- **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot / D5 — Operator-owned Configuration Pilot / D6 — Bounded Maintenance & Recovery Pilot**
+- **Current Product Destination**: **HUMAN REVIEW — D7 / NEXT DESTINATION DECISION**
+- **Current Phase**: **D6 ACCEPTED / FROZEN — pre-authorized envelope exhausted**
+- **Current Batch**: **Issue #73 — D6 closure reconciliation; no D7 implementation selected**
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5+D6 ACCEPTED / FROZEN / HUMAN REVIEW REQUIRED FOR D7**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -56,14 +56,16 @@
 - **Accepted D4-02 merge main SHA**: `42f6786023564dce3920fa12d14b820f5ba2ae2c`
 - **Accepted D5-01 exact PR head**: `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b`
 - **Accepted D5-01 merge main SHA**: `c28058a10be3d3b004d415f7c9a253f8ce781279`
-- **Active Implementation Issue**: #71 — D6-01: promote bounded PostgreSQL backup/restore into the persistent pilot maintenance path
-- **Active Implementation PR**: #72 — D6-01: bounded persistent-pilot maintenance and recovery
-- **Selected Next Milestone**: D6-01 — one coherent manual single-node maintenance/recovery scenario over the accepted D5 operator-owned persistent pilot
-- **Human Review Decision**: **2026-09-09 — D4 Bounded Versioned Upgrade / Rollback Pilot selected; D5 Operator-owned Configuration Pilot and D6 Bounded Maintenance & Recovery Pilot pre-authorized after destination-level acceptance**
+- **Accepted D6-01 exact PR head**: `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7`
+- **Accepted D6-01 merge main SHA**: `e123c101a1dfd4358b0cd052247c364581f7997a`
+- **Active Implementation Issue**: none — D6 implementation Issue #71 CLOSED / COMPLETED; closure Issue #73 is documentation/authority reconciliation only
+- **Active Implementation PR**: none — D7 is not selected or authorized
+- **Selected Next Milestone**: **HUMAN REVIEW REQUIRED — no D7 milestone selected**
+- **Human Review Decision**: **2026-09-09 — D4 selected; D5 and D6 pre-authorized after destination-level acceptance. That envelope is now exhausted after D6 acceptance.**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
 - **Updated**: 2026-09-10
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5 DESTINATIONS ACCEPTED / FROZEN; D6 ACTIVE at D6-01 under Issue #71 / PR #72**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5+D6 DESTINATIONS ACCEPTED / FROZEN; HUMAN REVIEW REQUIRED BEFORE D7**
 
 ---
 
@@ -90,7 +92,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5 accepted slices remain frozen. D6 is the current pre-authorized active destination and is bounded to manual single-node maintenance/recovery over the accepted persistent pilot. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5/D6 accepted slices remain frozen. The 2026-09-09 pre-authorized progression envelope is exhausted; any D7 destination selection or implementation requires Human Review. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
 
 ---
 
@@ -175,7 +177,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-025 | D3 persistent pilot state/ownership defaults remain coupled to one extracted release root, making compatible version transition ownership ambiguous | CLOSED by accepted D4-01 release-independent pilot-home/provenance/conflict evidence; no general upgrade/rollback claim expansion |
 | R-026 | no executable evidence yet demonstrates a compatible same-schema candidate A→B transition over the same explicit pilot-owned persistent state while preserving the A Job/result, accepting new B Local-first work, and truthfully changing release provenance | CLOSED by accepted D4-02 exact-head compatible A→B transition; no schema-migration or production rollback guarantee |
 | R-027 | supported pilot execution still mixes operator-selectable configuration/sensitive runtime inputs with release-owned defaults and committed pilot credentials | CLOSED by accepted D5-01 operator-owned configuration evidence; no production secrets policy, secret-manager, enterprise identity, or unattended-operation claim expansion |
-| R-028 | accepted bounded PostgreSQL backup/restore proof had not yet been promoted into the operator-owned persistent pilot maintenance path | ACTIVE under D6-01 / Issue #71 / PR #72; close only after exact-head maintenance/recovery acceptance and merge |
+| R-028 | accepted bounded PostgreSQL backup/restore proof had not yet been promoted into the operator-owned persistent pilot maintenance path | CLOSED by accepted D6-01 exact-head maintenance/recovery evidence and merge; no continuous backup, PITR, RPO/RTO, replication, HA/DR, cloud/off-site backup, unattended recovery, or production-readiness claim expansion |
 
 ---
 
@@ -278,14 +280,22 @@ D5-01 does **not** establish Vault/cloud secret-manager integration, Keycloak/OI
 
 D5 is satisfied by the coherent D5-01 executable evidence: operator-owned configuration is separated from release defaults on the supported pilot path, malformed/incomplete ownership fails closed, bounded evidence avoids configured-secret disclosure, and the same configuration authority survives restart and a D4-compatible release transition. Another configuration parser, credential permutation, or failure-format milestone would not materially advance the destination and would violate the anti-micro-loop rule. D6 is selected under the 2026-09-09 pre-authorized Human Review envelope.
 
-## Product Destination D6 — ACTIVE
+## Product Destination D6 — ACCEPTED / FROZEN
 > **Bounded Maintenance & Recovery Pilot** — promote already accepted bounded PostgreSQL backup/restore primitives into one coherent manual operator maintenance/recovery path over the accepted D5 persistent pilot, with bounded provenance/digest and exact verification of preserved Job/result/audit invariants.
 
-### D6-01 — ACTIVE
+**DESTINATION REACHED — BOUNDED MAINTENANCE & RECOVERY PILOT.**
 
-Issue #71 / PR #72 is the sole current bounded acceptance contract. The current candidate reuses the accepted D4 release-ownership boundary, D5 operator-owned configuration, persistence-preserving stop semantics, and prior M6 PostgreSQL backup/restore primitives. Required acceptance is one coherent configured persistent-pilot scenario: persist a real Local Ollama Job/result, freeze application writes, create a manual PostgreSQL backup with digest/release provenance, restore only into an explicit clean proof-owned target, verify the prior Job/result/audit invariants, verify stale/conflicting ownership and live-application restore attempts fail closed, preserve the live source database, and avoid leaking configured sensitive values.
+### D6-01 — ACCEPTED / FROZEN
 
-D6-01 does **not** establish continuous/scheduled backup, PITR, RPO/RTO, replication, HA/DR certification, cloud/off-site backup, production retention/encryption policy, systemd/automatic boot, unattended recovery, cross-schema migration, or production readiness. D6 remains ACTIVE until exact-head acceptance, merge, linked Issue closure, MASTER reconciliation, and Destination Review are complete.
+Issue #71 is CLOSED / COMPLETED; PR #72 accepted exact head `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7`; merge main SHA `e123c101a1dfd4358b0cd052247c364581f7997a`. Exact-head gates were GREEN: D6 Bounded Maintenance Recovery `34427945332`, D4 Pilot Progression `34427945312`, D3-01 `34427945325`, D3-03 `34427945304`, D2 Delivery Candidate `34427945306`, Real Local AI Golden Path `34427945309`, primary CI `34427945301`, and CI/CD `34427945303`.
+
+Actually executed at exact head: configured D5 persistent pilot → real Local Ollama Job/result persisted → bounded application writes frozen with persistence-preserving stop semantics → PostgreSQL custom-format manual backup → digest and active-release provenance recorded → restore only into an explicit clean proof-owned recovery target → prior Job/result/audit invariants verified → stale/conflicting release ownership and live-application restore attempts fail closed → source persistence preserved → configured sensitive values absent from emitted evidence. The accepted surface reuses existing D4 ownership, D5 configuration, and prior M6 backup/restore primitives rather than introducing a broader recovery subsystem.
+
+D6-01 does **not** establish continuous/scheduled backup, PITR, RPO/RTO, replication, HA/DR certification, cloud/off-site backup, production retention/encryption policy, systemd/automatic boot, unattended recovery, cross-schema migration, production/public deployment, SLA/SLO, enterprise identity/RBAC/SSO, or compliance certification.
+
+### Destination Review after D6-01
+
+D6 is satisfied by this single coherent operator-owned persistent-pilot maintenance/recovery scenario. No additional component restart, backup timing, restore permutation, diagnostic format, DR-style expansion, or proof-of-proof milestone is justified. The pre-authorized D4→D5→D6 progression envelope approved on 2026-09-09 is exhausted. D7 and any further destination require HUMAN REVIEW before issue selection or implementation.
 
 ---
 
@@ -312,5 +322,6 @@ D6-01 does **not** establish continuous/scheduled backup, PITR, RPO/RTO, replica
 | D4-01 — Release-independent Pilot Ownership | #63 / #64 | `e1087697014a2ce0416349998eb3e65216a45cb7` | `209b7522cfbfb8668029dca6a2c84b744ef5f98a` | D4-01 `34321968621` SUCCESS; D3-01 `34321968732` SUCCESS; D3-03 `34321968648` SUCCESS; D2 `34321968717` SUCCESS; Real Local AI `34321968568` SUCCESS; primary CI `34321968641` SUCCESS; CI/CD `34321968529` SUCCESS | release-independent pilot-home/provenance/conflict ownership only; no general upgrade/rollback/schema migration/production/HA/cloud/RBAC/SLA-SLO/systemd/DR/compliance claim expansion |
 | D4-02 — Compatible A→B Release Transition | #65 / #66 | `e37bc747dec278679a62b34374b26253c5864d81` | `42f6786023564dce3920fa12d14b820f5ba2ae2c` | D2 `34361725408` SUCCESS including `d4-02-transition`; D4 progression `34361725406` SUCCESS; D3-01 `34361725430` SUCCESS; D3-03 `34361725431` SUCCESS; Real Local AI `34361725396` SUCCESS; primary CI `34361725478` SUCCESS; CI/CD `34361725465` SUCCESS | one coherent same-schema compatible A→B transition over shared pilot-owned state; no cross-schema migration/production rollback/HA/DR/cloud/RBAC/SLA-SLO/systemd/compliance claim expansion |
 | D5-01 — Operator-owned Pilot Configuration | #67 / #68 | `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b` | `c28058a10be3d3b004d415f7c9a253f8ce781279` | D2 `34380126610` SUCCESS including `d5-01-config`; D4 progression `34380126658` SUCCESS; D3-01 `34380126617` SUCCESS; D3-03 `34380126644` SUCCESS; Real Local AI `34380126623` SUCCESS; primary CI `34380126602` SUCCESS; CI/CD `34380126604` SUCCESS | bounded operator-owned pilot configuration and configured compatible-release transition only; no secret manager/enterprise identity/production secrets/systemd/unattended/HA/DR/cloud/SLA-SLO/compliance claim expansion |
+| D6-01 — Persistent-pilot Maintenance & Recovery | #71 / #72 | `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7` | `e123c101a1dfd4358b0cd052247c364581f7997a` | D6 `34427945332` SUCCESS; D4 progression `34427945312` SUCCESS; D3-01 `34427945325` SUCCESS; D3-03 `34427945304` SUCCESS; D2 `34427945306` SUCCESS; Real Local AI `34427945309` SUCCESS; primary CI `34427945301` SUCCESS; CI/CD `34427945303` SUCCESS | one coherent manual single-node persistent-pilot backup/clean-target-restore verification path; no continuous backup/PITR/RPO-RTO/replication/HA-DR/cloud/off-site/systemd/unattended/cross-schema/production claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, AND D5 DESTINATIONS ACCEPTED / FROZEN. D6 IS ACTIVE AT D6-01 / ISSUE #71 / PR #72; ACCEPTANCE REQUIRES EXACT-HEAD EXECUTABLE EVIDENCE AND NORMAL MERGE/CLOSURE/DESTINATION-REVIEW LIFECYCLE.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, D5, AND D6 DESTINATIONS ACCEPTED / FROZEN. PRE-AUTHORIZED PROGRESSION IS EXHAUSTED; HUMAN REVIEW IS REQUIRED BEFORE D7 OR ANY FURTHER IMPLEMENTATION.**
