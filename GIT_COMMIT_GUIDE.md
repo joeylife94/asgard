@@ -1,3 +1,5 @@
+> **HISTORICAL / NON-AUTHORITATIVE** — This document predates the Asgard v1.0 Proof freeze and is kept for context only. Its statements about status, readiness, scope, or roadmap are not accepted claims. Current state, accepted evidence, and the work-item lifecycle are defined in [`ASGARD_MASTER.md`](ASGARD_MASTER.md).
+
 # 🎯 Git 커밋 전 체크리스트
 
 ## ✅ 완료된 작업

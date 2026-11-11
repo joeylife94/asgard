@@ -137,7 +137,7 @@ After the v1.0 freeze, the repository accepted twelve bounded milestones (M1–M
 | D5 — Operator-owned Configuration Pilot | operator-owned configuration parsed as data and validated fail-closed; no secret-manager or enterprise identity claim | `scripts/pilot-configured.sh` |
 | D6 — Bounded Maintenance & Recovery Pilot | one manual backup → clean-target restore verification path; no scheduled backup, PITR, RPO/RTO, or DR claim | `scripts/pilot-maintenance.sh` |
 
-Current state: **D6 ACCEPTED / FROZEN**. Any further destination requires Human Review. Exact heads, merge SHAs, workflow runs, and artifact digests are recorded in [`ASGARD_MASTER.md`](ASGARD_MASTER.md). A phase summary with open findings is in [`docs/PHASE1_WRAPUP.md`](docs/PHASE1_WRAPUP.md).
+Current state: **D6 ACCEPTED / FROZEN**. Any further destination requires Human Review. Exact heads, merge SHAs, workflow runs, and artifact digests are recorded in [`ASGARD_MASTER.md`](ASGARD_MASTER.md). The operator handoff is [`docs/SINGLE_NODE_HANDOFF.md`](docs/SINGLE_NODE_HANDOFF.md); a phase 1 summary is in [`docs/PHASE1_WRAPUP.md`](docs/PHASE1_WRAPUP.md).
 
 ## Architecture boundary
 

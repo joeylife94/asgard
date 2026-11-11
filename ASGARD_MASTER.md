@@ -12,7 +12,7 @@
 - **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot / D5 — Operator-owned Configuration Pilot / D6 — Bounded Maintenance & Recovery Pilot**
 - **Current Product Destination**: **HUMAN REVIEW — D7 / NEXT DESTINATION DECISION**
 - **Current Phase**: **D6 ACCEPTED / FROZEN — pre-authorized envelope exhausted**
-- **Current Batch**: **Issue #73 — D6 closure reconciliation; no D7 implementation selected**
+- **Current Batch**: **Issue #75 — Phase 1 wrap-up reconciliation (delivery-handoff truth / repository hygiene only); no D7 implementation selected**
 - **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5+D6 ACCEPTED / FROZEN / HUMAN REVIEW REQUIRED FOR D7**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
@@ -58,12 +58,13 @@
 - **Accepted D5-01 merge main SHA**: `c28058a10be3d3b004d415f7c9a253f8ce781279`
 - **Accepted D6-01 exact PR head**: `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7`
 - **Accepted D6-01 merge main SHA**: `e123c101a1dfd4358b0cd052247c364581f7997a`
-- **Active Implementation Issue**: none — D6 implementation Issue #71 CLOSED / COMPLETED; closure Issue #73 is documentation/authority reconciliation only
+- **Active Implementation Issue**: none — D6 implementation Issue #71 CLOSED / COMPLETED; closure Issue #73 is documentation/authority reconciliation only; Issue #75 is delivery-handoff truth / repository hygiene reconciliation only
 - **Active Implementation PR**: none — D7 is not selected or authorized
 - **Selected Next Milestone**: **HUMAN REVIEW REQUIRED — no D7 milestone selected**
 - **Human Review Decision**: **2026-09-09 — D4 selected; D5 and D6 pre-authorized after destination-level acceptance. That envelope is now exhausted after D6 acceptance.**
+- **Human Review Decision (2026-11-11)**: **Phase 1 wrap-up reconciliation (Issue #75) authorized as documentation / hygiene work only. D7 is deferred until a concrete user or buyer requirement exists; no destination is selected.**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-09-10
+- **Updated**: 2026-11-11
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
 - **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5+D6 DESTINATIONS ACCEPTED / FROZEN; HUMAN REVIEW REQUIRED BEFORE D7**
 
@@ -153,7 +154,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-001 | duplicate `idx_severity` schema index name | known non-fatal debt; touch only if a future accepted requirement fails on it |
 | R-002 | broad Heimdall Checkstyle/build debt | pre-existing; no mass-fix without a required gate |
 | R-003 | startup script / proven CI invocation drift | M1 closed the accepted bounded Linux path; broader convenience only when required |
-| R-004 | README / historical docs may overclaim | README closed via Issue #23 / PR #24; historical docs non-authoritative |
+| R-004 | README / historical docs may overclaim | README closed via Issue #23 / PR #24; root-level historical docs carry an explicit `HISTORICAL / NON-AUTHORITATIVE` marker enforced by the delivery candidate gate (Issue #75); module-level docs under `heimdall/**` and `bifrost/**` remain unmarked and non-authoritative |
 | R-005 | hosted CPU Ollama latency variability | bounded generation only; no stable performance claims |
 | R-006 | ingestion auto-analysis may create extra job | proof paths isolate target Job where required |
 | R-007 | legacy AWS/Bedrock code remains | DEFER; not an automatic progression target |
@@ -178,6 +179,8 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-026 | no executable evidence yet demonstrates a compatible same-schema candidate A→B transition over the same explicit pilot-owned persistent state while preserving the A Job/result, accepting new B Local-first work, and truthfully changing release provenance | CLOSED by accepted D4-02 exact-head compatible A→B transition; no schema-migration or production rollback guarantee |
 | R-027 | supported pilot execution still mixes operator-selectable configuration/sensitive runtime inputs with release-owned defaults and committed pilot credentials | CLOSED by accepted D5-01 operator-owned configuration evidence; no production secrets policy, secret-manager, enterprise identity, or unattended-operation claim expansion |
 | R-028 | accepted bounded PostgreSQL backup/restore proof had not yet been promoted into the operator-owned persistent pilot maintenance path | CLOSED by accepted D6-01 exact-head maintenance/recovery evidence and merge; no continuous backup, PITR, RPO/RTO, replication, HA/DR, cloud/off-site backup, unattended recovery, or production-readiness claim expansion |
+| R-029 | delivery-facing handoff and manifest stopped at D3: the accepted D4 release-ownership, D5 operator-configuration, and D6 maintenance/recovery command surfaces were absent, and both carried an unqualified upgrade/rollback non-claim that the handoff truth gate required | CLOSED by Issue #75 handoff/manifest reconciliation; handoff truth and delivery candidate gates now require the D4/D5/D6 surfaces and the qualified non-claims; no runtime or claim expansion |
+| R-030 | stale committed `test-results/` output from a 2025-11-17 run shipped inside the provenance-matched delivery candidate and read as current test evidence | CLOSED by Issue #75 removal; the delivery candidate gate fails if the directory reappears; accepted evidence remains workflow runs and artifact digests only |
 
 ---
 
@@ -296,6 +299,14 @@ D6-01 does **not** establish continuous/scheduled backup, PITR, RPO/RTO, replica
 ### Destination Review after D6-01
 
 D6 is satisfied by this single coherent operator-owned persistent-pilot maintenance/recovery scenario. No additional component restart, backup timing, restore permutation, diagnostic format, DR-style expansion, or proof-of-proof milestone is justified. The pre-authorized D4→D5→D6 progression envelope approved on 2026-09-09 is exhausted. D7 and any further destination require HUMAN REVIEW before issue selection or implementation.
+
+## Phase 1 Wrap-up Reconciliation — Issue #75
+
+Authorized by the 2026-11-11 Human Review decision after the phase 1 wrap-up review (`docs/PHASE1_WRAPUP.md`). This is not a destination and selects no D7 work.
+
+Reconciled: `docs/SINGLE_NODE_HANDOFF.md` and `delivery/single-node-candidate/MANIFEST.md` now describe the accepted D4 (`scripts/pilot-release.sh`), D5 (`scripts/pilot-configured.sh`), and D6 (`scripts/pilot-maintenance.sh`) operator surfaces exactly as accepted, and replace the unqualified upgrade/rollback non-claim with the qualified one (one same-schema compatible A→B transition accepted; cross-schema migration, production rollback, scheduled or unattended backup/recovery, in-place restore, and secret-manager integration not verified). `scripts/check-single-node-handoff-truth.sh`, `scripts/check-d2-delivery-candidate.sh`, and the D2 bundle verification step enforce this. Stale committed `test-results/` output is removed and root-level historical documents carry a `HISTORICAL / NON-AUTHORITATIVE` marker; the delivery candidate gate enforces both.
+
+Boundary: documentation, gate scripts, one workflow verification step, and file removal only. No Heimdall, Bifrost, Compose, schema, or pilot-script change. `delivery/single-node-candidate/VERSION` is unchanged (`asgard-single-node-d5-config-1`), following the D6-01 precedent of adding an operator surface without a version change. No accepted evidence line or non-claim from v1.0, M1–M12, or D1–D6 is altered. Module-level documents under `heimdall/**` and `bifrost/**` were left untouched so that this batch does not trigger unrelated application builds (R-002, M11).
 
 ---
 

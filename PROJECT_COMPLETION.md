@@ -1,3 +1,5 @@
+> **HISTORICAL / NON-AUTHORITATIVE** — This document predates the Asgard v1.0 Proof freeze and is kept for context only. Its statements about status, readiness, scope, or roadmap are not accepted claims. Current state, accepted evidence, and the work-item lifecycle are defined in [`ASGARD_MASTER.md`](ASGARD_MASTER.md).
+
 # 🎉 Asgard 프로젝트 완성 - 포트폴리오 준비 완료!
 
 > **최종 업데이트**: 2026년 1월 31일 - v0.3.0 (6개 확장 기능 완료, 177개 테스트 통과)
