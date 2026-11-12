@@ -124,6 +124,21 @@ The existing Grafana datasource/dashboard path rendered the Jobs Requested / Suc
 
 Short-window Grafana `increase(...)` / rate-style panels may display `0` for this single-event proof window even when the current Prometheus counter is `1`. This evidence proves the bounded metrics/dashboard path, not production dashboard calibration or SLO maturity.
 
+## Post-v1.0 progression (bounded)
+
+After the v1.0 freeze, the repository accepted twelve bounded milestones (M1–M12) and six product destinations. Every destination is limited to **one Linux host, one technical operator, and Local Ollama**. None of them changes the non-claims listed below.
+
+| Destination | Accepted boundary | Operator surface |
+| --- | --- | --- |
+| D1 — Bounded Single-node Tool | reproducible Local-first run, real Ollama jobs, read-only inspection, controlled recovery/audit, one bounded restart case each for Bifrost/Kafka/PostgreSQL, one bounded PostgreSQL backup/restore, diagnostic snapshot, cleanup | `scripts/local-proof.sh`, `scripts/operator-diagnostic-snapshot.sh`, `scripts/cleanup-retained-proof.sh` |
+| D2 — Versioned Single-node Delivery Candidate | provenance-matched tracked repository snapshot with version and limitations | `delivery/single-node-candidate/` |
+| D3 — Bounded Single-node Pilot Deployment | persistent pilot lifecycle operated from an extracted clean workspace; `stop` preserves state, `purge` is explicit | `scripts/pilot.sh` |
+| D4 — Bounded Versioned Upgrade / Rollback Pilot | release-independent pilot home and one same-schema compatible A→B release transition; no schema-migration or production rollback guarantee | `scripts/pilot-release.sh` |
+| D5 — Operator-owned Configuration Pilot | operator-owned configuration parsed as data and validated fail-closed; no secret-manager or enterprise identity claim | `scripts/pilot-configured.sh` |
+| D6 — Bounded Maintenance & Recovery Pilot | one manual backup → clean-target restore verification path; no scheduled backup, PITR, RPO/RTO, or DR claim | `scripts/pilot-maintenance.sh` |
+
+Current state: **D6 ACCEPTED / FROZEN**. Any further destination requires Human Review. Exact heads, merge SHAs, workflow runs, and artifact digests are recorded in [`ASGARD_MASTER.md`](ASGARD_MASTER.md). The operator handoff is [`docs/SINGLE_NODE_HANDOFF.md`](docs/SINGLE_NODE_HANDOFF.md); a phase 1 summary is in [`docs/PHASE1_WRAPUP.md`](docs/PHASE1_WRAPUP.md).
+
 ## Architecture boundary
 
 Core v1.0 proof components include:

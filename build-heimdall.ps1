@@ -25,8 +25,8 @@ Write-Host '   $env:Path = "$env:JAVA_HOME\bin;" + $env:Path'
 Write-Host "   .\gradlew.bat :heimdall:test --tests HealthControllerTest -x checkstyleMain -x checkstyleTest"
 Write-Host ""
 Write-Host "2. 테스트 결과 확인:"
-Write-Host "   start test-results\unit-test-reports\index.html"
-Write-Host "   start test-results\coverage-reports\test\html\index.html"
+Write-Host "   start heimdall\build\reports\tests\test\index.html"
+Write-Host "   start heimdall\build\reports\jacoco\test\html\index.html"
 Write-Host ""
 
 Write-Host "방법 3: IntelliJ IDEA" -ForegroundColor Green

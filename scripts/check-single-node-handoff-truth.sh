@@ -24,6 +24,13 @@ required=(
   'bash scripts/pilot.sh stop'
   'bash scripts/pilot.sh purge'
   'persistence-preserving'
+  'scripts/pilot-release.sh'
+  'scripts/pilot-configured.sh'
+  'scripts/pilot-maintenance.sh'
+  'ASGARD_PILOT_HOME'
+  'delivery/single-node-candidate/PILOT_CONFIG.example'
+  '.github/workflows/d4-01-release-independent-pilot.yml'
+  '.github/workflows/d6-bounded-maintenance-recovery.yml'
 )
 
 for token in "${required[@]}"; do
@@ -35,6 +42,7 @@ obsolete=(
   'It does not prove Kafka outage recovery'
   'backup/restore; Kubernetes/HA'
   'docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans'
+  'Version upgrade/rollback is not verified.'
 )
 for token in "${obsolete[@]}"; do
   if grep -Fq "$token" "$DOC"; then
@@ -53,7 +61,10 @@ nonclaims=(
   'Cloud-provider execution is not verified.'
   'Unattended autonomous operations are not verified.'
   'Systemd/automatic boot is not verified.'
-  'Version upgrade/rollback is not verified.'
+  'Version upgrade/rollback beyond one same-schema compatible A→B transition is not verified.'
+  'Cross-schema migration and production rollback are not verified.'
+  'Scheduled or unattended backup/recovery is not verified.'
+  'Secret-manager integration is not verified.'
   'Public production deployment is not verified.'
 )
 for statement in "${nonclaims[@]}"; do

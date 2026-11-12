@@ -11,6 +11,7 @@ required=(
   ASGARD_MASTER.md
   docs/SINGLE_NODE_HANDOFF.md
   docker-compose.pilot.yml
+  scripts/pilot-maintenance.sh
   scripts/pilot-configured.sh
   scripts/pilot-release.sh
   scripts/pilot.sh
@@ -34,6 +35,9 @@ manifest=delivery/single-node-candidate/MANIFEST.md
 handoff=docs/SINGLE_NODE_HANDOFF.md
 for token in \
   'scripts/pilot.sh' \
+  'scripts/pilot-release.sh' \
+  'scripts/pilot-configured.sh' \
+  'scripts/pilot-maintenance.sh' \
   'bash scripts/pilot.sh validate' \
   'bash scripts/pilot.sh start' \
   'bash scripts/pilot.sh stop' \
@@ -45,9 +49,13 @@ for token in \
   'Production readiness is not verified.' \
   'Cloud-provider execution is not verified.' \
   'Enterprise identity/RBAC is not verified.' \
-  'Version upgrade/rollback is not verified.'; do
+  'Version upgrade/rollback beyond one same-schema compatible A→B transition is not verified.'; do
   grep -Fq "$token" "$manifest" || { echo "manifest missing contract: $token" >&2; exit 1; }
 done
+if grep -Fq 'Version upgrade/rollback is not verified.' "$manifest"; then
+  echo 'manifest carries obsolete unqualified upgrade/rollback non-claim' >&2
+  exit 1
+fi
 
 grep -Fq 'DESTINATION REACHED — BOUNDED SINGLE-NODE TOOL' ASGARD_MASTER.md || { echo 'D1 acceptance missing from MASTER' >&2; exit 1; }
 grep -Fq 'D3-01 — ACCEPTED' ASGARD_MASTER.md || { echo 'D3-01 acceptance missing from MASTER' >&2; exit 1; }
@@ -61,6 +69,17 @@ for token in \
   grep -Fq "$token" "$handoff" || { echo "handoff missing persistent pilot contract: $token" >&2; exit 1; }
 done
 
+# The candidate packages the whole tracked tree, so stale or unmarked
+# repository content ships to the operator. Keep both out of the bundle.
+[[ ! -e test-results ]] || { echo 'stale committed test-results/ must not ship in the delivery candidate' >&2; exit 1; }
+for doc in *.md; do
+  case "$doc" in
+    README.md|ASGARD_MASTER.md) continue ;;
+  esac
+  grep -Fq 'HISTORICAL / NON-AUTHORITATIVE' "$doc" || { echo "root document lacks historical/non-authoritative marker: $doc" >&2; exit 1; }
+done
+
+bash -n scripts/pilot-maintenance.sh
 bash -n scripts/pilot-configured.sh
 bash -n scripts/pilot-release.sh
 bash -n scripts/pilot.sh
@@ -69,4 +88,4 @@ bash -n scripts/operator-diagnostic-snapshot.sh
 bash -n scripts/m6-backup-restore-proof.sh
 bash -n scripts/cleanup-retained-proof.sh
 
-echo "D2/D3/D4/D5 delivery candidate contract PASS: $version"
+echo "D2/D3/D4/D5/D6 delivery candidate contract PASS: $version"
