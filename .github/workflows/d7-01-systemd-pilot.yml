@@ -20,7 +20,11 @@ permissions:
 jobs:
   d7-01-systemd-pilot:
     if: github.event_name != 'pull_request' || startsWith(github.event.pull_request.title, 'D7-01:')
-    runs-on: ubuntu-latest
+    # Pinned host: the unit records where the host's own python3 lives, and the
+    # pilot builds Bifrost with it. Bifrost's Kafka client is only installable on
+    # Python < 3.13 (bifrost/requirements.txt), which ubuntu-24.04 provides and
+    # the ubuntu-26.04 image behind ubuntu-latest does not.
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       UNIT: asgard-pilot.service
