@@ -328,6 +328,17 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Print bounded diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo '--- bifrost.log'; tail -n 120 p1-b1-bifrost.log 2>&1
+          echo '--- ollama container'; docker logs --tail 120 p1-b1-ollama 2>&1
+          echo '--- host'; grep -m1 'model name' /proc/cpuinfo; nproc; free -m
+          grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|sse4|fma|f16c|bmi)' | sort -u | tr '\n' ' '; echo
+          exit 0
+
       - name: Cleanup
         if: always()
         shell: bash

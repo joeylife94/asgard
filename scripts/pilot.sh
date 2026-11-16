@@ -89,9 +89,9 @@ validate() {
   local java_major
   java_major="$(java -version 2>&1 | awk -F'[\".]' '/version/ {print $2; exit}')"
   [[ "$java_major" == "21" ]] || fail "Java 21 required; detected ${java_major:-unknown}"
-  python3 - <<'PY' || fail "Python 3.9+ required"
+  python3 - <<'PY' || fail "Python 3.9-3.12 required; Bifrost's Kafka client (bifrost/requirements.txt) is not installable on Python 3.13+"
 import sys
-assert sys.version_info >= (3, 9), sys.version
+assert (3, 9) <= sys.version_info[:2] < (3, 13), sys.version
 PY
   [[ -f docker-compose.yml ]] || fail "docker-compose.yml missing"
   [[ -f docker-compose.pilot.yml ]] || fail "docker-compose.pilot.yml missing"
