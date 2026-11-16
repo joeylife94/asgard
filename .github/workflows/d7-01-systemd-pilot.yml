@@ -63,6 +63,9 @@ jobs:
           REDIS_VALUE="$(openssl rand -hex 16)"
           JWT_VALUE="$(openssl rand -hex 24)"
           ADMIN_VALUE="$(openssl rand -hex 16)"
+          for value in "$DB_VALUE" "$REDIS_VALUE" "$JWT_VALUE" "$ADMIN_VALUE"; do
+            echo "::add-mask::$value"
+          done
           cat > "$PILOT_HOME/config/pilot.env" <<EOF
           ASGARD_PILOT_COMPOSE_PROJECT=$COMPOSE_PROJECT
           ASGARD_PILOT_MODEL=smollm:135m
@@ -231,6 +234,21 @@ jobs:
             echo 'status unexpectedly reported an installed unit after uninstall' >&2
             exit 1
           fi
+
+      - name: Print bounded diagnostics when an acceptance step failed
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          WORK="${ASGARD_PILOT_HOME:-/nonexistent}/state/work"
+          echo '--- unit state'; systemctl status "$UNIT" --no-pager -l 2>&1 | tail -n 40
+          echo '--- unit journal'; sudo journalctl -u "$UNIT" --no-pager -o short-iso 2>&1 | tail -n 150
+          echo '--- bifrost.log'; tail -n 150 "$WORK/bifrost.log" 2>&1
+          echo '--- heimdall.log'; tail -n 80 "$WORK/heimdall.log" 2>&1
+          echo '--- ollama container'; docker logs --tail 80 asgard-pilot-ollama 2>&1
+          echo '--- containers'; docker ps -a --format '{{.Names}}\t{{.Status}}' 2>&1
+          echo '--- host'; free -m; uptime; nproc
+          exit 0
 
       - name: Record bounded evidence and verify configured sensitive values are absent
         if: always()
