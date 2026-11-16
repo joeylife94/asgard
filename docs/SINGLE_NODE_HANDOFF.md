@@ -202,7 +202,7 @@ sudo systemctl stop asgard-pilot.service
 - writes `/etc/systemd/system/asgard-pilot.service` and enables it for `multi-user.target`. It does not start it;
 - makes the unit run as the installing operator, require and follow `docker.service`, and follow `network-online.target`;
 - records in the unit the pilot home, the release root, and a `PATH` built from where `java`, `python3`, `docker` and `curl` were found at install time. If those locations change, run `install` again;
-- writes no configured secret into the unit. Configuration is still read from `$ASGARD_PILOT_HOME/config/pilot.env` at each start.
+- writes no configured secret into the unit. Configuration is read from `$ASGARD_PILOT_HOME/config/pilot.env` at each start; an `ASGARD_PILOT_CONFIG` override pointing elsewhere is refused.
 
 Behaviour once installed:
 

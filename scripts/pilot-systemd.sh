@@ -25,7 +25,8 @@ D7-01 bounded systemd ownership of the configured persistent pilot.
   It does not start the unit. Privileged steps use sudo unless already root.
 - The unit is ordered after docker.service and wanted by multi-user.target.
 - The unit carries the pilot-home path, the release root, and a PATH recorded at
-  install time. Configured secrets stay in $ASGARD_PILOT_HOME/config/pilot.env.
+  install time. Configured secrets stay in $ASGARD_PILOT_HOME/config/pilot.env,
+  which is the only configuration path supported under systemd ownership.
 - A systemd-owned start never claims a pilot home: it fails closed when the home is
   unclaimed, purged, or owned by another/stale release.
 - uninstall stops and disables the unit and removes the unit file. Pilot state,
@@ -50,6 +51,15 @@ PILOT_HOME_RAW="${ASGARD_PILOT_HOME:-}"
 PILOT_HOME="$(cd "$PILOT_HOME_RAW" && pwd -P)"
 STATE_DIR="$PILOT_HOME/state"
 OWNER_FILE="$PILOT_HOME/active-release.env"
+DEFAULT_CONFIG="$PILOT_HOME/config/pilot.env"
+
+# The unit does not carry ASGARD_PILOT_CONFIG, so the service always loads the
+# default path. Refuse an override here so that the configuration validated at
+# install time is the one the service will load.
+if [[ -n "${ASGARD_PILOT_CONFIG:-}" ]]; then
+  [[ "$(readlink -f -- "$ASGARD_PILOT_CONFIG" 2>/dev/null || true)" == "$(readlink -f -- "$DEFAULT_CONFIG" 2>/dev/null || true)" ]] \
+    || fail "ASGARD_PILOT_CONFIG override is not supported under systemd ownership; use $DEFAULT_CONFIG"
+fi
 
 # Paths are written into a unit file unquoted. Refuse anything that systemd
 # could interpret (whitespace, quotes, %, $, backslash) instead of escaping it.
