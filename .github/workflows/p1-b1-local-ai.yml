@@ -329,14 +329,32 @@ jobs:
           retention-days: 14
 
       - name: Print bounded diagnostics on failure
-        if: failure()
+        # Temporarily always() while R-033 is being root-caused, so the generate
+        # replay also runs when the flow happens to pass. Returns to failure().
+        if: always()
         shell: bash
         run: |
           set +e
           echo '--- bifrost.log'; tail -n 120 p1-b1-bifrost.log 2>&1
-          echo '--- ollama container'; docker logs --tail 120 p1-b1-ollama 2>&1
+          echo '--- ollama container (head)'; docker logs p1-b1-ollama 2>&1 | head -n 40
+          echo '--- ollama container (tail)'; docker logs --tail 120 p1-b1-ollama 2>&1
           echo '--- host'; grep -m1 'model name' /proc/cpuinfo; nproc; free -m
           grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|sse4|fma|f16c|bmi)' | sort -u | tr '\n' ' '; echo
+          # Bifrost discards the body of a failed Ollama response, so the reason for an
+          # HTTP 500 is not in any log. Replay bounded generate requests against the same
+          # container and print the status and, for a failure, Ollama's own error body.
+          echo '--- ollama generate replay'
+          cat > replay-request.json <<'JSON'
+          {"model": "smollm:135m", "stream": false, "prompt": "You are a log analysis assistant. Analyze the following application log and answer in three sections: Summary, Key issues, Suggestions.\n\n2026-01-01T00:00:01Z ERROR payment-service gateway timeout after 3000ms calling card-authorizer\n2026-01-01T00:00:02Z WARN payment-service retry 1/3 for order 1842\n2026-01-01T00:00:05Z ERROR payment-service gateway timeout after 3000ms calling card-authorizer\n2026-01-01T00:00:06Z WARN payment-service retry 2/3 for order 1842\n2026-01-01T00:00:09Z ERROR payment-service circuit breaker opened for card-authorizer\n2026-01-01T00:00:10Z INFO payment-service order 1842 marked FAILED"}
+          JSON
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl --silent --max-time 180 -o replay-body.json -w '%{http_code}' -H 'Content-Type: application/json' -d @replay-request.json http://127.0.0.1:11434/api/generate)"
+            if [ "$code" = "200" ]; then
+              python3 -c 'import json; d=json.load(open("replay-body.json")); print("replay", "200", "done_reason=%s" % d.get("done_reason"), "eval_count=%s" % d.get("eval_count"))'
+            else
+              echo "replay $code body: $(head -c 600 replay-body.json)"
+            fi
+          done
           exit 0
 
       - name: Cleanup
