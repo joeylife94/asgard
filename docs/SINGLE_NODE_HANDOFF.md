@@ -4,11 +4,11 @@
 
 ## Supported boundary
 
-This handoff covers one technical operator on one Linux host using the repository's accepted Local-first path. It covers PostgreSQL/Kafka/Redis/Elasticsearch dependencies, Heimdall, Bifrost, real local Ollama inference, the accepted D3 persistent pilot lifecycle, the D4 release-independent pilot home, the D5 operator-owned configuration, and the D6 manual maintenance/recovery path.
+This handoff covers one technical operator on one Linux host using the repository's accepted Local-first path. It covers PostgreSQL/Kafka/Redis/Elasticsearch dependencies, Heimdall, Bifrost, real local Ollama inference, the accepted D3 persistent pilot lifecycle, the D4 release-independent pilot home, the D5 operator-owned configuration, the D6 manual maintenance/recovery path, and the D7-01 systemd-owned start/stop surface.
 
-Accepted post-v1.0 evidence additionally covers bounded operator/read/recovery cases for local reproduction, read-only Job inspection, controlled redrive, one Bifrost restart replay, one PostgreSQL backup/restore, one read-only diagnostic snapshot, one single-broker Kafka restart replay, one same-volume PostgreSQL restart recovery, versioned D2 packaging/provenance, one bounded persistent D3 pilot lifecycle operated from an extracted clean workspace, one same-schema compatible A→B release transition over a shared pilot home (D4), operator-owned pilot configuration (D5), and one manual backup → clean-target restore verification over that configured pilot (D6).
+Accepted post-v1.0 evidence additionally covers bounded operator/read/recovery cases for local reproduction, read-only Job inspection, controlled redrive, one Bifrost restart replay, one PostgreSQL backup/restore, one read-only diagnostic snapshot, one single-broker Kafka restart replay, one same-volume PostgreSQL restart recovery, versioned D2 packaging/provenance, one bounded persistent D3 pilot lifecycle operated from an extracted clean workspace, one same-schema compatible A→B release transition over a shared pilot home (D4), operator-owned pilot configuration (D5), one manual backup → clean-target restore verification over that configured pilot (D6), and systemd-owned start/stop of that configured pilot with boot-target enablement and one systemd cold start that includes the Docker dependency (D7-01).
 
-It does **not** claim AWS/Bedrock/OIDC/cloud execution, Kubernetes/HA/multi-node recovery, autonomous operations, production SLA/SLO, stable performance/cost, legal/security certification, multi-broker failover, PostgreSQL replication, PITR/DR certification, RPO/RTO, scheduled or unattended backup/recovery, systemd/automatic boot, cross-schema migration, production rollback, secret-manager integration, or public production deployment.
+It does **not** claim AWS/Bedrock/OIDC/cloud execution, Kubernetes/HA/multi-node recovery, autonomous operations, production SLA/SLO, stable performance/cost, legal/security certification, multi-broker failover, PostgreSQL replication, PITR/DR certification, RPO/RTO, scheduled or unattended backup/recovery, recovery after an actual host reboot, application crash supervision, cross-schema migration, production rollback, secret-manager integration, or public production deployment.
 
 ## Prerequisites
 
@@ -87,7 +87,7 @@ Three wrappers expose the same lifecycle actions. Each one delegates to the one 
 | `scripts/pilot-release.sh` | D4-01 | Pilot state must live outside the extracted release, but the release-default credentials are acceptable. Requires `ASGARD_PILOT_HOME`. |
 | `scripts/pilot.sh` | D3-01 | Throwaway evaluation from a single extracted release. State lives under the release root and the release-default test credentials are used. |
 
-`scripts/pilot-maintenance.sh` (D6-01) operates only on a pilot run through `scripts/pilot-configured.sh`.
+`scripts/pilot-maintenance.sh` (D6-01) operates only on a pilot run through `scripts/pilot-configured.sh`. `scripts/pilot-systemd.sh` (D7-01) hands start/stop of that same configured pilot to systemd.
 
 ## Release-independent pilot home — D4 accepted
 
@@ -180,6 +180,50 @@ bash scripts/pilot-configured.sh start
 
 This is not scheduled or continuous backup, PITR, RPO/RTO, replication, off-site durability, a retention/encryption policy, or unattended recovery. Backup files are not encrypted by this path. Accepted evidence: `.github/workflows/d6-bounded-maintenance-recovery.yml`.
 
+## systemd-owned start/stop — D7-01
+
+`scripts/pilot-systemd.sh` hands start and stop of the configured pilot to one systemd unit, `asgard-pilot.service`, so that the host's boot target starts the pilot and host shutdown stops it. The unit only calls `scripts/pilot-configured.sh start` and `stop`; nothing else about the lifecycle changes.
+
+Additional prerequisites: a host booted with systemd, a systemd-managed `docker.service`, and `sudo` for the installing operator (or root). Rootless Docker and Docker Desktop are not covered. One pilot per host.
+
+```bash
+# once, from the release that owns the pilot home, with the pilot stopped
+bash scripts/pilot-configured.sh validate
+bash scripts/pilot-systemd.sh install
+bash scripts/pilot-systemd.sh status
+
+sudo systemctl start asgard-pilot.service
+sudo systemctl stop asgard-pilot.service
+```
+
+`install`:
+
+- requires a pilot home already claimed by the invoking release, a valid operator configuration, and stopped pilot applications; otherwise it fails closed;
+- writes `/etc/systemd/system/asgard-pilot.service` and enables it for `multi-user.target`. It does not start it;
+- makes the unit run as the installing operator, require and follow `docker.service`, and follow `network-online.target`;
+- records in the unit the pilot home, the release root, and a `PATH` built from where `java`, `python3`, `docker` and `curl` were found at install time. If those locations change, run `install` again;
+- writes no configured secret into the unit. Configuration is still read from `$ASGARD_PILOT_HOME/config/pilot.env` at each start.
+
+Behaviour once installed:
+
+- `systemctl start` runs the same `start` as the configured pilot and returns when the pilot is healthy. A first start can take several minutes, and every start needs network access.
+- `systemctl stop` and host shutdown run the persistence-preserving `stop`.
+- A systemd-owned start never claims a pilot home. When the home is unclaimed, purged, or owned by another/stale release, the start fails closed and the unit is left `failed`.
+- Start and stop the pilot through `systemctl` while the unit is installed. `status`, `job`, `inspect` and `config-check` are still run through `scripts/pilot-configured.sh`. If the pilot was stopped outside systemd — by hand, or by `scripts/pilot-maintenance.sh backup` — bring it back with `sudo systemctl restart asgard-pilot.service`.
+- After a compatible release transition, run `claim` and then `install` from the new release. The unit of the previous release fails closed until then.
+- `uninstall` stops and disables the unit and removes the unit file. Pilot state, configuration and the ownership record are kept. Run `uninstall` before `purge`.
+
+The accepted evidence did not reboot a host. It shows the unit enabled for the boot target, the application processes owned by the unit, and a start through systemd alone from a state where the pilot and `docker.service` were both stopped, after which the earlier Job/result was inspectable. Confirm the reboot itself on your own host:
+
+```bash
+sudo reboot
+# after the host is back
+systemctl is-active asgard-pilot.service
+bash scripts/pilot-configured.sh inspect
+```
+
+This is not crash supervision or automatic restart of a failed application process, monitoring, alerting, self-healing, or unattended operation, and offline boot is not covered. Evidence: `.github/workflows/d7-01-systemd-pilot.yml`.
+
 ## Ephemeral proof / regression path remains separate
 
 `scripts/local-proof.sh` remains the accepted proof/regression runner. It is useful for ephemeral proof execution and CI evidence but is **not** the normal persistent D3 pilot lifecycle.
@@ -270,6 +314,10 @@ The retained-proof cleanup command validates its recorded proof ownership bounda
 | `operator-owned pilot config missing` or a config validation failure | Create or fix `$ASGARD_PILOT_HOME/config/pilot.env` from `delivery/single-node-candidate/PILOT_CONFIG.example`; rerun `config-check`. Do not fall back to the release-default credentials and call the configured pilot accepted. |
 | `no persisted pilot Job is available for backup verification` | Run `bash scripts/pilot-configured.sh job` and confirm it succeeded before `backup`. |
 | `restore verification requires the persistence-preserving pilot stop path first` | Run `bash scripts/pilot-configured.sh stop`, then rerun `restore-verify`. |
+| `host is not booted with systemd` or `D7-01 supports a systemd-managed docker.service only` | The host is outside the D7-01 boundary. Keep using `scripts/pilot-configured.sh start` / `stop` by hand. |
+| `asgard-pilot.service` is `failed` after boot or start | Read `journalctl -u asgard-pilot.service`. Fix the reported cause (configuration, or stale ownership: `claim` and `install` again from the owning release), then `sudo systemctl reset-failed asgard-pilot.service` and start it. |
+| `installed asgard-pilot.service belongs to another pilot home` | One pilot per host. Run `uninstall` with the pilot home recorded in the unit before installing for another one. |
+| pilot stopped but `asgard-pilot.service` still reports `active` | It was stopped outside systemd. Run `sudo systemctl restart asgard-pilot.service`. |
 | retained proof cleanup needed | Run `bash scripts/cleanup-retained-proof.sh /path/to/retained-session.env`; do not guess proof-owned resource identities. |
 | Bifrost interruption/restart question | Use `.github/workflows/v11-m4-bifrost-restart.yml` as the exact bounded evidence. |
 | backup/restore question | For the configured pilot use `scripts/pilot-maintenance.sh`; the underlying bounded proof is `scripts/m6-backup-restore-proof.sh` / `.github/workflows/v11-m6-backup-restore.yml`. Do not generalize to DR/PITR. |
@@ -284,6 +332,7 @@ The retained-proof cleanup command validates its recorded proof ownership bounda
 - Release-independent pilot home: `scripts/pilot-release.sh`
 - Operator-owned configuration: `scripts/pilot-configured.sh`, `delivery/single-node-candidate/PILOT_CONFIG.example`
 - Manual maintenance/recovery: `scripts/pilot-maintenance.sh`
+- systemd-owned start/stop: `scripts/pilot-systemd.sh`
 - Ephemeral/regression proof runner: `scripts/local-proof.sh`
 - Retained proof cleanup: `scripts/cleanup-retained-proof.sh`
 - D3-01 pilot acceptance: `.github/workflows/d3-01-persistent-pilot.yml`
@@ -291,6 +340,7 @@ The retained-proof cleanup command validates its recorded proof ownership bounda
 - D4-01 release-independent pilot: `.github/workflows/d4-01-release-independent-pilot.yml`
 - D4-02 transition and D5-01 configuration: `.github/workflows/d2-single-node-delivery-candidate.yml`
 - D6-01 maintenance/recovery: `.github/workflows/d6-bounded-maintenance-recovery.yml`
+- D7-01 systemd-owned pilot service: `.github/workflows/d7-01-systemd-pilot.yml`
 - M1 local proof: `.github/workflows/v11-m1-local-proof.yml`
 - M4 Bifrost restart: `.github/workflows/v11-m4-bifrost-restart.yml`
 - M6 backup/restore: `scripts/m6-backup-restore-proof.sh`, `.github/workflows/v11-m6-backup-restore.yml`
@@ -315,7 +365,8 @@ The retained-proof cleanup command validates its recorded proof ownership bounda
 - Legal/security certification is not verified.
 - Unattended autonomous operations are not verified.
 - Generic monitoring/admin-platform capability is not verified.
-- Systemd/automatic boot is not verified.
+- An actual host reboot or power cycle is not verified.
+- Application crash supervision and automatic restart are not verified.
 - Version upgrade/rollback beyond one same-schema compatible A→B transition is not verified.
 - Cross-schema migration and production rollback are not verified.
 - Scheduled or unattended backup/recovery is not verified.

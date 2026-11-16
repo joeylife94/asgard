@@ -31,6 +31,9 @@ required=(
   'delivery/single-node-candidate/PILOT_CONFIG.example'
   '.github/workflows/d4-01-release-independent-pilot.yml'
   '.github/workflows/d6-bounded-maintenance-recovery.yml'
+  'scripts/pilot-systemd.sh'
+  'asgard-pilot.service'
+  '.github/workflows/d7-01-systemd-pilot.yml'
 )
 
 for token in "${required[@]}"; do
@@ -43,6 +46,7 @@ obsolete=(
   'backup/restore; Kubernetes/HA'
   'docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans'
   'Version upgrade/rollback is not verified.'
+  'Systemd/automatic boot is not verified.'
 )
 for token in "${obsolete[@]}"; do
   if grep -Fq "$token" "$DOC"; then
@@ -60,7 +64,8 @@ nonclaims=(
   'PostgreSQL replication/HA is not verified.'
   'Cloud-provider execution is not verified.'
   'Unattended autonomous operations are not verified.'
-  'Systemd/automatic boot is not verified.'
+  'An actual host reboot or power cycle is not verified.'
+  'Application crash supervision and automatic restart are not verified.'
   'Version upgrade/rollback beyond one same-schema compatible A→B transition is not verified.'
   'Cross-schema migration and production rollback are not verified.'
   'Scheduled or unattended backup/recovery is not verified.'

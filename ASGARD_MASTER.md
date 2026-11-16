@@ -10,10 +10,10 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot / D5 — Operator-owned Configuration Pilot / D6 — Bounded Maintenance & Recovery Pilot**
-- **Current Product Destination**: **HUMAN REVIEW — D7 / NEXT DESTINATION DECISION**
-- **Current Phase**: **D6 ACCEPTED / FROZEN — pre-authorized envelope exhausted**
-- **Current Batch**: **Issue #75 — Phase 1 wrap-up reconciliation (delivery-handoff truth / repository hygiene only); no D7 implementation selected**
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5+D6 ACCEPTED / FROZEN / HUMAN REVIEW REQUIRED FOR D7**
+- **Current Product Destination**: **D7 — Bounded systemd-owned Pilot Service — ACTIVE**
+- **Current Phase**: **D7-01 — SYSTEMD-OWNED PILOT START/STOP WITH BOOT ENABLEMENT — ACTIVE**
+- **Current Batch**: **Issue #77 — D7-01 systemd-owned pilot start/stop with boot enablement**
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5+D6 ACCEPTED / FROZEN / D7 ACTIVE — D7-01 IN PROGRESS**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -58,15 +58,16 @@
 - **Accepted D5-01 merge main SHA**: `c28058a10be3d3b004d415f7c9a253f8ce781279`
 - **Accepted D6-01 exact PR head**: `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7`
 - **Accepted D6-01 merge main SHA**: `e123c101a1dfd4358b0cd052247c364581f7997a`
-- **Active Implementation Issue**: none — D6 implementation Issue #71 CLOSED / COMPLETED; closure Issue #73 is documentation/authority reconciliation only; Issue #75 is delivery-handoff truth / repository hygiene reconciliation only
-- **Active Implementation PR**: none — D7 is not selected or authorized
-- **Selected Next Milestone**: **HUMAN REVIEW REQUIRED — no D7 milestone selected**
+- **Active Implementation Issue**: #77 — D7-01 (D6 Issue #71, closure Issue #73, and wrap-up Issue #75 are CLOSED / COMPLETED)
+- **Active Implementation PR**: the `D7-01:` pull request for Issue #77
+- **Selected Next Milestone**: **D7-01 — systemd-owned pilot start/stop with boot enablement**
 - **Human Review Decision**: **2026-09-09 — D4 selected; D5 and D6 pre-authorized after destination-level acceptance. That envelope is now exhausted after D6 acceptance.**
 - **Human Review Decision (2026-11-11)**: **Phase 1 wrap-up reconciliation (Issue #75) authorized as documentation / hygiene work only. D7 is deferred until a concrete user or buyer requirement exists; no destination is selected.**
+- **Human Review Decision (2026-11-16)**: **D7 selected — systemd automatic boot ownership of the configured single-node pilot. Only D7 is authorized; nothing beyond D7 is pre-authorized.**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-11-11
+- **Updated**: 2026-11-16
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5+D6 DESTINATIONS ACCEPTED / FROZEN; HUMAN REVIEW REQUIRED BEFORE D7**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5+D6 DESTINATIONS ACCEPTED / FROZEN; D7 ACTIVE UNDER THE 2026-11-16 HUMAN REVIEW DECISION**
 
 ---
 
@@ -93,7 +94,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5/D6 accepted slices remain frozen. The 2026-09-09 pre-authorized progression envelope is exhausted; any D7 destination selection or implementation requires Human Review. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5/D6 accepted slices remain frozen. The 2026-09-09 pre-authorized progression envelope is exhausted. D7 was selected by the 2026-11-16 Human Review decision and is active; any destination beyond D7 requires Human Review. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
 
 ---
 
@@ -181,6 +182,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-028 | accepted bounded PostgreSQL backup/restore proof had not yet been promoted into the operator-owned persistent pilot maintenance path | CLOSED by accepted D6-01 exact-head maintenance/recovery evidence and merge; no continuous backup, PITR, RPO/RTO, replication, HA/DR, cloud/off-site backup, unattended recovery, or production-readiness claim expansion |
 | R-029 | delivery-facing handoff and manifest stopped at D3: the accepted D4 release-ownership, D5 operator-configuration, and D6 maintenance/recovery command surfaces were absent, and both carried an unqualified upgrade/rollback non-claim that the handoff truth gate required | CLOSED by Issue #75 handoff/manifest reconciliation; handoff truth and delivery candidate gates now require the D4/D5/D6 surfaces and the qualified non-claims; no runtime or claim expansion |
 | R-030 | stale committed `test-results/` output from a 2025-11-17 run shipped inside the provenance-matched delivery candidate and read as current test evidence | CLOSED by Issue #75 removal; the delivery candidate gate fails if the directory reappears; accepted evidence remains workflow runs and artifact digests only |
+| R-031 | the configured persistent pilot has no host-init ownership: after a host restart an operator must start it by hand, nothing orders it after Docker, and nothing stops it cleanly at shutdown | ACTIVE — D7-01 (Issue #77); bounded to systemd-owned start/stop with boot-target enablement and one systemd cold start; hosted CI cannot reboot a host, so recovery after an actual reboot stays not verified |
 
 ---
 
@@ -308,6 +310,19 @@ Reconciled: `docs/SINGLE_NODE_HANDOFF.md` and `delivery/single-node-candidate/MA
 
 Boundary: documentation, gate scripts, one workflow verification step, and file removal only. No Heimdall, Bifrost, Compose, schema, or pilot-script change. `delivery/single-node-candidate/VERSION` is unchanged (`asgard-single-node-d5-config-1`), following the D6-01 precedent of adding an operator surface without a version change. No accepted evidence line or non-claim from v1.0, M1–M12, or D1–D6 is altered. Module-level documents under `heimdall/**` and `bifrost/**` were left untouched so that this batch does not trigger unrelated application builds (R-002, M11).
 
+## Product Destination D7 — ACTIVE
+> **Bounded systemd-owned Pilot Service** — hand start and stop of the accepted D5 configured persistent pilot to the host's systemd, so that the boot target starts it and shutdown stops it with the accepted persistence-preserving semantics, while release ownership and operator configuration keep failing closed. No crash supervision, unattended-operations, or production claim is implied.
+
+Selected by the 2026-11-16 Human Review decision. D7 is the only authorized destination; nothing beyond it is pre-authorized.
+
+### D7-01 — ACTIVE
+
+Issue #77. Scope: one repository-owned wrapper, `scripts/pilot-systemd.sh`, that renders, installs, and removes a single system unit (`asgard-pilot.service`: oneshot with `RemainAfterExit`, run as the installing operator, requiring and ordered after `docker.service`, wanted by `multi-user.target`). The unit delegates to the accepted `scripts/pilot-configured.sh start` / `stop` and carries only the pilot-home path, the release root, and an install-time `PATH`. The accepted D3–D6 lifecycle scripts, Heimdall, Bifrost, Compose, and schema are not changed.
+
+Executable acceptance (exact PR head, `.github/workflows/d7-01-systemd-pilot.yml`): install fails closed on an unclaimed pilot home and while applications are live → install enables the unit without starting it and writes no configured secret → `systemctl start` brings the configured pilot up with the application processes in the unit's control group and one real Local Ollama Job `SUCCEEDED` → `systemctl stop` is persistence-preserving → with the unit and `docker.service` both stopped, `systemctl start` of the unit alone brings Docker and the pilot back and the earlier Job/result is inspectable unchanged → tampered release ownership makes the systemd start fail closed and it recovers once ownership is restored → uninstall removes the unit and keeps pilot state, configuration, and ownership, and refuses a foreign pilot home → journal and evidence contain no configured sensitive value. Existing D2, D3-01, D3-03, D4-01, Real Local AI, primary CI, and CI/CD gates must stay GREEN.
+
+D7-01 does **not** establish recovery after an actual host reboot or power cycle (a hosted CI runner cannot be rebooted; the evidence is boot-target enablement plus a systemd cold start including the Docker dependency), application crash supervision or automatic restart, monitoring/alerting/self-healing or unattended operations, offline boot, rootless Docker or Docker Desktop, more than one pilot per host, production/public deployment, HA/multi-node, cloud-provider execution, enterprise identity/RBAC/SSO, SLA/SLO, DR/PITR/RPO/RTO, or compliance certification.
+
 ---
 
 # 7. Accepted Post-v1.0 Milestones
@@ -335,4 +350,4 @@ Boundary: documentation, gate scripts, one workflow verification step, and file 
 | D5-01 — Operator-owned Pilot Configuration | #67 / #68 | `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b` | `c28058a10be3d3b004d415f7c9a253f8ce781279` | D2 `34380126610` SUCCESS including `d5-01-config`; D4 progression `34380126658` SUCCESS; D3-01 `34380126617` SUCCESS; D3-03 `34380126644` SUCCESS; Real Local AI `34380126623` SUCCESS; primary CI `34380126602` SUCCESS; CI/CD `34380126604` SUCCESS | bounded operator-owned pilot configuration and configured compatible-release transition only; no secret manager/enterprise identity/production secrets/systemd/unattended/HA/DR/cloud/SLA-SLO/compliance claim expansion |
 | D6-01 — Persistent-pilot Maintenance & Recovery | #71 / #72 | `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7` | `e123c101a1dfd4358b0cd052247c364581f7997a` | D6 `34427945332` SUCCESS; D4 progression `34427945312` SUCCESS; D3-01 `34427945325` SUCCESS; D3-03 `34427945304` SUCCESS; D2 `34427945306` SUCCESS; Real Local AI `34427945309` SUCCESS; primary CI `34427945301` SUCCESS; CI/CD `34427945303` SUCCESS | one coherent manual single-node persistent-pilot backup/clean-target-restore verification path; no continuous backup/PITR/RPO-RTO/replication/HA-DR/cloud/off-site/systemd/unattended/cross-schema/production claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, D5, AND D6 DESTINATIONS ACCEPTED / FROZEN. PRE-AUTHORIZED PROGRESSION IS EXHAUSTED; HUMAN REVIEW IS REQUIRED BEFORE D7 OR ANY FURTHER IMPLEMENTATION.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, D5, AND D6 DESTINATIONS ACCEPTED / FROZEN. D7 IS ACTIVE UNDER THE 2026-11-16 HUMAN REVIEW DECISION (D7-01, ISSUE #77). HUMAN REVIEW IS REQUIRED BEFORE ANY DESTINATION BEYOND D7.**
