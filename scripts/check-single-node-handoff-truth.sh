@@ -24,6 +24,7 @@ required=(
   'bash scripts/pilot.sh stop'
   'bash scripts/pilot.sh purge'
   'persistence-preserving'
+  'Python 3.9–3.12'
   'scripts/pilot-release.sh'
   'scripts/pilot-configured.sh'
   'scripts/pilot-maintenance.sh'
@@ -47,6 +48,7 @@ obsolete=(
   'docker compose -p "$COMPOSE_PROJECT" down -v --remove-orphans'
   'Version upgrade/rollback is not verified.'
   'Systemd/automatic boot is not verified.'
+  'Python 3.9+ with'
 )
 for token in "${obsolete[@]}"; do
   if grep -Fq "$token" "$DOC"; then

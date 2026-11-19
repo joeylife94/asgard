@@ -6,6 +6,8 @@ import requests
 from typing import Optional, Dict, Any, Iterator
 from rich.console import Console
 
+_ERROR_DETAIL_MAX = 300
+
 
 class OllamaClient:
     """Ollama API 클라이언트"""
@@ -68,7 +70,40 @@ class OllamaClient:
                 # the orchestration loop can be validated without downloading large models.
                 if self._is_model_not_found(e) and self._allow_fallback():
                     return self._fallback_analysis(prompt, reason="ollama_model_not_available")
-                raise Exception(f"Ollama API 요청 실패: {e}")
+                # Transient server-side failures (HTTP 5xx) are retried within the
+                # existing bound; 4xx is never retried.
+                if (
+                    isinstance(e, requests.exceptions.HTTPError)
+                    and getattr(getattr(e, "response", None), "status_code", 0) >= 500
+                    and attempt < self.max_retries - 1
+                ):
+                    wait_time = 2 ** attempt
+                    self.console.print(
+                        f"[yellow]⚠️  Ollama HTTP {e.response.status_code}{self._error_detail(e)}, "
+                        f"{wait_time}초 후 재시도... ({attempt+1}/{self.max_retries})[/yellow]"
+                    )
+                    time.sleep(wait_time)
+                    continue
+                raise Exception(f"Ollama API 요청 실패: {e}{self._error_detail(e)}")
+
+    def _error_detail(self, error: Exception) -> str:
+        """Bounded, single-line rendering of Ollama's own error body for an HTTP error."""
+        try:
+            resp = getattr(error, "response", None)
+            if resp is None:
+                return ""
+            msg = None
+            try:
+                body = resp.json()
+                if isinstance(body, dict):
+                    msg = body.get("error")
+            except ValueError:
+                msg = None
+            msg = msg or resp.text or ""
+            msg = " ".join(str(msg).split())[:_ERROR_DETAIL_MAX]
+            return f" (ollama_error: {msg})" if msg else ""
+        except Exception:
+            return ""
 
     def _allow_fallback(self) -> bool:
         return os.getenv("BIFROST_OLLAMA_ALLOW_FALLBACK", "false").lower() in (

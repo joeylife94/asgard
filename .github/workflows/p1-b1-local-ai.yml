@@ -137,6 +137,7 @@ jobs:
           BIFROST_OLLAMA_URL: http://127.0.0.1:11434
           BIFROST_OLLAMA_MODEL: smollm:135m
           BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+          BIFROST_OLLAMA_NUM_PREDICT: '256'
         run: |
           set -euo pipefail
           HEIMDALL_JAR=$(find heimdall/build/libs -maxdepth 1 -name 'heimdall-*.jar' -type f | head -n 1)
@@ -327,6 +328,18 @@ jobs:
             p1-b1-bifrost.log
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Print bounded diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo '--- bifrost.log'; tail -n 120 p1-b1-bifrost.log 2>&1
+          echo '--- ollama container (head)'; docker logs p1-b1-ollama 2>&1 | head -n 40
+          echo '--- ollama container (tail)'; docker logs --tail 120 p1-b1-ollama 2>&1
+          echo '--- host'; grep -m1 'model name' /proc/cpuinfo; nproc; free -m
+          grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|sse4|fma|f16c|bmi)' | sort -u | tr '\n' ' '; echo
+          exit 0
 
       - name: Cleanup
         if: always()

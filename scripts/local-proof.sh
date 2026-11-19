@@ -112,9 +112,9 @@ docker info >/dev/null 2>&1 || fail "Docker daemon is not available"
 docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is required"
 JAVA_MAJOR="$(java -version 2>&1 | awk -F'[".]' '/version/ {print $2; exit}')"
 [[ "$JAVA_MAJOR" == "21" ]] || fail "Java 21 required; detected ${JAVA_MAJOR:-unknown}"
-python3 - <<'PY' || fail "Python 3.9+ required"
+python3 - <<'PY' || fail "Python 3.9-3.12 required; Bifrost's Kafka client (bifrost/requirements.txt) is not installable on Python 3.13+"
 import sys
-assert sys.version_info >= (3, 9), sys.version
+assert (3, 9) <= sys.version_info[:2] < (3, 13), sys.version
 PY
 python3 -m venv "$WORK_DIR/venv" || fail "python venv creation failed"
 for port in 5432 6379 8080 8000 9091 9200; do

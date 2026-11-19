@@ -17,7 +17,7 @@ The accepted persistent pilot command surface is `scripts/pilot.sh`. Its support
 - Linux shell with Bash;
 - Docker daemon and Docker Compose plugin;
 - Java 21;
-- Python 3.9+ with `venv` support;
+- Python 3.9–3.12 with `venv` support. Python 3.13+ is rejected by `validate`: Bifrost's Kafka client is not installable there;
 - `curl`;
 - free local ports required by the pilot services;
 - repository-local tracked sources/build inputs from the versioned candidate.
@@ -201,7 +201,7 @@ sudo systemctl stop asgard-pilot.service
 - requires a pilot home already claimed by the invoking release, a valid operator configuration, and stopped pilot applications; otherwise it fails closed;
 - writes `/etc/systemd/system/asgard-pilot.service` and enables it for `multi-user.target`. It does not start it;
 - makes the unit run as the installing operator, require and follow `docker.service`, and follow `network-online.target`;
-- records in the unit the pilot home, the release root, and a `PATH` built from where `java`, `python3`, `docker` and `curl` were found at install time. If those locations change, run `install` again. The unit `PATH` keeps the installing shell's directory order for the directories that provide those four commands, and `install` refuses only if a command would still resolve to a different file under the unit `PATH`;
+- records in the unit the pilot home, the release root, and a `PATH` built from where `java`, `python3`, `docker` and `curl` were found at install time. If those locations change, run `install` again. The unit `PATH` keeps the installing shell's directory order for the directories that provide those four commands, and `install` refuses only if a command would still resolve to a different file under the unit `PATH`. That `python3` must be 3.9–3.12, as for a manual start.
 - writes no configured secret into the unit. Configuration is read from `$ASGARD_PILOT_HOME/config/pilot.env` at each start; an `ASGARD_PILOT_CONFIG` override pointing elsewhere is refused.
 
 Behaviour once installed:
@@ -305,6 +305,8 @@ The retained-proof cleanup command validates its recorded proof ownership bounda
 | Docker daemon unavailable | Start/fix the local Docker daemon; do not bypass the check. |
 | Docker Compose plugin unavailable | Install/enable Compose v2 and rerun validation. |
 | Java/Python prerequisite failure | Select the required runtime before rerunning validation. |
+| `Python 3.9-3.12 required` | The first `python3` on `PATH` is 3.13 or newer (for example the system Python of Ubuntu 26.04). Put a 3.9–3.12 interpreter first on `PATH` and rerun validation. Do not bypass the check: the pilot would start and report healthy but never complete a job. |
+| `existing Bifrost virtual environment was built with an unsupported Python` | The named `work/venv` directory was created on Python 3.13 or newer (or its interpreter no longer runs) and lacks the Kafka client. Remove that directory and rerun validation; the venv is derived state and is rebuilt on the next start. |
 | required port already in use | Stop the conflicting local process or use a clean host/session. |
 | pilot status/readiness failure | Run `bash scripts/pilot.sh status`; inspect bounded local evidence before changing runtime code. |
 | Ollama/model failure | Inspect local Ollama diagnostics; do not substitute a cloud provider and call the Local-first gate PASS. |

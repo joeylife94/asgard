@@ -96,7 +96,10 @@ jobs:
   # Build and test Bifrost (Python) - Only if Bifrost inputs changed
   build-bifrost:
     name: Build & Test Bifrost
-    runs-on: ubuntu-latest
+    # Pinned: this job tests Bifrost on Python 3.9, the lowest supported version,
+    # and no Python 3.9 build is published for the ubuntu-26.04 image now behind
+    # ubuntu-latest.
+    runs-on: ubuntu-24.04
     needs: detect-changes
     if: needs.detect-changes.outputs.bifrost == 'true'
     

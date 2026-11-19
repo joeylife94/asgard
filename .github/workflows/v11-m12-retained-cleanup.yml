@@ -23,6 +23,11 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Validate scripts and handoff contract
         run: |
           bash -n scripts/cleanup-retained-proof.sh
