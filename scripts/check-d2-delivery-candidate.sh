@@ -11,6 +11,7 @@ required=(
   ASGARD_MASTER.md
   docs/SINGLE_NODE_HANDOFF.md
   docker-compose.pilot.yml
+  scripts/pilot-systemd.sh
   scripts/pilot-maintenance.sh
   scripts/pilot-configured.sh
   scripts/pilot-release.sh
@@ -38,6 +39,8 @@ for token in \
   'scripts/pilot-release.sh' \
   'scripts/pilot-configured.sh' \
   'scripts/pilot-maintenance.sh' \
+  'scripts/pilot-systemd.sh' \
+  'An actual host reboot or power cycle is not verified.' \
   'bash scripts/pilot.sh validate' \
   'bash scripts/pilot.sh start' \
   'bash scripts/pilot.sh stop' \
@@ -54,6 +57,10 @@ for token in \
 done
 if grep -Fq 'Version upgrade/rollback is not verified.' "$manifest"; then
   echo 'manifest carries obsolete unqualified upgrade/rollback non-claim' >&2
+  exit 1
+fi
+if grep -Fq 'Systemd/automatic boot ownership is not verified.' "$manifest"; then
+  echo 'manifest carries obsolete unqualified systemd non-claim' >&2
   exit 1
 fi
 
@@ -79,6 +86,7 @@ for doc in *.md; do
   grep -Fq 'HISTORICAL / NON-AUTHORITATIVE' "$doc" || { echo "root document lacks historical/non-authoritative marker: $doc" >&2; exit 1; }
 done
 
+bash -n scripts/pilot-systemd.sh
 bash -n scripts/pilot-maintenance.sh
 bash -n scripts/pilot-configured.sh
 bash -n scripts/pilot-release.sh
@@ -88,4 +96,4 @@ bash -n scripts/operator-diagnostic-snapshot.sh
 bash -n scripts/m6-backup-restore-proof.sh
 bash -n scripts/cleanup-retained-proof.sh
 
-echo "D2/D3/D4/D5/D6 delivery candidate contract PASS: $version"
+echo "D2/D3/D4/D5/D6/D7 delivery candidate contract PASS: $version"

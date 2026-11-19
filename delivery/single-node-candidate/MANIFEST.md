@@ -2,7 +2,7 @@
 
 Version source: `delivery/single-node-candidate/VERSION`.
 
-This candidate packages the already accepted D1/D2 Local-first single-node operator assets and the accepted D3–D6 persistent pilot command surfaces. It does not broaden any v1.0 or D1–D6 claim or convert the pilot into a production/enterprise claim.
+This candidate packages the already accepted D1/D2 Local-first single-node operator assets and the accepted D3–D6 persistent pilot command surfaces, plus the D7-01 systemd-owned start/stop surface. It does not broaden any v1.0 or D1–D6 claim or convert the pilot into a production/enterprise claim.
 
 ## Provenance
 
@@ -53,6 +53,20 @@ bash scripts/pilot-maintenance.sh <backup|restore-verify>
 - A release that does not match the recorded owner of the pilot home fails closed. `claim` moves ownership to a compatible release only while the previous release's application processes are stopped. Accepted evidence covers one same-schema compatible A→B transition.
 - `scripts/pilot-maintenance.sh backup` stops the pilot, writes a digest-recorded PostgreSQL dump under the pilot home, and leaves the pilot stopped. `restore-verify` restores into a temporary clean database, verifies the recorded Job/result/audit invariants, and leaves the source database untouched. It is not an in-place restore.
 
+## systemd-owned start/stop — D7-01
+
+```bash
+# from the release that owns the pilot home, with the pilot stopped
+bash scripts/pilot-systemd.sh <render|preflight|install|uninstall|status>
+sudo systemctl start asgard-pilot.service
+sudo systemctl stop asgard-pilot.service
+```
+
+- `install` writes and enables one unit, `asgard-pilot.service`, that runs as the installing operator, requires `docker.service`, is wanted by `multi-user.target`, and calls `scripts/pilot-configured.sh start` / `stop`. It does not start the unit and writes no configured secret into it.
+- A systemd-owned start never claims a pilot home; an unclaimed, purged, or stale-owned home fails closed.
+- `uninstall` removes the unit and keeps pilot state, configuration and ownership.
+- The evidence covers boot-target enablement and a systemd cold start that includes the Docker dependency. It did not reboot a host.
+
 Read `docs/SINGLE_NODE_HANDOFF.md` before operating the pilot; it is the delivery-facing source for prerequisites, lifecycle semantics, accepted support/backup evidence, troubleshooting, and explicit limitations.
 
 ## Existing bounded support/evidence assets
@@ -81,6 +95,7 @@ The archive must preserve the tracked exact-commit repository layout. At minimum
 - `scripts/pilot-release.sh`
 - `scripts/pilot-configured.sh`
 - `scripts/pilot-maintenance.sh`
+- `scripts/pilot-systemd.sh`
 - `docker-compose.pilot.yml`
 - `delivery/single-node-candidate/PILOT_CONFIG.example`
 - `scripts/local-proof.sh`
@@ -104,7 +119,8 @@ Because the candidate packages the tracked exact-commit tree, its delivery workf
 - Enterprise identity/RBAC is not verified.
 - Legal/security certification is not verified.
 - Unattended autonomous operations are not verified.
-- Systemd/automatic boot ownership is not verified.
+- An actual host reboot or power cycle is not verified.
+- Application crash supervision and automatic restart are not verified.
 - Version upgrade/rollback beyond one same-schema compatible A→B transition is not verified.
 - Cross-schema migration and production rollback are not verified.
 - Scheduled or unattended backup/recovery is not verified.

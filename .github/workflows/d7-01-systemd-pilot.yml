@@ -1,0 +1,318 @@
+name: D7 systemd-owned Pilot Service
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/pilot-systemd.sh'
+      - 'scripts/pilot-configured.sh'
+      - 'scripts/pilot-release.sh'
+      - 'scripts/pilot.sh'
+      - 'docker-compose.yml'
+      - 'docker-compose.pilot.yml'
+      - 'ASGARD_MASTER.md'
+      - '.github/workflows/d7-01-systemd-pilot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  d7-01-systemd-pilot:
+    if: github.event_name != 'pull_request' || startsWith(github.event.pull_request.title, 'D7-01:')
+    # Pinned host: the unit records where the host's own python3 lives, and the
+    # pilot builds Bifrost with it. Bifrost's Kafka client is only installable on
+    # Python < 3.13 (bifrost/requirements.txt), which ubuntu-24.04 provides and
+    # the ubuntu-26.04 image behind ubuntu-latest does not.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      UNIT: asgard-pilot.service
+      UNIT_FILE: /etc/systemd/system/asgard-pilot.service
+      COMPOSE_PROJECT: asgard-d7-systemd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify exact head, shell syntax, and systemd host
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ '${{ github.event_name }}' == 'pull_request' ]]; then
+            test "$(git rev-parse HEAD)" = '${{ github.event.pull_request.head.sha }}'
+          fi
+          bash -n scripts/pilot-systemd.sh
+          bash -n scripts/pilot-configured.sh
+          bash -n scripts/pilot-release.sh
+          bash -n scripts/pilot.sh
+          test -d /run/systemd/system
+          systemctl cat docker.service >/dev/null
+          test ! -e "$UNIT_FILE"
+
+      - name: Materialize operator-owned D5 configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PILOT_HOME="$RUNNER_TEMP/asgard-d7-pilot-home"
+          mkdir -p "$PILOT_HOME/config"
+          DB_VALUE="$(openssl rand -hex 16)"
+          REDIS_VALUE="$(openssl rand -hex 16)"
+          JWT_VALUE="$(openssl rand -hex 24)"
+          ADMIN_VALUE="$(openssl rand -hex 16)"
+          for value in "$DB_VALUE" "$REDIS_VALUE" "$JWT_VALUE" "$ADMIN_VALUE"; do
+            echo "::add-mask::$value"
+          done
+          cat > "$PILOT_HOME/config/pilot.env" <<EOF
+          ASGARD_PILOT_COMPOSE_PROJECT=$COMPOSE_PROJECT
+          ASGARD_PILOT_MODEL=smollm:135m
+          ASGARD_PILOT_DB_USER=asgard
+          ASGARD_PILOT_DB_PASSWORD=$DB_VALUE
+          ASGARD_PILOT_DB_NAME=heimdall
+          ASGARD_PILOT_REDIS_PASSWORD=$REDIS_VALUE
+          ASGARD_PILOT_JWT_SECRET=$JWT_VALUE
+          ASGARD_PILOT_ADMIN_USERNAME=operator
+          ASGARD_PILOT_ADMIN_PASSWORD=$ADMIN_VALUE
+          EOF
+          chmod 600 "$PILOT_HOME/config/pilot.env"
+          mkdir -p "$RUNNER_TEMP/d7"
+          printf 'ASGARD_PILOT_HOME=%s\n' "$PILOT_HOME" >> "$GITHUB_ENV"
+          printf 'D7_OUT=%s\n' "$RUNNER_TEMP/d7" >> "$GITHUB_ENV"
+          printf 'D7_DB_VALUE=%s\n' "$DB_VALUE" >> "$GITHUB_ENV"
+          printf 'D7_REDIS_VALUE=%s\n' "$REDIS_VALUE" >> "$GITHUB_ENV"
+          printf 'D7_JWT_VALUE=%s\n' "$JWT_VALUE" >> "$GITHUB_ENV"
+          printf 'D7_ADMIN_VALUE=%s\n' "$ADMIN_VALUE" >> "$GITHUB_ENV"
+
+      - name: Refuse systemd ownership of an unclaimed pilot home
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if bash scripts/pilot-systemd.sh install >"$D7_OUT/unclaimed-install.txt" 2>&1; then
+            echo 'install unexpectedly accepted an unclaimed pilot home' >&2
+            exit 1
+          fi
+          grep -F 'pilot home is unclaimed' "$D7_OUT/unclaimed-install.txt"
+          test ! -e "$UNIT_FILE"
+
+      - name: Claim the pilot home and install the enabled unit without starting it
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/pilot-configured.sh config-check | tee "$D7_OUT/config-check.txt"
+          bash scripts/pilot-configured.sh validate
+          bash scripts/pilot-systemd.sh install | tee "$D7_OUT/install.txt"
+          test "$(systemctl is-enabled "$UNIT")" = enabled
+          test "$(systemctl is-active "$UNIT" || true)" = inactive
+          test -L "/etc/systemd/system/multi-user.target.wants/$UNIT"
+          systemctl show -p WantedBy --value "$UNIT" | tr ' ' '\n' | grep -Fxq multi-user.target
+          systemctl show -p Requires --value "$UNIT" | tr ' ' '\n' | grep -Fxq docker.service
+          systemctl show -p After --value "$UNIT" | tr ' ' '\n' | grep -Fxq docker.service
+          cp "$UNIT_FILE" "$D7_OUT/asgard-pilot.service"
+          for value in "$D7_DB_VALUE" "$D7_REDIS_VALUE" "$D7_JWT_VALUE" "$D7_ADMIN_VALUE"; do
+            if grep -F "$value" "$UNIT_FILE"; then
+              echo 'configured sensitive value found in the unit file' >&2
+              exit 1
+            fi
+          done
+          bash scripts/pilot-systemd.sh status | tee "$D7_OUT/status-installed.txt"
+          if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            echo 'install unexpectedly started the pilot' >&2
+            exit 1
+          fi
+
+      - name: Start the pilot through systemd and execute a real Local Ollama job
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo systemctl start "$UNIT"
+          test "$(systemctl is-active "$UNIT")" = active
+          bash scripts/pilot-configured.sh status | tee "$D7_OUT/status-systemd-start.txt"
+          CGROUP="$(systemctl show -p ControlGroup --value "$UNIT")"
+          test -n "$CGROUP"
+          for app in heimdall bifrost; do
+            pid="$(cat "$ASGARD_PILOT_HOME/state/$app.pid")"
+            grep -F "$CGROUP" "/proc/$pid/cgroup"
+          done | tee "$D7_OUT/cgroup-membership.txt"
+          bash scripts/pilot-configured.sh job | tee "$D7_OUT/job.txt"
+          bash scripts/pilot-configured.sh inspect | tee "$D7_OUT/inspect-before.txt"
+          cp "$ASGARD_PILOT_HOME/state/last-job.json" "$D7_OUT/last-job-before.json"
+          if bash scripts/pilot-systemd.sh install >"$D7_OUT/live-install.txt" 2>&1; then
+            echo 'install unexpectedly ran while pilot applications were live' >&2
+            exit 1
+          fi
+          grep -F 'pilot applications are live' "$D7_OUT/live-install.txt"
+
+      - name: Stop through systemd and prove persistence-preserving shutdown
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          heimdall_pid="$(cat "$ASGARD_PILOT_HOME/state/heimdall.pid")"
+          bifrost_pid="$(cat "$ASGARD_PILOT_HOME/state/bifrost.pid")"
+          sudo systemctl stop "$UNIT"
+          test "$(systemctl is-active "$UNIT" || true)" = inactive
+          for pid in "$heimdall_pid" "$bifrost_pid"; do
+            if kill -0 "$pid" 2>/dev/null; then
+              echo "application process $pid survived systemd stop" >&2
+              exit 1
+            fi
+          done
+          if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            echo 'Heimdall still answers after systemd stop' >&2
+            exit 1
+          fi
+          test -z "$(docker ps -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT")"
+          test -n "$(docker volume ls -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT")"
+          cmp "$D7_OUT/last-job-before.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+          printf 'systemd stop: applications and containers stopped, pilot volumes and state retained\n' | tee "$D7_OUT/stop.txt"
+
+      - name: Cold start through systemd with the Docker dependency stopped
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo systemctl stop docker.socket docker.service
+          test "$(systemctl is-active docker.service || true)" != active
+          sudo systemctl start "$UNIT"
+          test "$(systemctl is-active docker.service)" = active
+          test "$(systemctl is-active "$UNIT")" = active
+          bash scripts/pilot-configured.sh status | tee "$D7_OUT/status-cold-start.txt"
+          cmp "$D7_OUT/last-job-before.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+          bash scripts/pilot-configured.sh inspect | tee "$D7_OUT/inspect-after-cold-start.txt"
+
+      - name: Fail closed under systemd on stale release ownership, then recover
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo systemctl stop "$UNIT"
+          # Unclaimed home: only the ExecStartPre preflight stops this start. Without
+          # it, pilot-configured.sh start would claim the home and succeed.
+          mv "$ASGARD_PILOT_HOME/active-release.env" "$D7_OUT/owner-unclaimed.env"
+          if sudo systemctl start "$UNIT" >"$D7_OUT/unclaimed-start.txt" 2>&1; then
+            echo 'systemd unexpectedly started an unclaimed pilot home' >&2
+            exit 1
+          fi
+          test "$(systemctl is-failed "$UNIT" || true)" = failed
+          if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            echo 'Heimdall answers although the unclaimed-home start failed closed' >&2
+            exit 1
+          fi
+          if [[ -e "$ASGARD_PILOT_HOME/active-release.env" ]]; then
+            echo 'the systemd start claimed the pilot home; ExecStartPre did not block it' >&2
+            exit 1
+          fi
+          mv "$D7_OUT/owner-unclaimed.env" "$ASGARD_PILOT_HOME/active-release.env"
+          sudo systemctl reset-failed "$UNIT"
+          cp "$ASGARD_PILOT_HOME/active-release.env" "$D7_OUT/owner.env"
+          awk 'BEGIN{FS=OFS="="} $1=="COMMIT"{$2="0000000000000000000000000000000000000000"} {print}' \
+            "$D7_OUT/owner.env" > "$ASGARD_PILOT_HOME/active-release.env"
+          if sudo systemctl start "$UNIT" >"$D7_OUT/stale-owner-start.txt" 2>&1; then
+            echo 'systemd unexpectedly started a pilot home owned by a stale release' >&2
+            exit 1
+          fi
+          test "$(systemctl is-failed "$UNIT" || true)" = failed
+          if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            echo 'Heimdall answers although the systemd start failed closed' >&2
+            exit 1
+          fi
+          cp "$D7_OUT/owner.env" "$ASGARD_PILOT_HOME/active-release.env"
+          rm -f "$D7_OUT/owner.env"
+          sudo systemctl reset-failed "$UNIT"
+          sudo systemctl start "$UNIT"
+          test "$(systemctl is-active "$UNIT")" = active
+          bash scripts/pilot-configured.sh status | tee "$D7_OUT/status-after-recovery.txt"
+
+      - name: Uninstall the unit and prove pilot state is retained
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          OTHER_HOME="$RUNNER_TEMP/asgard-d7-other-home"
+          mkdir -p "$OTHER_HOME"
+          if ASGARD_PILOT_HOME="$OTHER_HOME" bash scripts/pilot-systemd.sh uninstall >"$D7_OUT/foreign-uninstall.txt" 2>&1; then
+            echo 'uninstall unexpectedly accepted another pilot home' >&2
+            exit 1
+          fi
+          grep -F 'belongs to another pilot home' "$D7_OUT/foreign-uninstall.txt"
+          test -s "$UNIT_FILE"
+
+          bash scripts/pilot-systemd.sh uninstall | tee "$D7_OUT/uninstall.txt"
+          test ! -e "$UNIT_FILE"
+          test ! -e "/etc/systemd/system/multi-user.target.wants/$UNIT"
+          if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            echo 'Heimdall still answers after uninstall' >&2
+            exit 1
+          fi
+          test -z "$(docker ps -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT")"
+          test -n "$(docker volume ls -q --filter "label=com.docker.compose.project=$COMPOSE_PROJECT")"
+          cmp "$D7_OUT/last-job-before.json" "$ASGARD_PILOT_HOME/state/last-job.json"
+          test -s "$ASGARD_PILOT_HOME/active-release.env"
+          test -s "$ASGARD_PILOT_HOME/config/pilot.env"
+          if bash scripts/pilot-systemd.sh status >"$D7_OUT/status-after-uninstall.txt" 2>&1; then
+            echo 'status unexpectedly reported an installed unit after uninstall' >&2
+            exit 1
+          fi
+
+      - name: Print bounded diagnostics when an acceptance step failed
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          WORK="${ASGARD_PILOT_HOME:-/nonexistent}/state/work"
+          echo '--- unit state'; systemctl status "$UNIT" --no-pager -l 2>&1 | tail -n 40
+          echo '--- unit journal'; sudo journalctl -u "$UNIT" --no-pager -o short-iso 2>&1 | tail -n 150
+          echo '--- bifrost.log'; tail -n 150 "$WORK/bifrost.log" 2>&1
+          echo '--- heimdall.log'; tail -n 80 "$WORK/heimdall.log" 2>&1
+          echo '--- ollama container'; docker logs --tail 80 asgard-pilot-ollama 2>&1
+          echo '--- containers'; docker ps -a --format '{{.Names}}\t{{.Status}}' 2>&1
+          echo '--- host'; free -m; uptime; nproc
+          exit 0
+
+      - name: Record bounded evidence and verify configured sensitive values are absent
+        if: always()
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence-d7-01
+          sudo journalctl -u "$UNIT" --no-pager -o short-iso > evidence-d7-01/journal.txt 2>/dev/null || true
+          if [[ -d "${D7_OUT:-}" ]]; then
+            rm -f "$D7_OUT/owner.env" "$D7_OUT/owner-unclaimed.env"
+            cp "$D7_OUT"/* evidence-d7-01/ 2>/dev/null || true
+          fi
+          {
+            printf 'exact_head=%s\n' "$(git rev-parse HEAD)"
+            printf 'scope=systemd-owned start/stop of the configured single-node pilot, enabled for multi-user.target\n'
+            printf 'cold_start=unit started with docker.service stopped; Docker and the pilot came up through the unit; prior Job/result inspectable\n'
+            printf 'fail_closed=unclaimed pilot home at install and under systemd, live applications at install, stale release ownership under systemd, foreign pilot home at uninstall\n'
+            printf 'host_reboot_executed=false\n'
+            printf 'not_verified=actual host reboot or power cycle, application crash supervision or automatic restart, monitoring/alerting/unattended operations, offline boot, rootless Docker or Docker Desktop, more than one pilot per host, production readiness\n'
+          } > evidence-d7-01/d7-01.txt
+          for value in "${D7_DB_VALUE:-}" "${D7_REDIS_VALUE:-}" "${D7_JWT_VALUE:-}" "${D7_ADMIN_VALUE:-}"; do
+            [[ -n "$value" ]] || continue
+            if grep -R -F "$value" evidence-d7-01; then
+              echo 'configured sensitive value leaked into D7 bounded evidence' >&2
+              exit 1
+            fi
+          done
+
+      - name: Remove the unit and purge pilot-owned resources
+        if: always()
+        shell: bash
+        run: |
+          sudo systemctl disable --now "$UNIT" >/dev/null 2>&1 || true
+          sudo rm -f "$UNIT_FILE"
+          sudo systemctl daemon-reload || true
+          sudo systemctl start docker.service >/dev/null 2>&1 || true
+          if [[ -n "${ASGARD_PILOT_HOME:-}" ]]; then
+            bash scripts/pilot-configured.sh purge >/dev/null 2>&1 || true
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d7-01-systemd-pilot-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence-d7-01/

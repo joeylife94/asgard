@@ -10,10 +10,10 @@
 - **Frozen Baseline Level**: READY TO SHOW bounded software Proof
 - **Frozen v1.0 Product Direction**: **Local-first AI Operations Platform**
 - **Accepted Product Destinations**: **D1 — Bounded Single-node Tool / D2 — Versioned Single-node Delivery Candidate / D3 — Bounded Single-node Pilot Deployment / D4 — Bounded Versioned Upgrade / Rollback Pilot / D5 — Operator-owned Configuration Pilot / D6 — Bounded Maintenance & Recovery Pilot**
-- **Current Product Destination**: **HUMAN REVIEW — D7 / NEXT DESTINATION DECISION**
-- **Current Phase**: **D6 ACCEPTED / FROZEN — pre-authorized envelope exhausted**
-- **Current Batch**: **Issue #79 — base regression fix: supported Python for the pilot/proof paths; no destination work**
-- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5+D6 ACCEPTED / FROZEN / HUMAN REVIEW REQUIRED FOR D7**
+- **Current Product Destination**: **D7 — Bounded systemd-owned Pilot Service — ACTIVE**
+- **Current Phase**: **D7-01 — SYSTEMD-OWNED PILOT START/STOP WITH BOOT ENABLEMENT — ACTIVE**
+- **Current Batch**: **Issue #77 — D7-01 systemd-owned pilot start/stop with boot enablement**
+- **Current Status**: **v1.0 FROZEN / M1–M12 FROZEN / D1+D2+D3+D4+D5+D6 ACCEPTED / FROZEN / D7 ACTIVE — D7-01 IN PROGRESS**
 - **Repo**: `joeylife94/asgard`
 - **Branch**: `main`
 - **Accepted implementation main SHA**: `cc5cd10722a4c629da75e90ca0fa4daa05b75a01`
@@ -58,16 +58,17 @@
 - **Accepted D5-01 merge main SHA**: `c28058a10be3d3b004d415f7c9a253f8ce781279`
 - **Accepted D6-01 exact PR head**: `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7`
 - **Accepted D6-01 merge main SHA**: `e123c101a1dfd4358b0cd052247c364581f7997a`
-- **Active Implementation Issue**: none — D6 implementation Issue #71 CLOSED / COMPLETED; closure Issue #73 is documentation/authority reconciliation only; Issue #75 is delivery-handoff truth / repository hygiene reconciliation only
-- **Active Implementation PR**: none — D7 is not selected or authorized
-- **Selected Next Milestone**: **HUMAN REVIEW REQUIRED — no D7 milestone selected**
+- **Active Implementation Issue**: #77 — D7-01 (D6 Issue #71, closure Issue #73, and wrap-up Issue #75 are CLOSED / COMPLETED)
+- **Active Implementation PR**: the `D7-01:` pull request for Issue #77
+- **Selected Next Milestone**: **D7-01 — systemd-owned pilot start/stop with boot enablement**
 - **Human Review Decision**: **2026-09-09 — D4 selected; D5 and D6 pre-authorized after destination-level acceptance. That envelope is now exhausted after D6 acceptance.**
 - **Human Review Decision (2026-11-11)**: **Phase 1 wrap-up reconciliation (Issue #75) authorized as documentation / hygiene work only. D7 is deferred until a concrete user or buyer requirement exists; no destination is selected.**
 - **Human Review Decision (2026-11-16, base regression)**: **Issue #79 authorized as a separate bounded regression fix, merged ahead of any destination work. No claim change.**
+- **Human Review Decision (2026-11-16)**: **D7 selected — systemd automatic boot ownership of the configured single-node pilot. Only D7 is authorized; nothing beyond D7 is pre-authorized.**
 - **Historical AWS work item**: Issue #15 CLOSED / NOT PLANNED; PR #16 CLOSED / NOT MERGED
-- **Updated**: 2026-11-16
+- **Updated**: 2026-11-19
 - **Final v1.0 Gate**: **PASS — FREEZE APPROVED**
-- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5+D6 DESTINATIONS ACCEPTED / FROZEN; HUMAN REVIEW REQUIRED BEFORE D7**
+- **Post-v1.0 Gate**: **M1–M12 PASS / ACCEPTED / FROZEN; D1+D2+D3+D4+D5+D6 DESTINATIONS ACCEPTED / FROZEN; D7 ACTIVE UNDER THE 2026-11-16 HUMAN REVIEW DECISION**
 
 ---
 
@@ -94,7 +95,7 @@ Failure
   → SUCCEEDED
 ```
 
-Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5/D6 accepted slices remain frozen. The 2026-09-09 pre-authorized progression envelope is exhausted; any D7 destination selection or implementation requires Human Review. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
+Asgard v1.0의 중심 Proof는 **AI provider 수가 아니라 운영 가능한 AI Job lifecycle**이다. D1/D2/D3/D4/D5/D6 accepted slices remain frozen. The 2026-09-09 pre-authorized progression envelope is exhausted. D7 was selected by the 2026-11-16 Human Review decision and is active; any destination beyond D7 requires Human Review. No accepted destination upgrades production, enterprise, cloud, HA, SLA/SLO, systemd, unattended-operation, secret-manager, DR, or compliance claims.
 
 ---
 
@@ -182,6 +183,7 @@ Supported claims remain limited to the accepted Local-first asynchronous Job lif
 | R-028 | accepted bounded PostgreSQL backup/restore proof had not yet been promoted into the operator-owned persistent pilot maintenance path | CLOSED by accepted D6-01 exact-head maintenance/recovery evidence and merge; no continuous backup, PITR, RPO/RTO, replication, HA/DR, cloud/off-site backup, unattended recovery, or production-readiness claim expansion |
 | R-029 | delivery-facing handoff and manifest stopped at D3: the accepted D4 release-ownership, D5 operator-configuration, and D6 maintenance/recovery command surfaces were absent, and both carried an unqualified upgrade/rollback non-claim that the handoff truth gate required | CLOSED by Issue #75 handoff/manifest reconciliation; handoff truth and delivery candidate gates now require the D4/D5/D6 surfaces and the qualified non-claims; no runtime or claim expansion |
 | R-030 | stale committed `test-results/` output from a 2025-11-17 run shipped inside the provenance-matched delivery candidate and read as current test evidence | CLOSED by Issue #75 removal; the delivery candidate gate fails if the directory reappears; accepted evidence remains workflow runs and artifact digests only |
+| R-031 | the configured persistent pilot has no host-init ownership: after a host restart an operator must start it by hand, nothing orders it after Docker, and nothing stops it cleanly at shutdown | ACTIVE — D7-01 (Issue #77); bounded to systemd-owned start/stop with boot-target enablement and one systemd cold start; hosted CI cannot reboot a host, so recovery after an actual reboot stays not verified |
 | R-032 | the pilot and proof scripts accepted any Python 3.9+, but Bifrost's Kafka client is only installable below Python 3.13; on a host whose `python3` is 3.13+ (the ubuntu-26.04 image now behind `ubuntu-latest`) Bifrost starts without Kafka, still reports healthy, and no analysis job completes. `main` went red on the pilot/proof gates without any repository change | CLOSED by Issue #79: `validate` in `scripts/pilot.sh` and the preflight in `scripts/local-proof.sh` fail closed outside Python 3.9–3.12, `validate` also rejects an existing pilot venv built on an unsupported Python, the affected workflows pin a supported interpreter, and the handoff states the range. Python 3.13+ support is not provided and needs a separate decision. Bifrost still reports healthy when its Kafka integration fails to start; that behaviour was not changed |
 | R-033 | intermittent degenerate generation by `smollm:135m` on unchanged Ollama image digest `sha256:910d0d81…4592` (0.40.16): the same request either stops normally after about 70–160 tokens, or runs away without an end-of-sequence (20,480 tokens in 3m10s where no token cap was set), or makes Ollama answer `POST /api/generate` with HTTP 500 about two seconds into generation. Bifrost discarded Ollama's error body and failed the job on a single 500 | PARTIALLY MITIGATED by Issue #79: Bifrost includes Ollama's error body (bounded to 300 characters) in the failure message and makes up to three attempts on an Ollama HTTP 5xx within its existing retry bound; the UC-02 and UC-04 proofs cap generation at 256 tokens like every other Local AI proof; D3-01, D4-01, and UC-02 print bounded diagnostics on failure. STILL OPEN: the reason for the 500 (no error body has been captured yet) and why it began between 2026-11-11 and 2026-11-16. A retry of a stochastic failure is not a guarantee. No stability, latency, or degeneration-rate claim is made; bounded by R-005 |
 | R-034 | Bifrost calls Ollama synchronously inside its async Kafka handler, so no heartbeat is sent while a generation runs. A long generation (observed: 198 s) expires the 30 s consumer session, the offset commit fails, the message goes to the DLQ, and the same job is processed a second time | OPEN — recorded only, not fixed by Issue #79. The accepted proofs bound generation to 256 tokens, which keeps a call to seconds; an uncapped deployment stays exposed. Fixing it changes Bifrost's concurrency behaviour and needs its own bounded work item |
@@ -316,9 +318,22 @@ Boundary: documentation, gate scripts, one workflow verification step, and file 
 
 Not a destination. On 2026-11-16 the pilot/proof gates were red on `main` (`0b7530a`, D4 Pilot Progression run `43820854369`) with no repository change: `ubuntu-latest` now resolves to ubuntu-26.04, whose system Python is 3.13+, and Bifrost's Kafka client is not installable there (R-032). Diagnostics showed Bifrost running without its Kafka integration and Ollama receiving no generate request.
 
-Reconciled: `scripts/pilot.sh validate` and the `scripts/local-proof.sh` preflight reject a Python outside 3.9–3.12 with the reason; `d4-01-release-independent-pilot.yml`, `d6-bounded-maintenance-recovery.yml`, and `v11-m12-retained-cleanup.yml` pin Python 3.11; the D3-01 workflow executes the fail-closed check on Python 3.13 and the passing check on 3.11; the handoff prerequisite and the handoff truth gate state Python 3.9–3.12; `validate` also rejects an existing pilot venv built on an unsupported Python, and the D3-01 workflow executes that check; D3-01, D4-01, and UC-02 print bounded diagnostics on failure. For R-033, `bifrost/bifrost/ollama.py` now surfaces Ollama's error body and retries an HTTP 5xx within the existing three-attempt bound (unit-tested in `bifrost/tests/test_ollama_client.py`; behaviour on HTTP 200, 4xx, and the 404 fallback rule is unchanged), and the UC-02 and UC-04 workflows cap generation at 256 tokens. Three purge assertions in the D3-01 workflow that could never fail were made real.
+Reconciled: `scripts/pilot.sh validate` and the `scripts/local-proof.sh` preflight reject a Python outside 3.9–3.12 with the reason; `d4-01-release-independent-pilot.yml`, `d6-bounded-maintenance-recovery.yml`, and `v11-m12-retained-cleanup.yml` pin Python 3.11; the D3-01 workflow executes the fail-closed check on Python 3.13 and the passing check on 3.11; the handoff prerequisite and the handoff truth gate state Python 3.9–3.12; `validate` also rejects an existing pilot venv built on an unsupported Python, and the D3-01 workflow executes that check; D3-01, D4-01, and UC-02 print bounded diagnostics on failure. For R-033, `bifrost/bifrost/ollama.py` now surfaces Ollama's error body and retries an HTTP 5xx within the existing three-attempt bound (unit-tested in `bifrost/tests/test_ollama_client.py`; behaviour on HTTP 200, 4xx, and the 404 fallback rule is unchanged), and the UC-02 and UC-04 workflows cap generation at 256 tokens. Three purge assertions in the D3-01 workflow that could never fail were made real. The Bifrost build job in `ci-cd.yml` is pinned to ubuntu-24.04 because no Python 3.9 build is published for the ubuntu-26.04 image.
 
 Boundary: the only application source change is `bifrost/bifrost/ollama.py` (error detail and 5xx retry); no Heimdall change, no dependency change, no Compose, Kafka topic, or schema change, `VERSION` unchanged. The Kafka heartbeat/duplicate-processing behaviour (R-034) is recorded, not changed. The title-gated `d4-02-transition` and `d5-01-config` jobs cannot run outside their original pull requests and are untouched. No accepted evidence line or non-claim is altered, and no claim is added.
+
+## Product Destination D7 — ACTIVE
+> **Bounded systemd-owned Pilot Service** — hand start and stop of the accepted D5 configured persistent pilot to the host's systemd, so that the boot target starts it and shutdown stops it with the accepted persistence-preserving semantics, while release ownership and operator configuration keep failing closed. No crash supervision, unattended-operations, or production claim is implied.
+
+Selected by the 2026-11-16 Human Review decision. D7 is the only authorized destination; nothing beyond it is pre-authorized.
+
+### D7-01 — ACTIVE
+
+Issue #77. Scope: one repository-owned wrapper, `scripts/pilot-systemd.sh`, that renders, installs, and removes a single system unit (`asgard-pilot.service`: oneshot with `RemainAfterExit`, run as the installing operator, requiring and ordered after `docker.service`, wanted by `multi-user.target`). The unit delegates to the accepted `scripts/pilot-configured.sh start` / `stop` and carries only the pilot-home path, the release root, and an install-time `PATH`. The accepted D3–D6 lifecycle scripts, Heimdall, Bifrost, Compose, and schema are not changed.
+
+Executable acceptance (exact PR head, `.github/workflows/d7-01-systemd-pilot.yml`): install fails closed on an unclaimed pilot home and while applications are live → install enables the unit without starting it and writes no configured secret → `systemctl start` brings the configured pilot up with the application processes in the unit's control group and one real Local Ollama Job `SUCCEEDED` → `systemctl stop` is persistence-preserving → with the unit and `docker.service` both stopped, `systemctl start` of the unit alone brings Docker and the pilot back and the earlier Job/result is inspectable unchanged → tampered release ownership makes the systemd start fail closed and it recovers once ownership is restored → uninstall removes the unit and keeps pilot state, configuration, and ownership, and refuses a foreign pilot home → journal and evidence contain no configured sensitive value. Existing D2, D3-01, D3-03, D4-01, Real Local AI, primary CI, and CI/CD gates must stay GREEN.
+
+D7-01 does **not** establish recovery after an actual host reboot or power cycle (a hosted CI runner cannot be rebooted; the evidence is boot-target enablement plus a systemd cold start including the Docker dependency), application crash supervision or automatic restart, monitoring/alerting/self-healing or unattended operations, offline boot, rootless Docker or Docker Desktop, more than one pilot per host, production/public deployment, HA/multi-node, cloud-provider execution, enterprise identity/RBAC/SSO, SLA/SLO, DR/PITR/RPO/RTO, or compliance certification.
 
 ---
 
@@ -347,4 +362,4 @@ Boundary: the only application source change is `bifrost/bifrost/ollama.py` (err
 | D5-01 — Operator-owned Pilot Configuration | #67 / #68 | `1751f5fcf6c45f6a21f875083f0d106c2e92bd9b` | `c28058a10be3d3b004d415f7c9a253f8ce781279` | D2 `34380126610` SUCCESS including `d5-01-config`; D4 progression `34380126658` SUCCESS; D3-01 `34380126617` SUCCESS; D3-03 `34380126644` SUCCESS; Real Local AI `34380126623` SUCCESS; primary CI `34380126602` SUCCESS; CI/CD `34380126604` SUCCESS | bounded operator-owned pilot configuration and configured compatible-release transition only; no secret manager/enterprise identity/production secrets/systemd/unattended/HA/DR/cloud/SLA-SLO/compliance claim expansion |
 | D6-01 — Persistent-pilot Maintenance & Recovery | #71 / #72 | `bdfa38ab2c9bf0fa70409685f835f5df5f1461c7` | `e123c101a1dfd4358b0cd052247c364581f7997a` | D6 `34427945332` SUCCESS; D4 progression `34427945312` SUCCESS; D3-01 `34427945325` SUCCESS; D3-03 `34427945304` SUCCESS; D2 `34427945306` SUCCESS; Real Local AI `34427945309` SUCCESS; primary CI `34427945301` SUCCESS; CI/CD `34427945303` SUCCESS | one coherent manual single-node persistent-pilot backup/clean-target-restore verification path; no continuous backup/PITR/RPO-RTO/replication/HA-DR/cloud/off-site/systemd/unattended/cross-schema/production claim expansion |
 
-**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, D5, AND D6 DESTINATIONS ACCEPTED / FROZEN. PRE-AUTHORIZED PROGRESSION IS EXHAUSTED; HUMAN REVIEW IS REQUIRED BEFORE D7 OR ANY FURTHER IMPLEMENTATION.**
+**M1–M12 PASS / ACCEPTED / FROZEN. D1, D2, D3, D4, D5, AND D6 DESTINATIONS ACCEPTED / FROZEN. D7 IS ACTIVE UNDER THE 2026-11-16 HUMAN REVIEW DECISION (D7-01, ISSUE #77). HUMAN REVIEW IS REQUIRED BEFORE ANY DESTINATION BEYOND D7.**
