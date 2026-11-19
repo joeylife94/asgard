@@ -17,7 +17,7 @@ The accepted persistent pilot command surface is `scripts/pilot.sh`. Its support
 - Linux shell with Bash;
 - Docker daemon and Docker Compose plugin;
 - Java 21;
-- Python 3.9+ with `venv` support;
+- Python 3.9–3.12 with `venv` support. Python 3.13+ is rejected by `validate`: Bifrost's Kafka client is not installable there;
 - `curl`;
 - free local ports required by the pilot services;
 - repository-local tracked sources/build inputs from the versioned candidate.
@@ -259,6 +259,8 @@ The retained-proof cleanup command validates its recorded proof ownership bounda
 | Docker daemon unavailable | Start/fix the local Docker daemon; do not bypass the check. |
 | Docker Compose plugin unavailable | Install/enable Compose v2 and rerun validation. |
 | Java/Python prerequisite failure | Select the required runtime before rerunning validation. |
+| `Python 3.9-3.12 required` | The first `python3` on `PATH` is 3.13 or newer (for example the system Python of Ubuntu 26.04). Put a 3.9–3.12 interpreter first on `PATH` and rerun validation. Do not bypass the check: the pilot would start and report healthy but never complete a job. |
+| `existing Bifrost virtual environment was built with an unsupported Python` | The named `work/venv` directory was created on Python 3.13 or newer (or its interpreter no longer runs) and lacks the Kafka client. Remove that directory and rerun validation; the venv is derived state and is rebuilt on the next start. |
 | required port already in use | Stop the conflicting local process or use a clean host/session. |
 | pilot status/readiness failure | Run `bash scripts/pilot.sh status`; inspect bounded local evidence before changing runtime code. |
 | Ollama/model failure | Inspect local Ollama diagnostics; do not substitute a cloud provider and call the Local-first gate PASS. |

@@ -285,6 +285,7 @@ jobs:
           BIFROST_OLLAMA_URL: http://127.0.0.1:11434
           BIFROST_OLLAMA_MODEL: smollm:135m
           BIFROST_OLLAMA_ALLOW_FALLBACK: 'false'
+          BIFROST_OLLAMA_NUM_PREDICT: '256'
         run: |
           set -euo pipefail
           python -m bifrost.main serve > p1-b3-bifrost.log 2>&1 &
