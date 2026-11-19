@@ -104,9 +104,18 @@ jobs:
           # purge removes pilot-owned state/resources instead of silently retaining them.
           bash scripts/pilot.sh purge
           test ! -e .asgard/pilot
-          ! docker volume inspect "$POSTGRES_VOLUME" >/dev/null 2>&1
-          ! docker volume inspect asgard-pilot-ollama-data >/dev/null 2>&1
-          ! docker container inspect asgard-pilot-ollama >/dev/null 2>&1
+          if docker volume inspect "$POSTGRES_VOLUME" >/dev/null 2>&1; then
+            echo "volume $POSTGRES_VOLUME still exists after purge" >&2
+            exit 1
+          fi
+          if docker volume inspect asgard-pilot-ollama-data >/dev/null 2>&1; then
+            echo 'volume asgard-pilot-ollama-data still exists after purge' >&2
+            exit 1
+          fi
+          if docker container inspect asgard-pilot-ollama >/dev/null 2>&1; then
+            echo 'container asgard-pilot-ollama still exists after purge' >&2
+            exit 1
+          fi
 
           cat > d3-01-evidence/acceptance.txt <<EOF
           Changed: repository-owned persistent pilot lifecycle and exact-head acceptance workflow
@@ -158,14 +167,36 @@ jobs:
           cat validate-python313.txt
           grep -F 'Python 3.9-3.12 required' validate-python313.txt
 
+      - name: Build a Bifrost venv on Python 3.13 at the default pilot work path
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -c 'import sys; assert sys.version_info[:2] == (3, 13), sys.version'
+          mkdir -p .asgard/pilot/work
+          python3 -m venv .asgard/pilot/work/venv
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Prove validate passes on a supported Python
+      - name: Prove validate rejects a venv built on an unsupported Python
         shell: bash
         run: |
           set -Eeuo pipefail
           python3 -c 'import sys; assert sys.version_info[:2] == (3, 11), sys.version'
+          if bash scripts/pilot.sh validate >validate-venv313.txt 2>&1; then
+            cat validate-venv313.txt
+            echo 'validate unexpectedly accepted a venv built on Python 3.13' >&2
+            exit 1
+          fi
+          cat validate-venv313.txt
+          grep -F 'existing Bifrost virtual environment' validate-venv313.txt
+
+      - name: Prove validate passes on a supported Python once the stale venv is removed
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -c 'import sys; assert sys.version_info[:2] == (3, 11), sys.version'
+          rm -rf .asgard/pilot/work/venv
           bash scripts/pilot.sh validate

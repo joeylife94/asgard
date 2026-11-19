@@ -93,6 +93,15 @@ validate() {
 import sys
 assert (3, 9) <= sys.version_info[:2] < (3, 13), sys.version
 PY
+  # ensure_build reuses an existing venv, so PATH python3 alone is not enough: a venv
+  # built on 3.13+ lacks the Kafka client and would start healthy but never run a job.
+  # Fail closed instead of deleting operator state.
+  if [[ -x "$WORK_DIR/venv/bin/python" ]]; then
+    "$WORK_DIR/venv/bin/python" - <<'PY' >/dev/null 2>&1 || fail "existing Bifrost virtual environment was built with an unsupported Python (3.9-3.12 required, or it cannot run): $WORK_DIR/venv; remove that directory and rerun validation"
+import sys
+assert (3, 9) <= sys.version_info[:2] < (3, 13), sys.version
+PY
+  fi
   [[ -f docker-compose.yml ]] || fail "docker-compose.yml missing"
   [[ -f docker-compose.pilot.yml ]] || fail "docker-compose.pilot.yml missing"
   [[ -f gradlew ]] || fail "gradlew missing"
