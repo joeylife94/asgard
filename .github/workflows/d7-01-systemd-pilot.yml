@@ -190,6 +190,24 @@ jobs:
         run: |
           set -Eeuo pipefail
           sudo systemctl stop "$UNIT"
+          # Unclaimed home: only the ExecStartPre preflight stops this start. Without
+          # it, pilot-configured.sh start would claim the home and succeed.
+          mv "$ASGARD_PILOT_HOME/active-release.env" "$D7_OUT/owner-unclaimed.env"
+          if sudo systemctl start "$UNIT" >"$D7_OUT/unclaimed-start.txt" 2>&1; then
+            echo 'systemd unexpectedly started an unclaimed pilot home' >&2
+            exit 1
+          fi
+          test "$(systemctl is-failed "$UNIT" || true)" = failed
+          if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
+            echo 'Heimdall answers although the unclaimed-home start failed closed' >&2
+            exit 1
+          fi
+          if [[ -e "$ASGARD_PILOT_HOME/active-release.env" ]]; then
+            echo 'the systemd start claimed the pilot home; ExecStartPre did not block it' >&2
+            exit 1
+          fi
+          mv "$D7_OUT/owner-unclaimed.env" "$ASGARD_PILOT_HOME/active-release.env"
+          sudo systemctl reset-failed "$UNIT"
           cp "$ASGARD_PILOT_HOME/active-release.env" "$D7_OUT/owner.env"
           awk 'BEGIN{FS=OFS="="} $1=="COMMIT"{$2="0000000000000000000000000000000000000000"} {print}' \
             "$D7_OUT/owner.env" > "$ASGARD_PILOT_HOME/active-release.env"
@@ -262,14 +280,14 @@ jobs:
           mkdir -p evidence-d7-01
           sudo journalctl -u "$UNIT" --no-pager -o short-iso > evidence-d7-01/journal.txt 2>/dev/null || true
           if [[ -d "${D7_OUT:-}" ]]; then
-            rm -f "$D7_OUT/owner.env"
+            rm -f "$D7_OUT/owner.env" "$D7_OUT/owner-unclaimed.env"
             cp "$D7_OUT"/* evidence-d7-01/ 2>/dev/null || true
           fi
           {
             printf 'exact_head=%s\n' "$(git rev-parse HEAD)"
             printf 'scope=systemd-owned start/stop of the configured single-node pilot, enabled for multi-user.target\n'
             printf 'cold_start=unit started with docker.service stopped; Docker and the pilot came up through the unit; prior Job/result inspectable\n'
-            printf 'fail_closed=unclaimed pilot home, live applications at install, stale release ownership under systemd, foreign pilot home at uninstall\n'
+            printf 'fail_closed=unclaimed pilot home at install and under systemd, live applications at install, stale release ownership under systemd, foreign pilot home at uninstall\n'
             printf 'host_reboot_executed=false\n'
             printf 'not_verified=actual host reboot or power cycle, application crash supervision or automatic restart, monitoring/alerting/unattended operations, offline boot, rootless Docker or Docker Desktop, more than one pilot per host, production readiness\n'
           } > evidence-d7-01/d7-01.txt

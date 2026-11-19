@@ -201,17 +201,19 @@ sudo systemctl stop asgard-pilot.service
 - requires a pilot home already claimed by the invoking release, a valid operator configuration, and stopped pilot applications; otherwise it fails closed;
 - writes `/etc/systemd/system/asgard-pilot.service` and enables it for `multi-user.target`. It does not start it;
 - makes the unit run as the installing operator, require and follow `docker.service`, and follow `network-online.target`;
-- records in the unit the pilot home, the release root, and a `PATH` built from where `java`, `python3`, `docker` and `curl` were found at install time. If those locations change, run `install` again;
+- records in the unit the pilot home, the release root, and a `PATH` built from where `java`, `python3`, `docker` and `curl` were found at install time. If those locations change, run `install` again. The unit `PATH` keeps the installing shell's directory order for the directories that provide those four commands, and `install` refuses only if a command would still resolve to a different file under the unit `PATH`;
 - writes no configured secret into the unit. Configuration is read from `$ASGARD_PILOT_HOME/config/pilot.env` at each start; an `ASGARD_PILOT_CONFIG` override pointing elsewhere is refused.
 
 Behaviour once installed:
 
 - `systemctl start` runs the same `start` as the configured pilot and returns when the pilot is healthy. A first start can take several minutes, and every start needs network access.
+- Because the unit is a oneshot wanted by `multi-user.target`, the host does not reach `multi-user.target` until the pilot start finishes or times out (up to 30 minutes on a slow first start). Logins are not blocked, but `systemctl is-system-running` reports `starting` and units ordered after `multi-user.target` wait.
 - `systemctl stop` and host shutdown run the persistence-preserving `stop`.
 - A systemd-owned start never claims a pilot home. When the home is unclaimed, purged, or owned by another/stale release, the start fails closed and the unit is left `failed`.
 - Start and stop the pilot through `systemctl` while the unit is installed. `status`, `job`, `inspect` and `config-check` are still run through `scripts/pilot-configured.sh`. If the pilot was stopped outside systemd — by hand, or by `scripts/pilot-maintenance.sh backup` — bring it back with `sudo systemctl restart asgard-pilot.service`.
 - After a compatible release transition, run `claim` and then `install` from the new release. The unit of the previous release fails closed until then.
-- `uninstall` stops and disables the unit and removes the unit file. Pilot state, configuration and the ownership record are kept. Run `uninstall` before `purge`.
+- `status` also fails when the pilot home is no longer claimed by the release that installed the unit, because the next start would fail closed.
+- `uninstall` stops and disables the unit and removes the unit file. Pilot state, configuration and the ownership record are kept. Run `uninstall` before `purge`; if the pilot home directory is already gone, `uninstall` still works with the same absolute `ASGARD_PILOT_HOME` that was recorded in the unit.
 
 The accepted evidence did not reboot a host. It shows the unit enabled for the boot target, the application processes owned by the unit, and a start through systemd alone from a state where the pilot and `docker.service` were both stopped, after which the earlier Job/result was inspectable. Confirm the reboot itself on your own host:
 

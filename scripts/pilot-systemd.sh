@@ -23,16 +23,24 @@ D7-01 bounded systemd ownership of the configured persistent pilot.
 - install writes and enables one system unit (asgard-pilot.service) that runs as the
   installing operator and delegates to scripts/pilot-configured.sh start/stop.
   It does not start the unit. Privileged steps use sudo unless already root.
+  The unit PATH keeps the invoking shell's directory order for the directories that
+  provide java, python3, docker and curl; install refuses only if one of those
+  commands would still resolve to a different file under the unit PATH.
 - The unit is ordered after docker.service and wanted by multi-user.target.
 - The unit carries the pilot-home path, the release root, and a PATH recorded at
   install time. Configured secrets stay in $ASGARD_PILOT_HOME/config/pilot.env,
   which is the only configuration path supported under systemd ownership.
+- Boot: the unit is a oneshot wanted by multi-user.target, so the host does not reach
+  multi-user.target until the pilot start finishes or times out (up to 30 minutes).
 - A systemd-owned start never claims a pilot home: it fails closed when the home is
   unclaimed, purged, or owned by another/stale release.
 - uninstall stops and disables the unit and removes the unit file. Pilot state,
-  configuration and release ownership are preserved.
+  configuration and release ownership are preserved. It is the only action that
+  accepts a pilot home directory that no longer exists (absolute path required); the
+  path must still match the home recorded in the unit.
 - render prints the unit without installing it. status reports the installed unit
-  and fails when it is missing, disabled, or records another/stale release.
+  and fails when it is missing, disabled, records another/stale release, or the pilot
+  home is no longer claimed by this release.
 - Not verified: an actual host reboot or power cycle, application crash supervision
   or automatic restart, monitoring/alerting/unattended operations, offline boot,
   rootless Docker or Docker Desktop, more than one pilot per host, production readiness.
@@ -47,8 +55,15 @@ esac
 
 PILOT_HOME_RAW="${ASGARD_PILOT_HOME:-}"
 [[ -n "$PILOT_HOME_RAW" ]] || fail "ASGARD_PILOT_HOME is required"
-[[ -d "$PILOT_HOME_RAW" ]] || fail "pilot home does not exist: $PILOT_HOME_RAW"
-PILOT_HOME="$(cd "$PILOT_HOME_RAW" && pwd -P)"
+if [[ -d "$PILOT_HOME_RAW" ]]; then
+  PILOT_HOME="$(cd "$PILOT_HOME_RAW" && pwd -P)"
+elif [[ "$ACTION" == uninstall && "$PILOT_HOME_RAW" == /* ]]; then
+  # The home may have been removed already; the unit must still be removable.
+  # The path is compared as given against the home recorded in the unit.
+  PILOT_HOME="$PILOT_HOME_RAW"
+else
+  fail "pilot home does not exist: $PILOT_HOME_RAW"
+fi
 STATE_DIR="$PILOT_HOME/state"
 OWNER_FILE="$PILOT_HOME/active-release.env"
 DEFAULT_CONFIG="$PILOT_HOME/config/pilot.env"
@@ -123,12 +138,36 @@ operator_user() {
 # The unit does not inherit the operator's login environment. Record where the
 # required commands live now, plus the standard system directories.
 runtime_path() {
-  local cmd resolved dir path=""
+  local cmd resolved dir entry path="" wanted=":"
   for cmd in java python3 docker curl; do
     resolved="$(command -v "$cmd" || true)"
     [[ "$resolved" == /* ]] || fail "missing required command: $cmd"
     dir="$(dirname "$resolved")"
     safe_path "$dir" || fail "unsupported characters in the directory of $cmd: $dir"
+    case "$wanted" in
+      *":$dir:"*) ;;
+      *) wanted="$wanted$dir:" ;;
+    esac
+  done
+  # Keep the operator's own directory order, so each command resolves from the
+  # same directory as in the operator's shell.
+  local -a entries
+  IFS=: read -r -a entries <<< "${PATH:-}"
+  for entry in "${entries[@]}"; do
+    [[ "$entry" == /* ]] || continue
+    while [[ "$entry" == */ && "$entry" != / ]]; do entry="${entry%/}"; done
+    case "$wanted" in
+      *":$entry:"*) ;;
+      *) continue ;;
+    esac
+    case ":$path:" in
+      *":$entry:"*) ;;
+      *) path="${path:+$path:}$entry" ;;
+    esac
+  done
+  # A provider directory not seen while walking PATH (unexpected) goes last
+  # before the standard directories.
+  for dir in ${wanted//:/ }; do
     case ":$path:" in
       *":$dir:"*) ;;
       *) path="${path:+$path:}$dir" ;;
@@ -139,6 +178,16 @@ runtime_path() {
       *":$dir:"*) ;;
       *) path="$path:$dir" ;;
     esac
+  done
+  # Safety net: re-resolve each command under the built PATH (hash table
+  # cleared) and refuse a difference. The order-preserving build above is
+  # meant to make this unreachable for ordinary PATHs.
+  local operator_resolved unit_resolved
+  for cmd in java python3 docker curl; do
+    operator_resolved="$(command -v "$cmd")"
+    unit_resolved="$(hash -r; PATH="$path" command -v "$cmd" || true)"
+    [[ -n "$unit_resolved" && "$unit_resolved" -ef "$operator_resolved" ]] \
+      || fail "unit PATH would resolve $cmd to ${unit_resolved:-nothing} instead of $operator_resolved; make one consistent PATH and retry"
   done
   printf '%s' "$path"
 }
@@ -259,6 +308,8 @@ unit_status() {
   [[ "$(installed_value release-root)" == "$ROOT_DIR" ]] || fail "installed unit records another/stale release; reinstall from the owning release"
   [[ "$(installed_value release-commit)" == "$(release_commit)" ]] || fail "installed unit records another/stale release; reinstall from the owning release"
   [[ "$enabled" == "enabled" ]] || fail "$UNIT_NAME is installed but not enabled"
+  # The unit's preflight would refuse the next start otherwise.
+  assert_claimed_by_current_release
 }
 
 case "$ACTION" in
