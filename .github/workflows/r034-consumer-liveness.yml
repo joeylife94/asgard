@@ -1,0 +1,278 @@
+name: R-034 Consumer Liveness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/r034-consumer-liveness.yml'
+      - '.github/scripts/ollama-delay-stub.py'
+      - 'bifrost/**'
+      - 'scripts/local-proof.sh'
+      - 'docker-compose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  r034-consumer-liveness:
+    # Pinned host: Bifrost's Kafka client (bifrost/requirements.txt) is only
+    # installable on Python < 3.13, which newer runner images do not provide.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      EVIDENCE_DIR: ${{ github.workspace }}/r034-evidence
+      WORK_DIR: ${{ github.workspace }}/.r034-session
+      STUB_URL: http://127.0.0.1:11434
+      STUB_DELAY_SECONDS: '60'
+      PROOF_ID: r034-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/local-proof.sh
+          python3 -m py_compile .github/scripts/ollama-delay-stub.py
+
+      - name: Start delayed Ollama stub
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          # scripts/local-proof.sh reuses any endpoint already answering on
+          # 127.0.0.1:11434, so it will not start an Ollama container.
+          PORT=11434 STUB_MODEL=smollm:135m STUB_DELAY_SECONDS="$STUB_DELAY_SECONDS" \
+            nohup python3 .github/scripts/ollama-delay-stub.py \
+            > "$EVIDENCE_DIR/ollama-delay-stub.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/r034-stub.pid"
+          ready=0
+          for i in {1..30}; do
+            if curl --fail --silent "$STUB_URL/api/tags" > /dev/null 2>&1; then
+              ready=1
+              echo "stub ready (attempt $i)"
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != "1" ]]; then
+            echo "stub did not become ready" >&2
+            exit 1
+          fi
+
+      - name: Run local proof against the stub and retain the session
+        shell: bash
+        env:
+          ASGARD_PROOF_ID: ${{ env.PROOF_ID }}
+          ASGARD_PROOF_KEEP: '1'
+          ASGARD_PROOF_WORK_DIR: ${{ github.workspace }}/.r034-session
+          ASGARD_PROOF_OUTPUT: ${{ github.workspace }}/.r034-session/local-proof-summary.json
+          ASGARD_PROOF_EVIDENCE_DIR: ${{ github.workspace }}/r034-evidence/local-proof-failure
+        run: |
+          set -euo pipefail
+          bash scripts/local-proof.sh
+
+      - name: Assert consumer liveness after the job succeeded
+        shell: bash
+        run: |
+          set -euo pipefail
+          SESSION="$WORK_DIR/retained-session.env"
+          SUMMARY="$EVIDENCE_DIR/r034-summary.txt"
+          test -f "$SESSION"
+          COMPOSE_PROJECT="$(sed -n 's/^COMPOSE_PROJECT=//p' "$SESSION")"
+          test -n "$COMPOSE_PROJECT"
+          JOB_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["jobId"])' "$WORK_DIR/job-final.json")"
+          JOB_STATUS="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["status"])' "$WORK_DIR/job-final.json")"
+          test -n "$JOB_ID"
+          {
+            echo "R-034 consumer liveness (delayed Ollama stub, not local-AI evidence)"
+            echo "job_id=$JOB_ID"
+            echo "job_status=$JOB_STATUS"
+            echo "compose_project=$COMPOSE_PROJECT"
+            echo "stub_delay_seconds=$STUB_DELAY_SECONDS"
+          } > "$SUMMARY"
+          if [[ "$JOB_STATUS" != "SUCCEEDED" ]]; then
+            echo "FAIL: job $JOB_ID is $JOB_STATUS, expected SUCCEEDED" | tee -a "$SUMMARY"
+            exit 1
+          fi
+
+          # Session timeout is 30 s; an unfixed consumer is evicted, re-joins and
+          # starts a second 60 s generation well inside this window.
+          echo "waiting 90 s for any redelivery to surface"
+          sleep 90
+
+          failed=0
+          record() {
+            printf '%s %s: %s\n' "$2" "$1" "$3" | tee -a "$SUMMARY"
+            if [[ "$2" != "PASS" ]]; then failed=1; fi
+          }
+          dump_topic() {
+            docker compose -p "$COMPOSE_PROJECT" exec -T kafka kafka-console-consumer \
+              --bootstrap-server kafka:29092 --topic "$1" --from-beginning --timeout-ms 10000 \
+              > "$2" 2> "$2.stderr" || true
+          }
+
+          # a. exactly one generate call reached the stub
+          calls=""
+          if curl --fail --silent --show-error "$STUB_URL/calls" > "$EVIDENCE_DIR/stub-calls.json"; then
+            calls="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["generate_calls"])' "$EVIDENCE_DIR/stub-calls.json")"
+          fi
+          if [[ "$calls" == "1" ]]; then
+            record "a-generate-calls" PASS "stub saw exactly 1 generate call"
+          else
+            record "a-generate-calls" FAIL "stub saw '${calls:-unreadable}' generate calls, expected 1"
+          fi
+
+          # b. nothing for this job on dlq.failed
+          dump_topic dlq.failed "$EVIDENCE_DIR/topic-dlq.failed.txt"
+          dlq_hits="$(grep -cF "$JOB_ID" "$EVIDENCE_DIR/topic-dlq.failed.txt" || true)"
+          if ! grep -q 'Processed a total of' "$EVIDENCE_DIR/topic-dlq.failed.txt.stderr"; then
+            # An empty dump only counts when the topic was really read.
+            record "b-dlq-empty-for-job" FAIL "dlq.failed could not be read, see topic-dlq.failed.txt.stderr"
+          elif [[ "$dlq_hits" == "0" ]]; then
+            record "b-dlq-empty-for-job" PASS "no dlq.failed message mentions the job"
+          else
+            record "b-dlq-empty-for-job" FAIL "$dlq_hits dlq.failed message(s) mention the job"
+          fi
+
+          # c. exactly one result message for this job
+          dump_topic analysis.result "$EVIDENCE_DIR/topic-analysis.result.txt"
+          result_hits="$(grep -cF "$JOB_ID" "$EVIDENCE_DIR/topic-analysis.result.txt" || true)"
+          if [[ "$result_hits" == "1" ]]; then
+            record "c-single-result" PASS "analysis.result has exactly 1 message for the job"
+          else
+            record "c-single-result" FAIL "analysis.result has $result_hits message(s) for the job, expected 1"
+          fi
+
+          # d. consumer group has no lag on the request topic
+          group_file="$EVIDENCE_DIR/consumer-group-bifrost-consumer-group.txt"
+          for attempt in 1 2 3; do
+            docker compose -p "$COMPOSE_PROJECT" exec -T kafka kafka-consumer-groups \
+              --bootstrap-server kafka:29092 --describe --group bifrost-consumer-group \
+              > "$group_file" 2>&1 || true
+            if grep -q 'analysis.request' "$group_file"; then break; fi
+            sleep 5
+          done
+          lag_summary="$(awk '
+            $1 == "GROUP" { for (i = 1; i <= NF; i++) { if ($i == "TOPIC") ti = i; if ($i == "LAG") li = i } next }
+            ti && li && $ti == "analysis.request" { rows++; if ($li != "0") nonzero++ }
+            END { printf "%d %d", rows, nonzero }
+          ' "$group_file")"
+          lag_rows="${lag_summary% *}"
+          lag_nonzero="${lag_summary#* }"
+          if [[ "$lag_rows" -ge 1 && "$lag_nonzero" == "0" ]]; then
+            record "d-consumer-lag" PASS "bifrost-consumer-group lag is 0 on analysis.request ($lag_rows partition row(s))"
+          else
+            record "d-consumer-lag" FAIL "bifrost-consumer-group rows=$lag_rows nonzero_or_unknown_lag=$lag_nonzero on analysis.request"
+          fi
+
+          # e. no commit-failure or DLQ signatures in the Bifrost log
+          bad_pattern='CommitFailedError|Heartbeat session expired|Error processing message|Message sent to DLQ'
+          grep -E "$bad_pattern" "$WORK_DIR/bifrost.log" | head -n 50 > "$EVIDENCE_DIR/bifrost-bad-lines.txt" || true
+          bad_count="$(grep -cE "$bad_pattern" "$WORK_DIR/bifrost.log" || true)"
+          if [[ "$bad_count" == "0" ]]; then
+            record "e-bifrost-log-clean" PASS "bifrost.log has no commit-failure or DLQ signatures"
+          else
+            record "e-bifrost-log-clean" FAIL "bifrost.log has $bad_count matching line(s), see bifrost-bad-lines.txt"
+          fi
+
+          if [[ "$failed" != "0" ]]; then
+            echo "R-034 consumer liveness proof FAILED" | tee -a "$SUMMARY"
+            exit 1
+          fi
+          echo "R-034 consumer liveness proof PASSED" | tee -a "$SUMMARY"
+
+      - name: Diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo "== stub log =="
+          tail -n 200 "$EVIDENCE_DIR/ollama-delay-stub.log"
+          echo "== stub /calls =="
+          curl --silent --max-time 5 "$STUB_URL/calls"
+          echo
+          echo "== bifrost.log =="
+          tail -n 200 "$WORK_DIR/bifrost.log"
+          echo "== heimdall.log =="
+          tail -n 200 "$WORK_DIR/heimdall.log"
+          echo "== compose ps =="
+          PROJECT="$(sed -n 's/^COMPOSE_PROJECT=//p' "$WORK_DIR/retained-session.env" 2>/dev/null)"
+          if [[ -n "$PROJECT" ]]; then
+            docker compose -p "$PROJECT" ps
+          else
+            docker ps -a
+          fi
+          exit 0
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### R-034 consumer liveness"
+            echo
+            echo "This proof uses a delayed stub in place of Ollama (fixed ${STUB_DELAY_SECONDS} s generation, synthetic response) and proves Kafka consumer liveness only. It is not local-AI evidence."
+            echo
+            if [[ -f "$EVIDENCE_DIR/r034-summary.txt" ]]; then
+              echo '```'
+              cat "$EVIDENCE_DIR/r034-summary.txt"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Collect evidence
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$EVIDENCE_DIR"
+          curl --silent --max-time 5 "$STUB_URL/calls" > "$EVIDENCE_DIR/stub-calls-final.json"
+          for name in bifrost.log job-final.json retained-session.env; do
+            if [[ -f "$WORK_DIR/$name" ]]; then cp "$WORK_DIR/$name" "$EVIDENCE_DIR/$name"; fi
+          done
+          # The proof uses fixed synthetic credentials; scrub them from anything uploaded.
+          for secret in local-proof-admin-password local-proof-jwt-secret-at-least-32-bytes-long redis_password asgard_password; do
+            grep -rIl -F -- "$secret" "$EVIDENCE_DIR" 2>/dev/null | while IFS= read -r file; do
+              sed -i "s/$secret/[REDACTED]/g" "$file"
+            done
+          done
+          exit 0
+
+      - name: Stop stub and clean up retained session
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [[ -f "$RUNNER_TEMP/r034-stub.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/r034-stub.pid")" 2>/dev/null || true
+          fi
+          if [[ -f "$WORK_DIR/retained-session.env" ]]; then
+            bash scripts/cleanup-retained-proof.sh "$WORK_DIR/retained-session.env"
+          else
+            echo "no retained session to clean up"
+          fi
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r034-consumer-liveness-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/r034-evidence/
+          if-no-files-found: warn
+          retention-days: 14
