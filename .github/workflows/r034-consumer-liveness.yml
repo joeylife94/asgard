@@ -1,0 +1,56 @@
+name: R-034 slow generation with real Kafka
+on:
+  pull_request:
+    paths:
+      - 'bifrost/**'
+      - 'scripts/r034-ollama-stub.py'
+      - '.github/workflows/r034-consumer-liveness.yml'
+permissions:
+  contents: read
+jobs:
+  slow-generation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify one result and one committed request
+        shell: bash
+        env:
+          ASGARD_PROOF_ID: r034
+          ASGARD_PROOF_KEEP: '1'
+        run: |
+          set -euo pipefail
+          export ASGARD_PROOF_WORK_DIR="$RUNNER_TEMP/r034-work"
+          stub_log="$RUNNER_TEMP/r034-stub.log"
+          python3 scripts/r034-ollama-stub.py >"$stub_log" 2>&1 &
+          stub_pid=$!
+          trap 'kill "$stub_pid" 2>/dev/null || true' EXIT
+          curl -fsS --retry 10 --retry-all-errors --retry-delay 1 http://127.0.0.1:11434/api/tags
+          bash scripts/local-proof.sh
+          # Leave a full session timeout after the job succeeds to catch a replay.
+          sleep 35
+          test "$(grep -cx generate "$stub_log")" = 1
+          broker=(docker compose -p asgard-proof-r034 exec -T kafka)
+          job=$(jq -er '.jobId | select(length > 0)' local-proof-summary.json)
+          for topic in analysis.result dlq.failed; do
+            # Snapshot the bounded log on this isolated broker. Validate the
+            # command itself, rather than treating a timeout/error as zero rows.
+            "${broker[@]}" kafka-get-offsets --bootstrap-server kafka:29092 --topic "$topic" > "$RUNNER_TEMP/$topic.offsets"
+            count=$(awk -F: '{n += $3} END {print n+0}' "$RUNNER_TEMP/$topic.offsets")
+            if [[ "$topic" == analysis.result ]]; then
+              test "$count" = 1
+              "${broker[@]}" kafka-console-consumer --bootstrap-server kafka:29092 --topic "$topic" --from-beginning --max-messages 1 --timeout-ms 10000 | jq -e --arg job "$job" '(.job_id // .jobId) == $job'
+            else
+              test "$count" = 0
+            fi
+          done
+          "${broker[@]}" kafka-consumer-groups --bootstrap-server kafka:29092 --group bifrost-consumer-group --describe |
+            awk '$2 == "analysis.request" {seen++; if ($6 != "0") bad++} END {exit (!seen || bad)}'
+          if grep -Ei 'CommitFailedError|session (timed out|expired)|Error processing message' "$ASGARD_PROOF_WORK_DIR/bifrost.log"; then exit 1; fi

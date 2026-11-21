@@ -3,16 +3,18 @@
 import asyncio
 import json
 from typing import Optional, Callable, Awaitable
-import logging
-from datetime import datetime
 
 try:
-    from aiokafka import AIOKafkaConsumer
+    from aiokafka import AIOKafkaConsumer, TopicPartition
 except Exception:  # pragma: no cover
     AIOKafkaConsumer = None
 
 from bifrost.kafka_events import AnalysisRequestEvent, DlqFailedEvent
 from bifrost.logger import logger
+
+
+# Three 300-second attempts plus backoff and time for persistence.
+MAX_POLL_INTERVAL_MS = 16 * 60 * 1000
 
 
 class AnalysisRequestConsumer:
@@ -47,7 +49,7 @@ class AnalysisRequestConsumer:
             value_deserializer=lambda m: json.loads(m.decode('utf-8')),
             session_timeout_ms=30000,
             max_poll_records=100,
-            max_poll_interval_ms=300000  # 5분
+            max_poll_interval_ms=MAX_POLL_INTERVAL_MS,
         )
         await self.consumer.start()
         self._running = True
@@ -108,9 +110,6 @@ class AnalysisRequestConsumer:
                     # 비즈니스 로직 처리
                     await processor_func(event)
                     
-                    # Manual commit (성공 시에만)
-                    await self.consumer.commit()
-                    
                     logger.info(
                         f"Analysis request processed successfully",
                         job_id=job_id,
@@ -126,7 +125,6 @@ class AnalysisRequestConsumer:
                         error=str(e)
                     )
                     await self._send_to_dlq(message, str(e))
-                    await self.consumer.commit()  # Skip invalid message
                     
                 except Exception as e:
                     logger.error(
@@ -141,8 +139,18 @@ class AnalysisRequestConsumer:
                     # DLQ로 전송
                     await self._send_to_dlq(message, str(e))
                     
-                    # 메시지 건너뛰기 (무한 재처리 방지)
-                    await self.consumer.commit()
+                # Processing and offset acknowledgement have different failure semantics.
+                try:
+                    partition = TopicPartition(message.topic, message.partition)
+                    await self.consumer.commit({partition: message.offset + 1})
+                except Exception as commit_error:
+                    logger.warning(
+                        "Offset commit failed; message may be redelivered",
+                        topic=message.topic,
+                        partition=message.partition,
+                        offset=message.offset,
+                        error=str(commit_error),
+                    )
                     
         except Exception as e:
             logger.error(f"Consumer error: {e}", exc_info=True)
@@ -214,7 +222,14 @@ class KafkaConsumerManager:
             self.consumer.consume_messages(processor_func)
         )
         
+        self._task.add_done_callback(self._consumer_finished)
         logger.info("Kafka consumer manager started")
+
+    def _consumer_finished(self, task):
+        if task.cancelled() or not self.consumer._running:
+            return
+        error = task.exception()
+        logger.error("Consumer task ended unexpectedly", error=str(error) if error else None)
     
     async def stop(self):
         """Consumer 종료"""
