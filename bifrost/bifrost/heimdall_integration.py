@@ -1,5 +1,6 @@
 """Kafka Integration Service - Heimdall 연동 핵심 로직"""
 
+import asyncio
 import os
 import time
 from decimal import Decimal
@@ -71,12 +72,12 @@ class HeimdallIntegrationService:
         
         try:
             # 0. Heimdall DB에서 log_content 조회 (REST 제거)
-            log_entry = self.heimdall_store.get_log_entry(event.log_id)
+            log_entry = await asyncio.to_thread(self.heimdall_store.get_log_entry, event.log_id)
             if not log_entry:
                 raise RuntimeError(f"Heimdall log entry not found: log_id={event.log_id}")
 
             # 1. 로그 전처리
-            processed_log = self.preprocessor.process(log_entry.log_content)
+            processed_log = await asyncio.to_thread(self.preprocessor.process, log_entry.log_content)
             
             # 2. 프롬프트 생성
             prompt = MASTER_PROMPT.format(log_content=processed_log)
@@ -88,7 +89,8 @@ class HeimdallIntegrationService:
             )
             
             # 4. 분석 결과 저장 (Bifrost DB)
-            bifrost_analysis_id = self._save_analysis_to_db(
+            bifrost_analysis_id = await asyncio.to_thread(
+                self._save_analysis_to_db,
                 event=event,
                 response=analysis_response,
                 duration=time.time() - start_time,
@@ -190,7 +192,7 @@ class HeimdallIntegrationService:
                 url=self.config.get("ollama", {}).get("url", "http://localhost:11434"),
                 model=self.config.get("ollama", {}).get("model", "mistral")
             )
-            result = client.analyze(prompt, stream=False)
+            result = await asyncio.to_thread(client.analyze, prompt, stream=False)
         elif source == "cloud":
             if not is_bedrock_available():
                 raise RuntimeError("Bedrock not available (boto3 not installed)")
@@ -201,7 +203,7 @@ class HeimdallIntegrationService:
                     "model", "anthropic.claude-3-sonnet-20240229-v1:0"
                 )
             )
-            result = client.analyze(prompt)
+            result = await asyncio.to_thread(client.analyze, prompt)
         else:
             raise ValueError(f"Invalid source: {source}")
         
